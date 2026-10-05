@@ -10,3 +10,7 @@ __pycache__/
 CLAUDE.md
 # Real feed mail and its golden output: local only
 corpus/
+bin/
+obj/
+*.user
+TestResults/
