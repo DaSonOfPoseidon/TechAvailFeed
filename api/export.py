@@ -415,6 +415,14 @@ def workbook(
     about.column_dimensions["A"].width = 24
     about.column_dimensions["B"].width = 100
 
+    # openpyxl writes any string starting with "=" as a formula. Feed values and query-string
+    # filters are data, so store them as text and Excel never evaluates them.
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.data_type == "f":
+                    cell.data_type = "s"
+
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()

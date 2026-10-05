@@ -1,11 +1,12 @@
 import email
 import imaplib
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from email.message import Message
-from email.utils import parsedate_to_datetime
+from email.utils import parseaddr, parsedate_to_datetime
 
 from feed.config import Config
 
@@ -46,6 +47,23 @@ def to_feed_mail(uid: bytes, raw: bytes, internal_date: datetime | None) -> Feed
         mailbox_received_at=internal_date,
         attachments=csv_attachments(message),
     )
+
+
+def sender_rejection(message: Message, mail_from: str, authserv_id: str) -> str | None:
+    # From headers are trivially forged, so the receiving server's verdict decides. It adds its
+    # Authentication-Results header on top; any copies further down came from the sender.
+    sender = parseaddr(str(message.get("From", "")))[1].lower()
+    if sender != mail_from.lower():
+        return f"sender {sender!r} is not MAIL_FROM"
+    results = message.get_all("Authentication-Results") or []
+    top = " ".join(str(results[0]).split()) if results else ""
+    if not top.lower().startswith(f"{authserv_id.lower()};"):
+        return f"no Authentication-Results from {authserv_id}"
+    domain = sender.rpartition("@")[2]
+    match = re.search(r"\bdmarc=pass\b[^;]*\bheader\.from=([^\s;]+)", top, re.IGNORECASE)
+    if not match or match.group(1).lower() != domain:
+        return f"DMARC did not pass for {domain}"
+    return None
 
 
 def trash_folder(list_lines: list[bytes]) -> str | None:
@@ -92,6 +110,14 @@ class Mailbox:
             internal_date = (
                 datetime.fromtimestamp(time.mktime(internal), tz=UTC) if internal else None
             )
+            rejection = sender_rejection(
+                email.message_from_bytes(raw), self.config.mail_from, self.config.authserv_id
+            )
+            if rejection:
+                # Filed away unread, so it isn't fetched again and stays there for inspection.
+                log.warning("rejected uid %s: %s", uid, rejection)
+                self.file_away(imap, uid, self.config.failed_label)
+                continue
             mails.append(to_feed_mail(uid, raw, internal_date))
         return imap, mails
 

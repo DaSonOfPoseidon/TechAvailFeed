@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import secrets
 import threading
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, tzinfo
@@ -55,7 +57,9 @@ def latest_view(store: Store, tz: tzinfo) -> dict | None:
     return latest
 
 
-def make_handler(store: Store, state: PollState, mail_configured: bool, tz: tzinfo):
+def make_handler(
+    store: Store, state: PollState, mail_configured: bool, tz: tzinfo, api_key: str = ""
+):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body) -> None:
             payload = to_json(body)
@@ -68,7 +72,14 @@ def make_handler(store: Store, state: PollState, mail_configured: bool, tz: tzin
         def do_GET(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
-                if path == "/health":
+                key = (self.headers.get("X-API-Key") or "").encode()
+                if (
+                    path != "/health"
+                    and api_key
+                    and not secrets.compare_digest(key, api_key.encode())
+                ):
+                    self._send(401, {"error": "missing or wrong X-API-Key"})
+                elif path == "/health":
                     # Stays 200 before the first delivery; the poll fields say what is wrong.
                     self._send(
                         200, {"ok": True, "mail_configured": mail_configured, **state.as_dict()}
@@ -93,7 +104,8 @@ def make_handler(store: Store, state: PollState, mail_configured: bool, tz: tzin
 
 
 def serve(port: int, store: Store, state: PollState, mail_configured: bool, tz: tzinfo) -> None:
-    handler = make_handler(store, state, mail_configured, tz)
+    # The same API_KEY as the dashboard API: only /health stays open.
+    handler = make_handler(store, state, mail_configured, tz, os.environ.get("API_KEY", ""))
     server = ThreadingHTTPServer(("0.0.0.0", port), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     log.info("http listening on %s", port)

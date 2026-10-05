@@ -33,6 +33,32 @@ def test_empty_export_still_opens_with_headers_and_no_tables():
     assert "Net h" in about
 
 
+def test_formula_like_values_are_stored_as_text():
+    from feed.diagnostics import Check
+
+    check = Check("tech_no_region", "tech_setup", "No region", "warning", "", rows=[])
+    check.rows = [{"tech_id": "=1+1", "tech_name": '=HYPERLINK("http://x","y")'}]
+    data = workbook(
+        tz=ZoneInfo("America/Chicago"),
+        meta={"id": 1, "generated_at": None},
+        filters={"region": "=cmd|' /C calc'!A0"},
+        entries=[],
+        days=[],
+        demand=[],
+        schedule=[],
+        outcomes=[],
+        kpis={"days": []},
+        checks=[check],
+    )
+    wb = load_workbook(io.BytesIO(data))
+    cells = [cell for ws in wb.worksheets for row in ws.iter_rows() for cell in row]
+    assert not [cell.coordinate for cell in cells if cell.data_type == "f"]
+    header, row = wb["Diagnostics"].iter_rows(values_only=True)
+    assert row[header.index("Tech id")] == "=1+1"
+    about = {row[0]: row[1] for row in wb["About"].iter_rows(values_only=True) if row[0]}
+    assert about["Filter: region"] == "=cmd|' /C calc'!A0"
+
+
 def test_a_day_without_a_morning_plan_gets_a_full_width_row():
     kpis = {"days": [{"date": date(2026, 9, 29), "status": "no_morning", "provisional": False}]}
     data = workbook(
