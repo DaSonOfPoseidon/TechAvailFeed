@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using MimeKit;
+using TechAvail.Core.Mail;
 using TechAvail.Core.Parsing;
 
 namespace TechAvail.Parity;
@@ -8,6 +11,27 @@ namespace TechAvail.Parity;
 // diff that reports only where two documents differ (paths, never values: corpus values are real).
 public static class GoldenJson
 {
+    // tools/golden.py's mail_json.
+    public static JsonObject Mail(byte[] raw, string mailFrom, string authservId)
+    {
+        var message = MimeMessage.Load(new MemoryStream(raw));
+        var mail = FeedMail.FromMime(message, "0");
+        var attachments = new JsonArray();
+        foreach (var (name, data) in mail.Attachments)
+            attachments.Add(new JsonObject { ["filename"] = name, ["sha256"] = Convert.ToHexStringLower(SHA256.HashData(data)) });
+        var result = new JsonObject
+        {
+            ["message_id"] = mail.MessageId,
+            ["subject"] = mail.Subject,
+            ["email_date"] = mail.EmailDate?.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture),
+            ["sender_rejection"] = SenderCheck.Rejection(message, mailFrom, authservId),
+            ["attachments"] = attachments,
+        };
+        if (mail.Attachments.Count == 1)
+            result["feed"] = Feed(mail.Attachments[0].Data);
+        return result;
+    }
+
     public static JsonObject Feed(byte[] data)
     {
         ParsedFeed feed;
@@ -130,9 +154,9 @@ public static class GoldenJson
         if (expected.GetValueKind() != System.Text.Json.JsonValueKind.String)
             return expected.ToJsonString() == actual.ToJsonString();
         var (e, a) = (expected.GetValue<string>(), actual.GetValue<string>());
-        // generated_at: Python keeps a value without an offset naive, .NET reads it as UTC (as
-        // Postgres stores it), so the same instant is what has to match.
-        if (path.EndsWith("generated_at", StringComparison.Ordinal))
+        // Python keeps a timestamp without an offset naive, .NET reads it as UTC (as Postgres
+        // stores it), so the same instant is what has to match.
+        if (path.EndsWith("generated_at", StringComparison.Ordinal) || path == "email_date")
             return Instant(e) == Instant(a);
         return e == a;
     }
