@@ -1,0 +1,7 @@
+GENERATED_AT,KIND,WORK_DATE,TECH_ID,TECH_NAME,STARTS_AT,ENDS_AT,REF_ID,STATUS,DEPARTMENT,TASK_TYPE,REGION,SKILLS,MODIFIED_AT,MODIFIED_BY,ENROUTE_AT,INPROGRESS_AT,Pre-Reqs Status,ADDRESS_ISSUE,LATITUDE,LONGITUDE,GPS_PRECISION
+"2026-09-29T06:15:02-05","shift","2026-09-29","jdoe0170","Jane Doe","2026-09-29 08:00","2026-09-29 17:00","","","","","North Core","CONN, INS","","","","","","","","",""
+"2026-09-29T06:15:02-05","job","2026-09-29","jdoe0170","Jane Doe","2026-09-29 09:00","2026-09-29 11:00","100001","A","FIELD","3","North Core","","2026-09-28 16:02:11","jsmi0171","","","","","40.123456","-100.654321","ROOFTOP"
+"2026-09-29T06:15:02-05","ticket","2026-09-29","jdoe0170","Jane Doe","2026-09-29 14:00","2026-09-29 15:00","T-2001","O","TC","","North Core","","","","","","","","40.111111","-100.622222","PARCEL"
+"2026-09-29T06:15:02-05","shift","2026-09-29","jsmi0171","John Smith","2026-09-29 08:00","2026-09-29 17:00","","","","","South Core","CONN, MDU","","","","","","","","",""
+"2026-09-29T06:15:02-05","time_off","2026-09-29","jsmi0171","John Smith","2026-09-29 13:00","2026-09-29 17:00","","","","","South Core","","","","","","","","","",""
+"2026-09-29T06:15:02-05","job_unassigned","2026-09-30","","","2026-09-30 10:00","2026-09-30 12:00","100002","A","FIELD","23","South Core","","","","","","","no_gps","","",""

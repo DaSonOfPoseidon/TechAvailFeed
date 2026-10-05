@@ -1,0 +1,77 @@
+# wud.* and monitoring.* labels are for the author's home-server tooling (What's Up Docker, Prometheus); harmless elsewhere.
+services:
+  postgres:
+    image: postgres:16-alpine
+    labels:
+      # Same tag style only (no odd variants); newer majors show as "major" in the 9am digest.
+      wud.tag.include: '^\d+-alpine$$'
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: techavail
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: techavail
+    # No published port: only the ingester reaches it, over the compose network.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techavail"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingest:
+    build: .
+    labels:
+      wud.watch: "false"
+      # Feasibility harness: no phone alerts until it graduates to the real dashboard.
+      monitoring.ignore: "true"
+    restart: unless-stopped
+    ports:
+      - "8095:8000"
+    env_file:
+      - .env
+    environment:
+      # Override in .env to point at an external Postgres.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # curl isn't in the image; use python's stdlib instead
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  api:
+    build: .
+    # Dashboard backend: calendar, KPIs and the Excel export. Read-only on the ingest's tables.
+    command: ["uvicorn", "--factory", "api.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    labels:
+      wud.watch: "false"
+      # Like the ingest: no phone alerts until the dashboard goes live. Then drop the ignore.
+      monitoring.ignore: "true"
+      monitoring.http.path: "/health"
+    restart: unless-stopped
+    ports:
+      - "8097:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # The ingest creates the schema on start.
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  postgres_data:
