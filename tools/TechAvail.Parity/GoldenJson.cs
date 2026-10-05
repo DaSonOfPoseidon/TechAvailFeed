@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using MimeKit;
+using TechAvail.Core;
 using TechAvail.Core.Mail;
 using TechAvail.Core.Parsing;
 
@@ -28,9 +29,92 @@ public static class GoldenJson
             ["attachments"] = attachments,
         };
         if (mail.Attachments.Count == 1)
-            result["feed"] = Feed(mail.Attachments[0].Data);
+        {
+            var data = mail.Attachments[0].Data;
+            result["feed"] = Feed(data);
+            if (result["feed"]!["format"]?.GetValue<string>() == "blocks" && result["feed"]!["generated_at"] is not null)
+                result["availability"] = Availability(FeedParser.Parse(data));
+        }
         return result;
     }
+
+    // tools/golden.py's availability_json: as the dashboard would compute it when the snapshot was
+    // generated, "now" being its local wall-clock time.
+    public static JsonObject Availability(ParsedFeed feed)
+    {
+        var now = feed.GeneratedAt!.Value.DateTime;
+        var result = new JsonObject
+        {
+            ["now"] = Local(now),
+            ["unassigned"] = new JsonArray(
+                [
+                    .. Core.Availability.Unassigned(feed.Blocks, DateOnly.FromDateTime(now))
+                        .Select(d => (JsonNode)new JsonObject
+                        {
+                            ["work_date"] = Date(d.WorkDate),
+                            ["region"] = d.Region,
+                            ["jobs"] = d.Jobs,
+                            ["tickets"] = d.Tickets,
+                            ["hours"] = d.Hours,
+                        }),
+                ]
+            ),
+        };
+        foreach (var calendar in new[] { "install", "tc" })
+        {
+            result[calendar] = new JsonObject
+            {
+                ["free_slots"] = new JsonArray(
+                    [.. Core.Availability.FreeSlots(feed.Blocks, now, calendar: calendar).Select(FreeSlotJson)]
+                ),
+                ["tech_days"] = new JsonArray(
+                    [.. Core.Availability.TechDays(feed.Blocks, now, calendar: calendar).Select(TechDayJson)]
+                ),
+            };
+        }
+        return result;
+    }
+
+    static JsonNode FreeSlotJson(FreeSlot s) =>
+        new JsonObject
+        {
+            ["work_date"] = Date(s.WorkDate),
+            ["tech_id"] = s.TechId,
+            ["tech_name"] = s.TechName,
+            ["open_from"] = Local(s.OpenFrom),
+            ["open_until"] = Local(s.OpenUntil),
+            ["open_minutes"] = s.OpenMinutes,
+            ["region"] = s.Region,
+            ["skills"] = s.Skills,
+        };
+
+    static JsonArray Intervals(IEnumerable<(DateTime Start, DateTime End)> intervals) =>
+        new([.. intervals.Select(i => (JsonNode)new JsonArray(Local(i.Start), Local(i.End)))]);
+
+    static JsonNode TechDayJson(TechDay d) =>
+        new JsonObject
+        {
+            ["work_date"] = Date(d.WorkDate),
+            ["tech_id"] = d.TechId,
+            ["tech_name"] = d.TechName,
+            ["region"] = d.Region,
+            ["skills"] = d.Skills,
+            ["shifts"] = Intervals(d.Shifts),
+            ["time_off"] = Intervals(d.TimeOff),
+            ["work"] = new JsonArray(
+                [.. d.Work.Select(b => (JsonNode)new JsonArray(b.Kind, b.RefId, Local(b.StartsAt), Local(b.EndsAt)))]
+            ),
+            ["free"] = new JsonArray([.. d.Free.Select(FreeSlotJson)]),
+            ["shift_hours"] = d.ShiftHours,
+            ["lunch_hours"] = d.LunchHours,
+            ["time_off_hours"] = d.TimeOffHours,
+            ["available_hours"] = d.AvailableHours,
+            ["booked_hours"] = d.BookedHours,
+            ["free_hours"] = d.FreeHours,
+            ["jobs"] = d.Jobs,
+            ["tickets"] = d.Tickets,
+            ["on_time_off"] = d.OnTimeOff,
+        };
 
     public static JsonObject Feed(byte[] data)
     {

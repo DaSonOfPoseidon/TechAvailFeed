@@ -15,6 +15,7 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
+from feed.availability import free_slots, tech_days, unassigned_demand
 from feed.mail import sender_rejection, to_feed_mail
 from feed.parse import FeedParseError, ParsedFeed, parse_feed
 
@@ -25,7 +26,7 @@ AUTHSERV_ID = os.environ.get("AUTHSERV_ID", "mx.google.com")
 def plain(value):
     if isinstance(value, datetime | date):
         return value.isoformat()
-    if isinstance(value, list):
+    if isinstance(value, list | tuple):
         return [plain(v) for v in value]
     if isinstance(value, dict):
         return {k: plain(v) for k, v in value.items()}
@@ -47,6 +48,25 @@ def feed_json(data: bytes) -> dict:
     }
 
 
+def availability_json(feed: ParsedFeed) -> dict:
+    # As the dashboard would compute it when the snapshot was generated: "now" is its local time.
+    now = feed.generated_at.replace(tzinfo=None)
+    demand = unassigned_demand(feed.blocks, now.date())
+    result = {"now": plain(now), "unassigned": plain([vars(d) for d in demand])}
+    for calendar in ("install", "tc"):
+        days = []
+        for day in tech_days(feed.blocks, now, calendar=calendar):
+            row = {k: v for k, v in vars(day).items() if k not in ("work", "free")}
+            row["work"] = [[b.kind, b.ref_id, b.starts_at, b.ends_at] for b in day.work]
+            row["free"] = [vars(slot) for slot in day.free]
+            days.append(plain(row))
+        result[calendar] = {
+            "free_slots": plain([vars(s) for s in free_slots(feed.blocks, now, calendar=calendar)]),
+            "tech_days": days,
+        }
+    return result
+
+
 def mail_json(raw: bytes, mail_from: str, received: str | None) -> dict:
     mail = to_feed_mail(b"0", raw, datetime.fromisoformat(received) if received else None)
     result = {
@@ -60,7 +80,10 @@ def mail_json(raw: bytes, mail_from: str, received: str | None) -> dict:
         ],
     }
     if len(mail.attachments) == 1:
-        result["feed"] = feed_json(mail.attachments[0][1])
+        data = mail.attachments[0][1]
+        result["feed"] = feed_json(data)
+        if result["feed"].get("format") == "blocks" and result["feed"]["generated_at"]:
+            result["availability"] = availability_json(parse_feed(data))
     return result
 
 
