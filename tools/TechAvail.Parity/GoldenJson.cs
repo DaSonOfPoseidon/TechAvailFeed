@@ -72,7 +72,40 @@ public static class GoldenJson
                 ),
             };
         }
+        result["diagnostics"] = new JsonArray(
+            [
+                .. Diagnostics
+                    .Diagnose(feed.Blocks, DateOnly.FromDateTime(now))
+                    .Select(c => (JsonNode)new JsonObject
+                    {
+                        ["id"] = c.Id,
+                        ["group"] = c.Group,
+                        ["title"] = c.Title,
+                        ["severity"] = c.Severity,
+                        ["description"] = c.Description,
+                        ["available"] = c.Available,
+                        ["rows"] = new JsonArray([.. c.Rows.Select(Row)]),
+                    }),
+            ]
+        );
         return result;
+    }
+
+    // A diagnostics row: dates and timestamps as Python's isoformat().
+    static JsonNode Row(OrderedDictionary<string, object?> row)
+    {
+        var json = new JsonObject();
+        foreach (var (key, value) in row)
+            json[key] = value switch
+            {
+                null => null,
+                DateOnly d => Date(d),
+                DateTime t => Local(t),
+                string text => text,
+                int n => n,
+                _ => throw new InvalidOperationException($"unexpected {value.GetType()} in {key}"),
+            };
+        return json;
     }
 
     static JsonNode FreeSlotJson(FreeSlot s) =>

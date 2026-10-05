@@ -16,6 +16,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from feed.availability import free_slots, tech_days, unassigned_demand
+from feed.diagnostics import diagnose
 from feed.mail import sender_rejection, to_feed_mail
 from feed.parse import FeedParseError, ParsedFeed, parse_feed
 
@@ -64,6 +65,7 @@ def availability_json(feed: ParsedFeed) -> dict:
             "free_slots": plain([vars(s) for s in free_slots(feed.blocks, now, calendar=calendar)]),
             "tech_days": days,
         }
+    result["diagnostics"] = [plain(vars(check)) for check in diagnose(feed.blocks, now.date())]
     return result
 
 
