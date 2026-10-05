@@ -187,7 +187,11 @@ def parse_generated_at(value: str) -> datetime:
 
 def parse_feed(data: bytes) -> ParsedFeed:
     parsed = ParsedFeed(sha256=hashlib.sha256(data).hexdigest())
-    text = data.decode("utf-8-sig")
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        # Must be a FeedParseError: anything else escapes the poll and blocks the mailbox.
+        raise FeedParseError("file is not valid UTF-8") from exc
     reader = csv.reader(io.StringIO(text, newline=""), strict=True)
 
     try:
