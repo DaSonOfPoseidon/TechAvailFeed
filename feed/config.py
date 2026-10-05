@@ -17,6 +17,7 @@ class Config:
     mail_tz: str
     poll_seconds: int
     http_port: int
+    archive_dir: str = ""
 
     @property
     def mail_configured(self) -> bool:
@@ -42,4 +43,6 @@ class Config:
             mail_tz=env.get("MAIL_TZ", "America/Chicago"),
             poll_seconds=int(env.get("POLL_SECONDS", "60")),
             http_port=int(env.get("HTTP_PORT", "8000")),
+            # Optional: keep a raw copy of every processed mail (local replay/parity corpus).
+            archive_dir=env.get("ARCHIVE_DIR", ""),
         )

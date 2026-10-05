@@ -1,7 +1,8 @@
+import json
 from datetime import date
 from email.message import EmailMessage
 
-from feed.mail import imap_date, to_feed_mail, trash_folder
+from feed.mail import archive, imap_date, to_feed_mail, trash_folder
 
 
 def build_message(*attachments: tuple[str, bytes]) -> bytes:
@@ -43,3 +44,13 @@ def test_finds_trash_by_special_use_flag():
 
 def test_imap_date_format():
     assert imap_date(date(2026, 9, 3)) == "03-Sep-2026"
+
+
+def test_archive_keeps_raw_mail_once(tmp_path):
+    raw = build_message(("TechAvailFeed.csv", b"a,b\n1,2\n"))
+    mail = to_feed_mail(b"7", raw, None)
+    assert archive(tmp_path, mail)
+    assert not archive(tmp_path, mail)
+    [eml] = tmp_path.glob("*.eml")
+    assert eml.read_bytes() == raw
+    assert json.loads(eml.with_suffix(".json").read_text())["message_id"] == "<abc@example.com>"

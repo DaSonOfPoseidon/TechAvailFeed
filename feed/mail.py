@@ -1,11 +1,14 @@
 import email
+import hashlib
 import imaplib
+import json
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from email.message import Message
 from email.utils import getaddresses, parsedate_to_datetime
+from pathlib import Path
 
 from feed.config import Config
 
@@ -20,6 +23,7 @@ class FeedMail:
     email_date: datetime | None
     mailbox_received_at: datetime | None
     attachments: list[tuple[str, bytes]]
+    raw: bytes = field(default=b"", repr=False)
 
 
 def csv_attachments(message: Message) -> list[tuple[str, bytes]]:
@@ -45,7 +49,23 @@ def to_feed_mail(uid: bytes, raw: bytes, internal_date: datetime | None) -> Feed
         email_date=parsedate_to_datetime(date_header) if date_header else None,
         mailbox_received_at=internal_date,
         attachments=csv_attachments(message),
+        raw=raw,
     )
+
+
+def archive(directory: Path, mail: FeedMail) -> bool:
+    # Keeps the raw mail for replay and parity tests; Gmail only holds today's. Named by a hash
+    # of the Message-ID so a re-run skips mail it already has. Returns False when it existed.
+    name = hashlib.sha256(mail.message_id.encode()).hexdigest()[:32]
+    path = directory / f"{name}.eml"
+    if path.exists():
+        return False
+    directory.mkdir(parents=True, exist_ok=True)
+    received = mail.mailbox_received_at.isoformat() if mail.mailbox_received_at else None
+    meta = {"message_id": mail.message_id, "mailbox_received_at": received}
+    path.with_suffix(".json").write_text(json.dumps(meta, indent=1))
+    path.write_bytes(mail.raw)
+    return True
 
 
 def strip_comments_and_quotes(text: str) -> str | None:

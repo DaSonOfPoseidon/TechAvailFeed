@@ -1,11 +1,12 @@
 import logging
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from feed.config import Config
 from feed.history import finalize
-from feed.mail import FeedMail, Mailbox
+from feed.mail import FeedMail, Mailbox, archive
 from feed.parse import FeedParseError, parse_feed
 from feed.store import Store
 from feed.web import PollState, serve
@@ -54,6 +55,8 @@ def poll_once(store: Store, mailbox: Mailbox) -> None:
             else:
                 ok = ingest(store, mail)
                 ingested = True
+            if ok and mailbox.config.archive_dir:
+                archive(Path(mailbox.config.archive_dir), mail)
             label = mailbox.config.processed_label if ok else mailbox.config.failed_label
             mailbox.file_away(imap, mail.uid, label)
         today = datetime.now(ZoneInfo(mailbox.config.mail_tz)).date()

@@ -33,6 +33,10 @@ services:
     environment:
       # Override in .env to point at an external Postgres.
       DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
+      # Raw copy of each processed mail for replay/parity tests (gitignored; Gmail keeps only today's).
+      ARCHIVE_DIR: /app/corpus/mail
+    volumes:
+      - ./corpus/mail:/app/corpus/mail
     depends_on:
       postgres:
         condition: service_healthy

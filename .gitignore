@@ -8,3 +8,5 @@ __pycache__/
 *.csv
 !tests/fixtures/*.csv
 CLAUDE.md
+# Real feed mail and its golden output: local only
+corpus/
