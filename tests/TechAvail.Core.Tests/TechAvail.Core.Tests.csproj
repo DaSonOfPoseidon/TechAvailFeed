@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Data\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\TechAvail.Core\TechAvail.Core.csproj" />
     <ProjectReference Include="..\..\tools\TechAvail.Parity\TechAvail.Parity.csproj" />
   </ItemGroup>
