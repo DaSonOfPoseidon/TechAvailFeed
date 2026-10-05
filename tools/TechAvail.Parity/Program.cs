@@ -9,6 +9,9 @@ using TechAvail.Parity;
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- replay <root> <connection string>
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- finalize <connection string>
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- history <connection string> <start> <end> <out.json>
+//   scripts/dotnet.sh run --project tools/TechAvail.Parity -- api <connection string> <python.json> <out.json>
+if (args.Length > 0 && args[0] == "api")
+    return await ApiDump.Run(args[1], args[2], args[3]);
 if (args.Length > 0 && args[0] == "finalize")
     return HistoryDump.Finalize(args[1]);
 if (args.Length > 0 && args[0] == "history")

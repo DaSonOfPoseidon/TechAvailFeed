@@ -1,6 +1,7 @@
 #!/bin/sh
 # A throwaway Postgres for the .NET data tests, on a private network that scripts/dotnet.sh joins.
-# Labelled so monitoring and WUD ignore it. Each test creates and drops its own database in it.
+# Labelled so monitoring and WUD ignore it, and published on 127.0.0.1:5439 only, for host-side
+# Python tools. Each test creates and drops its own database in it.
 #   scripts/test-db.sh up | down
 set -e
 case "$1" in
@@ -8,7 +9,7 @@ up)
 	docker network inspect techavail-test >/dev/null 2>&1 || docker network create techavail-test >/dev/null
 	docker inspect techavail-testdb >/dev/null 2>&1 || docker run -d --name techavail-testdb \
 		--label monitoring.ignore=true --label wud.watch=false \
-		--network techavail-test --memory 512m --memory-swap 512m \
+		--network techavail-test --memory 512m --memory-swap 512m -p 127.0.0.1:5439:5432 \
 		-e POSTGRES_PASSWORD=test postgres:16-alpine >/dev/null
 	until docker exec techavail-testdb pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
 	echo "TEST_DATABASE_URL=Host=techavail-testdb;Username=postgres;Password=test"

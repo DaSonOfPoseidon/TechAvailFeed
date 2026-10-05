@@ -7,6 +7,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TechAvail.Core\TechAvail.Core.csproj" />
     <ProjectReference Include="..\..\src\TechAvail.Data\TechAvail.Data.csproj" />
+    <ProjectReference Include="..\..\src\TechAvail.Api\TechAvail.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
   </ItemGroup>
 
 </Project>
