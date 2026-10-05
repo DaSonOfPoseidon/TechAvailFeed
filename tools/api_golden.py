@@ -45,6 +45,8 @@ def paths(filters: dict, today: str, history_start: str) -> list[str]:
         "/api/v1/calendar?days=63",
         "/api/v1/calendar?calendar=both",
         f"/api/v1/kpis/outcomes?start={today}&end={history_start}",
+        "/api/v1/export.xlsx",
+        f"/api/v1/export.xlsx?days=7&history_days=10&region={region}&calendar=tc",
     ]
 
 
@@ -59,6 +61,13 @@ def main(url: str, out: str) -> None:
     responses = {}
     for path in paths(filters, today.isoformat(), (today - timedelta(days=10)).isoformat()):
         response = client.get(path)
+        if path.startswith("/api/v1/export.xlsx"):
+            # Saved next to the JSON; tools/compare_xlsx.py compares the two exports.
+            name = f"{Path(out).stem}_export{len(responses)}.xlsx"
+            (Path(out).parent / name).write_bytes(response.content)
+            disposition = response.headers.get("content-disposition")
+            responses[path] = {"status": response.status_code, "body": disposition}
+            continue
         body = response.json()
         # Only the status of validation errors: FastAPI's detail lists are framework-specific.
         if response.status_code == 422 and not isinstance(body.get("detail"), str):
