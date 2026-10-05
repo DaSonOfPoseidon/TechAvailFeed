@@ -12,7 +12,16 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddCors();
 builder.Services
     .AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
-    .AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+        options.JsonSerializerOptions.Converters.Add(new UtcZConverter());
+    });
+// Bad query values are a 422, as in FastAPI (ASP.NET Core would answer 400).
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+    options.InvalidModelStateResponseFactory = context =>
+        Errors.Detail(422, string.Join("; ", context.ModelState.Where(e => e.Value?.Errors.Count > 0).Select(e => $"{e.Key}: invalid value")))
+);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

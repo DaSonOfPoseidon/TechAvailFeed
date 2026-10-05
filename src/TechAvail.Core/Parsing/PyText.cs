@@ -5,7 +5,7 @@ namespace TechAvail.Core.Parsing;
 
 // Python str semantics where the port has to match the original exactly: what counts as
 // whitespace for strip(), and repr() of a value quoted in an error message.
-internal static class PyText
+public static class PyText
 {
     // str.isspace() also counts the ASCII separators \x1c-\x1f, which char.IsWhiteSpace doesn't.
     public static bool IsSpace(char c) => char.IsWhiteSpace(c) || c is >= '\x1c' and <= '\x1f';

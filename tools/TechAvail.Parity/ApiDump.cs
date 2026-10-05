@@ -38,10 +38,9 @@ public static class ApiDump
             var response = await client.GetAsync(path);
             var text = await response.Content.ReadAsStringAsync();
             var body = text.Length > 0 ? JsonNode.Parse(text) : null;
-            // Like the Python side: only the status of framework validation errors.
-            if ((int)response.StatusCode == 422 && body?["detail"] is not JsonValue)
-                body = null;
-            if ((int)response.StatusCode == 400 && expected!["status"]!.GetValue<int>() == 422)
+            // Like the Python side: only the status of framework validation errors, whose wording
+            // differs between FastAPI and ASP.NET Core.
+            if ((int)response.StatusCode == 422 && expected!["body"] is null)
                 body = null;
             responses[path] = new JsonObject { ["status"] = (int)response.StatusCode, ["body"] = body };
         }

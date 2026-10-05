@@ -24,6 +24,28 @@ public abstract class V1Controller(FeedStore store, ApiSettings settings, TimePr
 
     protected SnapshotInfo? Info(SnapshotMeta? meta) => Snapshots.Info(meta, Clock.GetUtcNow());
 
+    public const int MaxDays = 62;
+    public const int MaxHistoryDays = 366;
+
+    // FastAPI's Query(ge=1, le=...) and pattern checks: out of range is a 422.
+    protected static void Check(bool valid, string detail)
+    {
+        if (!valid)
+            throw new ApiException(422, detail);
+    }
+
+    protected static void CheckDays(int days, int max = MaxDays) =>
+        Check(days is >= 1 && days <= max, $"days must be between 1 and {max}");
+
+    protected static void CheckCalendar(string calendar) =>
+        Check(calendar is "install" or "tc", "calendar must be install or tc");
+
+    protected (DateOnly Start, DateOnly End) Window(DateOnly? start, int days)
+    {
+        var from = start ?? Today();
+        return (from, from.AddDays(days - 1));
+    }
+
     // The served blocks snapshot, or a 404 before there is one.
     protected (List<Block> Blocks, SnapshotRow Snapshot) Latest()
     {
