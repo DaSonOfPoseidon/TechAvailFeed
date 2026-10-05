@@ -1,12 +1,11 @@
 import email
 import imaplib
 import logging
-import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from email.message import Message
-from email.utils import parseaddr, parsedate_to_datetime
+from email.utils import getaddresses, parsedate_to_datetime
 
 from feed.config import Config
 
@@ -49,19 +48,55 @@ def to_feed_mail(uid: bytes, raw: bytes, internal_date: datetime | None) -> Feed
     )
 
 
+def strip_comments_and_quotes(text: str) -> str | None:
+    # Comments "(...)" and quoted strings carry sender-controlled text, such as the envelope
+    # address in the SPF comment, so they must never be read as results. Gmail's own comments
+    # hold no quotes or nested parentheses; one that does, or anything left open, could have
+    # been shaped by the sender to end a comment early, so it fails closed (None).
+    out, depth, quoted, escaped = [], 0, False, False
+    for char in text:
+        if escaped:
+            escaped = False
+        elif char == "\\" and (quoted or depth):
+            escaped = True
+        elif quoted:
+            quoted = char != '"'
+        elif depth:
+            if char in '"(':
+                return None
+            if char == ")":
+                depth -= 1
+        elif char == "(":
+            depth = 1
+        elif char == ")":
+            return None
+        elif char == '"':
+            quoted = True
+        else:
+            out.append(char)
+    return None if depth or quoted or escaped else "".join(out)
+
+
 def sender_rejection(message: Message, mail_from: str, authserv_id: str) -> str | None:
     # From headers are trivially forged, so the receiving server's verdict decides. It adds its
     # Authentication-Results header on top; any copies further down came from the sender.
-    sender = parseaddr(str(message.get("From", "")))[1].lower()
-    if sender != mail_from.lower():
-        return f"sender {sender!r} is not MAIL_FROM"
+    senders = getaddresses(message.get_all("From") or [])
+    if len(senders) != 1 or senders[0][1].lower() != mail_from.lower():
+        return f"sender {[s[1] for s in senders]!r} is not MAIL_FROM alone"
     results = message.get_all("Authentication-Results") or []
-    top = " ".join(str(results[0]).split()) if results else ""
-    if not top.lower().startswith(f"{authserv_id.lower()};"):
+    stripped = strip_comments_and_quotes(str(results[0])) if results else ""
+    if stripped is None:
+        return "ambiguous Authentication-Results"
+    authserv, *resinfos = [part.strip() for part in " ".join(stripped.split()).split(";")]
+    if authserv.lower() != authserv_id.lower():
         return f"no Authentication-Results from {authserv_id}"
-    domain = sender.rpartition("@")[2]
-    match = re.search(r"\bdmarc=pass\b[^;]*\bheader\.from=([^\s;]+)", top, re.IGNORECASE)
-    if not match or match.group(1).lower() != domain:
+    # Exactly one DMARC result, read from its own clause: another one means injected text.
+    dmarc = [r.split() for r in resinfos if r.lower().startswith("dmarc=")]
+    domain = mail_from.rpartition("@")[2].lower()
+    if len(dmarc) != 1 or dmarc[0][0].lower() != "dmarc=pass":
+        return f"DMARC did not pass for {domain}"
+    properties = dict(p.lower().split("=", 1) for p in dmarc[0][1:] if "=" in p)
+    if properties.get("header.from") != domain:
         return f"DMARC did not pass for {domain}"
     return None
 
