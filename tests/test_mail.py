@@ -54,3 +54,8 @@ def test_archive_keeps_raw_mail_once(tmp_path):
     [eml] = tmp_path.glob("*.eml")
     assert eml.read_bytes() == raw
     assert json.loads(eml.with_suffix(".json").read_text())["message_id"] == "<abc@example.com>"
+
+
+def test_unparsable_date_is_none():
+    raw = build_message().replace(b"Tue, 29 Sep 2026 09:16:40 -0500", b"not a date")
+    assert to_feed_mail(b"7", raw, None).email_date is None
