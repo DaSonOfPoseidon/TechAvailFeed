@@ -46,8 +46,8 @@ public static class Outcomes
 
     const int SentinelYear = 9999;
     static readonly string[] InHouse = ["FIELD", "TC"];
-    static readonly Dictionary<string, string[]> Completed = new() { ["job"] = ["C"], ["ticket"] = ["C", "R"] };
-    static readonly Dictionary<string, string[]> Canceled = new() { ["job"] = ["U", "X"], ["ticket"] = ["D"] };
+    public static readonly Dictionary<string, string[]> CompletedStatuses = new() { ["job"] = ["C"], ["ticket"] = ["C", "R"] };
+    public static readonly Dictionary<string, string[]> CanceledStatuses = new() { ["job"] = ["U", "X"], ["ticket"] = ["D"] };
 
     // The history covers installs only; rows from before the feed carried a task_type have "".
     static readonly string[] InstallTypes = ["3", "23", "36", "120"];
@@ -137,9 +137,9 @@ public static class Outcomes
     {
         if (block is null)
             return "missing";
-        if (Completed[kind].Contains(block.Status))
+        if (CompletedStatuses[kind].Contains(block.Status))
             return "completed";
-        if (Canceled[kind].Contains(block.Status))
+        if (CanceledStatuses[kind].Contains(block.Status))
             return "canceled";
         // Rows from before the feed carried a department have "", which says nothing.
         if (block.Department.Length > 0 && !InHouse.Contains(block.Department))
