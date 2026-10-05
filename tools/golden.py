@@ -3,7 +3,8 @@
 # corpus/golden/ is gitignored. With --fixtures it writes the fake fixtures' goldens instead,
 # which are committed and checked in CI.
 #
-#   python -m tools.golden            corpus/mail/*.eml -> corpus/golden/*.json (+ DB cross-check)
+#   python -m tools.golden [root]     <root>/mail/*.eml -> <root>/golden/*.json (+ DB cross-check)
+#                                     root defaults to corpus
 #   python -m tools.golden --fixtures tests/fixtures/*.csv -> contract/golden/fixtures/*.json
 import dataclasses
 import email
@@ -137,4 +138,4 @@ if __name__ == "__main__":
     if "--fixtures" in sys.argv:
         fixtures(Path("contract/golden/fixtures"))
     else:
-        sys.exit(1 if corpus(Path("corpus")) else 0)
+        sys.exit(1 if corpus(Path(sys.argv[1] if len(sys.argv) > 1 else "corpus")) else 0)
