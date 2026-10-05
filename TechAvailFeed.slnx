@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/TechAvail.Api/TechAvail.Api.csproj" />
     <Project Path="src/TechAvail.Core/TechAvail.Core.csproj" />
     <Project Path="src/TechAvail.Data/TechAvail.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/TechAvail.Api.Tests/TechAvail.Api.Tests.csproj" />
     <Project Path="tests/TechAvail.Core.Tests/TechAvail.Core.Tests.csproj" />
     <Project Path="tests/TechAvail.Data.Tests/TechAvail.Data.Tests.csproj" />
   </Folder>

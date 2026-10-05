@@ -29,9 +29,10 @@ public static class Diagnostics
     const int TicketsPerSlot = 2;
 
     // "install", "tc", or "both" for a dual tech whose schedules are on both calendars.
-    static string CalendarOf(HashSet<string> shiftKinds)
+    public static string CalendarOf(IEnumerable<string> shiftKinds)
     {
-        var names = Availability.Calendars.Where(c => shiftKinds.Contains(c.Value)).Select(c => c.Key).ToList();
+        var kinds = shiftKinds.ToHashSet();
+        var names = Availability.Calendars.Where(c => kinds.Contains(c.Value)).Select(c => c.Key).ToList();
         return names.Count == 1 ? names[0] : "both";
     }
 
