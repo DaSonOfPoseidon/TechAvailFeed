@@ -26,6 +26,8 @@ public class PollerTests
 
         public IReadOnlyList<FetchedMail> FetchNew() => mails;
 
+        public IReadOnlyList<FetchedMail> Peek(string label) => [];
+
         public void FileAway(UniqueId uid, string label) => Filed.Add((uid.Id, label));
 
         public void EnsureLabels() { }

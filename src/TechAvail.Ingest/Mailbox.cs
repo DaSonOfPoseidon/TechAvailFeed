@@ -14,6 +14,9 @@ public sealed record FetchedMail(UniqueId Uid, byte[] Raw, FeedMail Mail, DateTi
 public interface IMailboxSession : IDisposable
 {
     IReadOnlyList<FetchedMail> FetchNew();
+
+    // Every mail under a label, read-only (EXAMINE, BODY.PEEK): nothing is flagged or moved.
+    IReadOnlyList<FetchedMail> Peek(string label);
     void FileAway(UniqueId uid, string label);
     void EnsureLabels();
     int PurgeProcessed(DateOnly before);
@@ -52,15 +55,7 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
             var mails = new List<FetchedMail>();
             foreach (var uid in inbox.Search(query))
             {
-                // MailKit fetches with BODY.PEEK, so the message stays unread until it is filed.
-                byte[] raw;
-                using (var stream = new MemoryStream())
-                {
-                    inbox.GetStream(uid, string.Empty).CopyTo(stream);
-                    raw = stream.ToArray();
-                }
-                var received = inbox.Fetch([uid], MessageSummaryItems.InternalDate).FirstOrDefault()?.InternalDate;
-                var message = MimeMessage.Load(new MemoryStream(raw));
+                var (fetched, message) = Fetch(inbox, uid);
                 if (SenderCheck.Rejection(message, settings.MailFrom, settings.AuthservId) is { } rejection)
                 {
                     // Filed away unread, so it isn't fetched again and stays there for inspection.
@@ -68,9 +63,30 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
                     FileAway(uid, settings.FailedLabel);
                     continue;
                 }
-                mails.Add(new FetchedMail(uid, raw, FeedMail.FromMime(message, uid.Id.ToString()), received));
+                mails.Add(fetched);
             }
             return mails;
+        }
+
+        public IReadOnlyList<FetchedMail> Peek(string label)
+        {
+            var folder = client.GetFolder(label);
+            folder.Open(FolderAccess.ReadOnly);
+            return [.. folder.Search(SearchQuery.All).Select(uid => Fetch(folder, uid).Mail)];
+        }
+
+        // MailKit fetches with BODY.PEEK, so the message stays unread until it is filed.
+        static (FetchedMail Mail, MimeMessage Message) Fetch(IMailFolder folder, UniqueId uid)
+        {
+            byte[] raw;
+            using (var stream = new MemoryStream())
+            {
+                folder.GetStream(uid, string.Empty).CopyTo(stream);
+                raw = stream.ToArray();
+            }
+            var received = folder.Fetch([uid], MessageSummaryItems.InternalDate).FirstOrDefault()?.InternalDate;
+            var message = MimeMessage.Load(new MemoryStream(raw));
+            return (new FetchedMail(uid, raw, FeedMail.FromMime(message, uid.Id.ToString()), received), message);
         }
 
         // Gmail: copying to a label and expunging from INBOX archives the message under that label.

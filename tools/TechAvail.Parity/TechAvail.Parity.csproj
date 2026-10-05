@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\src\TechAvail.Core\TechAvail.Core.csproj" />
     <ProjectReference Include="..\..\src\TechAvail.Data\TechAvail.Data.csproj" />
     <ProjectReference Include="..\..\src\TechAvail.Api\TechAvail.Api.csproj" />
+    <ProjectReference Include="..\..\src\TechAvail.Ingest\TechAvail.Ingest.csproj" />
   </ItemGroup>
 
   <ItemGroup>

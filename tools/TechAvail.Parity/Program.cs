@@ -10,6 +10,9 @@ using TechAvail.Parity;
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- finalize <connection string>
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- history <connection string> <start> <end> <out.json>
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- api <connection string> <python.json> <out.json>
+//   docker run --env-file .env ... dotnet run --project tools/TechAvail.Parity -- imap [root]
+if (args.Length > 0 && args[0] == "imap")
+    return ImapCheck.Run(args.Length > 1 ? args[1] : "corpus");
 if (args.Length > 0 && args[0] == "api")
     return await ApiDump.Run(args[1], args[2], args[3]);
 if (args.Length > 0 && args[0] == "finalize")
