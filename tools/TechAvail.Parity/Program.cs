@@ -7,6 +7,12 @@ using TechAvail.Parity;
 //
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- [root]   (root defaults to corpus)
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- replay <root> <connection string>
+//   scripts/dotnet.sh run --project tools/TechAvail.Parity -- finalize <connection string>
+//   scripts/dotnet.sh run --project tools/TechAvail.Parity -- history <connection string> <start> <end> <out.json>
+if (args.Length > 0 && args[0] == "finalize")
+    return HistoryDump.Finalize(args[1]);
+if (args.Length > 0 && args[0] == "history")
+    return HistoryDump.Write(args[1], args[2], args[3], args[4]);
 var replay = args.Length > 0 && args[0] == "replay";
 var root = replay ? args[1] : args.Length > 0 ? args[0] : "corpus";
 var mailFrom = Environment.GetEnvironmentVariable("MAIL_FROM");
