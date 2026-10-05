@@ -94,7 +94,8 @@ is strangler-style: the same database is shared, so no data migration is needed.
 ```
 TechAvailFeed.slnx
 src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
-tests/TechAvail.Core.Tests/  xUnit
+src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
+tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
 tools/TechAvail.Parity/      compares .NET output with the Python golden files
 contract/golden/fixtures/    Python's output for the fake fixtures in tests/fixtures/
 scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no SDK
@@ -106,7 +107,9 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 - [x] Feed parser (`feed/parse.py`), identical to Python on every mail in the real feed corpus
 - [x] Mail reading and sender check (`feed/mail.py`)
 - [x] Parity tool and CI
-- [ ] Data layer (DbUp baseline, diff-only writes) and replay of the corpus
+- [x] Data layer (DbUp baseline, diff-only writes, reads), identical to Python when the corpus is replayed
+- [x] Availability and outcome history, identical to Python on the corpus and a production copy
+- [ ] Diagnostics, capacity and KPIs
 - [ ] REST API, then ingest worker, both shadow-run against the Python services
 - [ ] Angular dashboard
 - [ ] Retire the Python services
@@ -138,6 +141,13 @@ MAIL_FROM=<sender> scripts/dotnet.sh run --project tools/TechAvail.Parity -- cor
 ```
 
 The tool prints counts and the JSON paths that differ, never values, and exits non-zero on any difference.
+
+Two more checks run against a throwaway Postgres (`scripts/test-db.sh up`):
+
+- `scripts/replay-parity.sh` replays the corpus through both ingests into empty databases and compares
+  `snapshots`, `blocks` and `slots` row by row, ids included.
+- `scripts/history-parity.sh` copies the production database (read-only) twice, finalizes the outcome history
+  with each implementation and compares `outcome_days`, `job_outcomes` and every day's computed outcome.
 
 ## License
 
