@@ -103,9 +103,9 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 ### Status
 
 - [x] Solution scaffold, Python-compatible text helpers and strict CSV reader
-- [ ] Feed parser (`feed/parse.py`), checked against the real feed corpus
-- [ ] Mail sender check (`feed/mail.py`)
-- [ ] Parity tool and CI
+- [x] Feed parser (`feed/parse.py`), identical to Python on every mail in the real feed corpus
+- [x] Mail reading and sender check (`feed/mail.py`)
+- [x] Parity tool and CI
 - [ ] Data layer (DbUp baseline, diff-only writes) and replay of the corpus
 - [ ] REST API, then ingest worker, both shadow-run against the Python services
 - [ ] Angular dashboard
@@ -128,6 +128,16 @@ scripts/dotnet.sh build
 scripts/dotnet.sh test
 scripts/dotnet.sh format --verify-no-changes
 ```
+
+To check the real corpus, regenerate the golden files with the Python code, then run the parity tool with the
+feed's sender address:
+
+```
+docker compose run --rm --no-deps -v $PWD/tools:/app/tools -v $PWD/corpus:/app/corpus ingest python -m tools.golden
+MAIL_FROM=<sender> scripts/dotnet.sh run --project tools/TechAvail.Parity -- corpus
+```
+
+The tool prints counts and the JSON paths that differ, never values, and exits non-zero on any difference.
 
 ## License
 
