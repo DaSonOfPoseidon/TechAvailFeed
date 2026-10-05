@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TechAvail.Core/TechAvail.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TechAvail.Core.Tests/TechAvail.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/TechAvail.Parity/TechAvail.Parity.csproj" />
+  </Folder>
+</Solution>
