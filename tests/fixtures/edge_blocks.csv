@@ -1,0 +1,5 @@
+﻿generated_at,Kind,work_date,tech_id,tech_name,starts_at,ends_at,ref_id,status,region,skills,modified_by,latitude,longitude,gps_precision
+2026-10-01T06:15:02+00,SHIFT,10-01-2026,jdoe0170, Jane Doe ,10-01-2026 08:00:00,10-01-2026 05:00 PM,,,North Core,"CONN, INS",,0,0,
+2026-10-01T06:15:02+00,job,10/01/2026,jdoe0170,Jane Doe,10-01-2026 09:15 AM,10-01-2026 01:30 PM,100002,A,North Core,,"Doe, Jane (jdoe0170)",40.5,-100.25,parcel
+
+2026-10-01T06:15:02+00,time_off,2026-10-01,jsmi0171,"Smith, John",2026-10-01 12:00,2026-10-01 13:00,,,,,jsmi0171 ,,,zip9
