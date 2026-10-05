@@ -69,6 +69,11 @@ def test_empty_file_is_rejected():
         parse_feed(b"")
 
 
+def test_non_utf8_file_is_rejected():
+    with pytest.raises(FeedParseError, match="not valid UTF-8"):
+        parse_feed(HEADER.encode() + b"\xff\n")
+
+
 def test_sha256_is_stable():
     data = (HEADER + ROW).encode()
     assert parse_feed(data).sha256 == parse_feed(data).sha256
