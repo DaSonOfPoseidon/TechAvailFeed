@@ -6,7 +6,9 @@ using TechAvail.Parity;
 // the corpus is real feed data.
 //
 //   scripts/dotnet.sh run --project tools/TechAvail.Parity -- [root]   (root defaults to corpus)
-var root = args.Length > 0 ? args[0] : "corpus";
+//   scripts/dotnet.sh run --project tools/TechAvail.Parity -- replay <root> <connection string>
+var replay = args.Length > 0 && args[0] == "replay";
+var root = replay ? args[1] : args.Length > 0 ? args[0] : "corpus";
 var mailFrom = Environment.GetEnvironmentVariable("MAIL_FROM");
 var authservId = Environment.GetEnvironmentVariable("AUTHSERV_ID") is { Length: > 0 } id ? id : "mx.google.com";
 if (string.IsNullOrEmpty(mailFrom))
@@ -14,6 +16,8 @@ if (string.IsNullOrEmpty(mailFrom))
     Console.Error.WriteLine("parity: set MAIL_FROM to the feed's sender address");
     return 2;
 }
+if (replay)
+    return Replay.Run(root, args[2], mailFrom, authservId);
 var mails = Directory.Exists(Path.Combine(root, "mail"))
     ? Directory.GetFiles(Path.Combine(root, "mail"), "*.eml").Order().ToList()
     : [];

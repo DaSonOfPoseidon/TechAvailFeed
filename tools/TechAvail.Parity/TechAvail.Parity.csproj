@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TechAvail.Core\TechAvail.Core.csproj" />
+    <ProjectReference Include="..\..\src\TechAvail.Data\TechAvail.Data.csproj" />
   </ItemGroup>
 
 </Project>
