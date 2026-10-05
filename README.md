@@ -109,8 +109,10 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 - [x] Parity tool and CI
 - [x] Data layer (DbUp baseline, diff-only writes, reads), identical to Python when the corpus is replayed
 - [x] Availability and outcome history, identical to Python on the corpus and a production copy
-- [ ] Diagnostics, capacity and KPIs
-- [ ] REST API, then ingest worker, both shadow-run against the Python services
+- [x] Diagnostics, capacity and KPIs
+- [x] REST API (every endpoint and the Excel export identical to Python on a production copy)
+- [x] Ingest worker (MailKit), checked read-only against the live mailbox
+- [ ] Dockerfiles, compose services and the cutover from the Python ingest
 - [ ] Angular dashboard
 - [ ] Retire the Python services
 
