@@ -38,6 +38,14 @@ def csv_attachments(message: Message) -> list[tuple[str, bytes]]:
     return found
 
 
+def mail_date(header: str | None) -> datetime | None:
+    # An unparsable Date header must not fail the whole poll; the run just has no send time.
+    try:
+        return parsedate_to_datetime(header) if header else None
+    except ValueError:
+        return None
+
+
 def to_feed_mail(uid: bytes, raw: bytes, internal_date: datetime | None) -> FeedMail:
     message = email.message_from_bytes(raw)
     date_header = message.get("Date")
@@ -46,7 +54,7 @@ def to_feed_mail(uid: bytes, raw: bytes, internal_date: datetime | None) -> Feed
         # Some senders omit Message-ID; the IMAP UID is stable enough for dedupe within one mailbox.
         message_id=(message.get("Message-ID") or f"uid:{uid.decode()}").strip(),
         subject=str(message.get("Subject", "")),
-        email_date=parsedate_to_datetime(date_header) if date_header else None,
+        email_date=mail_date(date_header),
         mailbox_received_at=internal_date,
         attachments=csv_attachments(message),
         raw=raw,
