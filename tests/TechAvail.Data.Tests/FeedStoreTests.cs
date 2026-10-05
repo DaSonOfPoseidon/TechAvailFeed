@@ -76,6 +76,26 @@ public class FeedStoreTests
     static List<BlockKey> Sorted(IEnumerable<BlockKey> keys) => [.. keys.OrderBy(k => k.ToString(), StringComparer.Ordinal)];
 
     [DbFact]
+    public void The_moved_sentinel_date_is_stored_as_a_date_not_infinity()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var moved = Job("a") with
+        {
+            Kind = "job_moved",
+            WorkDate = new DateOnly(9999, 12, 31),
+            StartsAt = new DateTime(9999, 12, 31),
+            EndsAt = new DateTime(9999, 12, 31),
+        };
+        Save(store, "<1>", Blocks(moved));
+        using var connection = db.Open();
+        Assert.Equal(
+            ("9999-12-31", "9999-12-31 00:00:00"),
+            connection.QuerySingle<(string, string)>("SELECT work_date::text, starts_at::text FROM blocks")
+        );
+    }
+
+    [DbFact]
     public void Statuses_follow_the_feed()
     {
         using var db = new TestDatabase();
