@@ -34,6 +34,7 @@ or in the API layer. That keeps them unit-testable without a database.
 - **Safe ingestion.** Duplicate deliveries are skipped by `Message-ID`. A file that fails to parse is archived
   with the reason. An empty or failed run never replaces the last good snapshot in anything user-facing.
 - **Mailbox hygiene.** Processed mail is labelled, then deleted the next day. Failed mail is kept for inspection.
+  With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally for replay and parity tests.
 - **Freshness is part of every response.** Each API response includes the snapshot it was computed from and
   its age, and is flagged `stale` when deliveries stop.
 - **Location privacy.** Job coordinates are stored exactly but served rounded to about 110 m. The Excel export
@@ -83,11 +84,50 @@ uv sync
 uv run pytest && uv run ruff check . && uv run black --check .
 ```
 
-## Roadmap
+## .NET rewrite (`dotnet` branch)
 
-The Python implementation is tagged `v0-python`. It is being rewritten in C#/.NET (ASP.NET Core REST API and
-a worker service, using Dapper and SQL-first migrations on the same Postgres schema), with an Angular/TypeScript
-dashboard. Each endpoint is checked against the Python version's responses before the switch.
+The Python implementation is tagged `v0-python`. This branch rewrites it in C#/.NET: an ASP.NET Core REST
+API and a worker service, using Dapper and SQL-first migrations on the same Postgres schema, with an
+Angular/TypeScript dashboard. Python keeps running in production until each part is proven identical. The port
+is strangler-style: the same database is shared, so no data migration is needed.
+
+```
+TechAvailFeed.slnx
+src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
+tests/TechAvail.Core.Tests/  xUnit
+tools/TechAvail.Parity/      compares .NET output with the Python golden files
+contract/golden/fixtures/    Python's output for the fake fixtures in tests/fixtures/
+scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no SDK
+```
+
+### Status
+
+- [x] Solution scaffold, Python-compatible text helpers and strict CSV reader
+- [ ] Feed parser (`feed/parse.py`), checked against the real feed corpus
+- [ ] Mail sender check (`feed/mail.py`)
+- [ ] Parity tool and CI
+- [ ] Data layer (DbUp baseline, diff-only writes) and replay of the corpus
+- [ ] REST API, then ingest worker, both shadow-run against the Python services
+- [ ] Angular dashboard
+- [ ] Retire the Python services
+
+### Parity testing
+
+The Python code is the reference. `tools/golden.py` records what it makes of each input, and the .NET code
+has to produce identical output:
+
+- **Fake fixtures** (`tests/fixtures/*.csv`, including edge and error cases): their golden files are committed
+  and checked by `dotnet test`. To regenerate them, run `uv run python -m tools.golden --fixtures`.
+- **Real feed mail**: the ingest keeps a copy of each processed mail when `ARCHIVE_DIR` is set, and
+  `tools/export_corpus.py` copies whatever is still in the mailbox. That corpus and its golden files live in the
+  gitignored `corpus/` and never leave the machine, because they hold real schedules and locations.
+  `tools/golden.py` also cross-checks every mail against the snapshot production stored for it.
+
+```
+scripts/dotnet.sh build
+scripts/dotnet.sh test
+scripts/dotnet.sh format --verify-no-changes
+```
 
 ## License
 
