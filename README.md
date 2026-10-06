@@ -95,6 +95,9 @@ is strangler-style: the same database is shared, so no data migration is needed.
 TechAvailFeed.slnx
 src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
 src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
+src/TechAvail.Api/           the dashboard API (api-net, :8098, shadowing the Python api)
+src/TechAvail.Ingest/        the ingest worker (the live ingest service since 2026-10-06)
+Dockerfile.dotnet            one image per project, chosen with the PROJECT build arg
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
 tools/TechAvail.Parity/      compares .NET output with the Python golden files
 contract/golden/fixtures/    Python's output for the fake fixtures in tests/fixtures/
@@ -112,7 +115,8 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 - [x] Diagnostics, capacity and KPIs
 - [x] REST API (every endpoint and the Excel export identical to Python on a production copy)
 - [x] Ingest worker (MailKit), checked read-only against the live mailbox
-- [ ] Dockerfiles, compose services and the cutover from the Python ingest
+- [x] Dockerfile and compose services; the .NET ingest replaced the Python one
+- [ ] The .NET API replaces the Python one on :8097
 - [ ] Angular dashboard
 - [ ] Retire the Python services
 
@@ -138,7 +142,7 @@ To check the real corpus, regenerate the golden files with the Python code, then
 feed's sender address:
 
 ```
-docker compose run --rm --no-deps -v $PWD/tools:/app/tools -v $PWD/corpus:/app/corpus ingest python -m tools.golden
+docker compose run --rm --no-deps -v $PWD/tools:/app/tools -v $PWD/corpus:/app/corpus api python -m tools.golden
 MAIL_FROM=<sender> scripts/dotnet.sh run --project tools/TechAvail.Parity -- corpus
 ```
 
