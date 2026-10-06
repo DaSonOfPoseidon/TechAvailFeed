@@ -180,9 +180,9 @@ public static class Export
     // Python export stores, so columns look the same in Excel.
     const double WidthPadding = 0.710625;
 
-    static void SetWidth(IXLColumn column, double width) => column.Width = width - WidthPadding;
+    internal static void SetWidth(IXLColumn column, double width) => column.Width = width - WidthPadding;
 
-    static XLCellValue Cell(object? value) =>
+    internal static XLCellValue Cell(object? value) =>
         value switch
         {
             // openpyxl never writes an empty string; the cell stays blank.
@@ -197,7 +197,7 @@ public static class Export
             _ => throw new InvalidOperationException($"unexpected {value.GetType()} in the export"),
         };
 
-    static void WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows)
+    internal static void WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows)
     {
         var ws = wb.Worksheets.Add(title);
         for (int c = 0; c < columns.Count; c++)
