@@ -120,6 +120,30 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 - [ ] Angular dashboard
 - [ ] Retire the Python services
 
+### Performance
+
+Both APIs were measured live, side by side on the same database and snapshot (2026-10-06, 24-core host,
+1 GiB container cap). Single requests are medians of 9, after a warm-up.
+
+| | Python (FastAPI) | .NET |
+|---|---|---|
+| `/calendar` | 123 ms | 57 ms |
+| `/kpis/outcomes` | 362 ms | 58 ms |
+| `/export.xlsx` | 1.76 s | 0.43 s |
+| 40 `/kpis/outcomes`, 10 at a time | 3.86 s | 0.67 s |
+| 12 exports, 3 at a time | 21.5 s | 2.3 s |
+| Memory after that load | 183 MiB | 184 MiB |
+
+The gap widens under concurrency because Python's GIL serialises the CPU-bound work.
+
+The .NET services use workstation GC (`Directory.Build.props`), which costs some speed under bursts. The web
+SDK's default server GC keeps a heap per core and settled at 326–357 MiB after the same load. With workstation
+GC the services settle at about 165 MiB, but concurrent bursts take 1.2–2× as long: 0.71–0.76 s against
+0.38–0.64 s for the 40 requests, and 2.3–2.4 s against 1.7–2.1 s for the 12 exports. Single requests showed no
+difference beyond run-to-run noise. Tuning server GC (`GCConserveMemory`, a 16 or 32 MB gen0 budget, 4 heaps)
+saved at most 15%. For a dashboard with a few users, memory matters more than burst throughput. If that
+changes, removing `ServerGarbageCollection` restores server GC.
+
 ### Parity testing
 
 The Python code is the reference. `tools/golden.py` records what it makes of each input, and the .NET code
