@@ -68,6 +68,22 @@ public class ArrivalExportTests
     public void Highlight_text_meets_wcag_aaa_contrast()
     {
         Assert.All(ArrivalExport.Highlights, h => Assert.True(Contrast(h.Fill, h.Font) >= 7, $"{h.State}: {Contrast(h.Fill, h.Font):F2}"));
+        Assert.True(Contrast(ArrivalExport.Header.Fill, ArrivalExport.Header.Font) >= 7);
+    }
+
+    [Fact]
+    public void Headers_are_purple_on_every_report_sheet()
+    {
+        var at = Day.ToDateTime(new TimeOnly(8, 15));
+        using var wb = Open(
+            ArrivalExport.Workbook(Chicago, DateTimeOffset.UtcNow, Day, null, [new("Arrivals 8 AM", at, [Row("a", "A", "not_started")], true), new("Completed", at, [], false)])
+        );
+        foreach (var (title, last) in new[] { ("Arrivals 8 AM", 13), ("Completed", 12) })
+        {
+            var style = wb.Worksheet(title).Cell(1, last).Style;
+            Assert.Equal(XLColor.FromHtml("#7030A0"), style.Fill.BackgroundColor);
+            Assert.Equal(XLColor.FromHtml("#FFFFFF"), style.Font.FontColor);
+        }
     }
 
     [Fact]
