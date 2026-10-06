@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, tzinfo
 
 from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
@@ -64,9 +64,18 @@ class Column:
     width: int | None = None
 
 
+# Every workbook's header: Excel's standard purple under white bold text (8.0:1, WCAG AAA). The grey
+# row stripes keep black text at well over 7:1. The .NET export uses the same colours.
+HEADER_FILL = PatternFill("solid", fgColor="7030A0")
+HEADER_FONT = Font(bold=True, color="FFFFFF")
+
+
 def write_sheet(wb: Workbook, title: str, columns: list[Column], rows: list[list]) -> None:
     ws = wb.create_sheet(title)
     ws.append([c.header for c in columns])
+    for cell in ws[1]:
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
     for row in rows:
         ws.append(row)
     for index, column in enumerate(columns, start=1):
@@ -81,11 +90,8 @@ def write_sheet(wb: Workbook, title: str, columns: list[Column], rows: list[list
     if rows:
         # Excel rejects a table with no data rows; an empty sheet keeps just its header.
         table = Table(displayName=title.replace(" ", ""), ref=f"A1:{end}")
-        table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
+        table.tableStyleInfo = TableStyleInfo(name="TableStyleLight1", showRowStripes=True)
         ws.add_table(table)
-    else:
-        for cell in ws[1]:
-            cell.font = Font(bold=True)
 
 
 CAPACITY_COLUMNS = [

@@ -33,6 +33,28 @@ def test_empty_export_still_opens_with_headers_and_no_tables():
     assert "Net h" in about
 
 
+def test_headers_are_purple_with_white_bold_text():
+    data = workbook(
+        tz=ZoneInfo("America/Chicago"),
+        meta={"id": None, "generated_at": None},
+        filters={},
+        entries=[],
+        days=[],
+        demand=[],
+        schedule=[],
+        outcomes=[],
+        kpis={"days": []},
+        checks=[],
+    )
+    wb = load_workbook(io.BytesIO(data))
+    for ws in wb.worksheets:
+        if ws.title == "About":
+            continue
+        for cell in ws[1]:
+            style = (cell.fill.fgColor.rgb, cell.font.color.rgb, cell.font.b)
+            assert style == ("007030A0", "00FFFFFF", True)
+
+
 def test_formula_like_values_are_stored_as_text():
     from feed.diagnostics import Check
 

@@ -21,9 +21,6 @@ public static class ArrivalExport
         ("En route", "#FFEB9C", "#703F00"),
     ];
 
-    // Excel's standard purple under white bold text (8.0:1), over the table style's blue header (4.7:1).
-    public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
-
     static readonly Dictionary<string, string> StateNames = new()
     {
         ["not_started"] = "Not started",
@@ -74,10 +71,6 @@ public static class ArrivalExport
         ];
         Export.WriteSheet(wb, sheet.Title, columns, rows);
         var ws = wb.Worksheet(sheet.Title);
-        var header = ws.Row(1).Cells(1, columns.Length).Style;
-        header.Fill.SetBackgroundColor(XLColor.FromHtml(Header.Fill));
-        header.Font.SetFontColor(XLColor.FromHtml(Header.Font));
-        header.Font.SetBold(true);
         if (sheet.Missing is { } missing)
             ws.Cell(2, 1).Value = missing;
         if (!sheet.Highlight || rows.Count == 0)

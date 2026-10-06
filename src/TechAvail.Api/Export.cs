@@ -197,11 +197,19 @@ public static class Export
             _ => throw new InvalidOperationException($"unexpected {value.GetType()} in the export"),
         };
 
+    // Every workbook's header: Excel's standard purple under white bold text (8.0:1, WCAG AAA). The
+    // grey row stripes keep black text at well over 7:1. api/export.py uses the same colours.
+    public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
+
     internal static void WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows)
     {
         var ws = wb.Worksheets.Add(title);
         for (int c = 0; c < columns.Count; c++)
             ws.Cell(1, c + 1).Value = columns[c].Header;
+        var header = ws.Row(1).Cells(1, columns.Count).Style;
+        header.Fill.SetBackgroundColor(XLColor.FromHtml(Header.Fill));
+        header.Font.SetFontColor(XLColor.FromHtml(Header.Font));
+        header.Font.SetBold(true);
         for (int r = 0; r < rows.Count; r++)
             for (int c = 0; c < columns.Count; c++)
                 ws.Cell(r + 2, c + 1).Value = Cell(rows[r][c]);
@@ -216,11 +224,9 @@ public static class Export
         {
             // Excel rejects a table with no data rows; an empty sheet keeps just its header.
             var table = ws.Range(1, 1, rows.Count + 1, columns.Count).CreateTable(title.Replace(" ", ""));
-            table.Theme = XLTableTheme.TableStyleMedium2;
+            table.Theme = XLTableTheme.TableStyleLight1;
             table.ShowRowStripes = true;
         }
-        else
-            ws.Row(1).Cells(1, columns.Count).Style.Font.Bold = true;
     }
 
     static object? Get(OrderedDictionary<string, object?> row, string key) => row.TryGetValue(key, out var value) ? value : null;

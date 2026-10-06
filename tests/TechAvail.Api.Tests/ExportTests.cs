@@ -41,6 +41,17 @@ public class ExportTests
         wb.Worksheet("About").RowsUsed().Where(r => !r.Cell(1).IsEmpty()).ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(2).Value);
 
     [Fact]
+    public void Headers_are_purple_with_white_bold_text()
+    {
+        using var wb = Open(Workbook());
+        foreach (var ws in wb.Worksheets.Where(ws => ws.Name != "About"))
+        {
+            var style = ws.Cell(1, 1).Style;
+            Assert.Equal((XLColor.FromHtml("#7030A0"), XLColor.FromHtml("#FFFFFF"), true), (style.Fill.BackgroundColor, style.Font.FontColor, style.Font.Bold));
+        }
+    }
+
+    [Fact]
     public void Empty_export_still_opens_with_headers_and_no_tables()
     {
         using var wb = Open(Workbook(new() { ["region"] = "North" }));
