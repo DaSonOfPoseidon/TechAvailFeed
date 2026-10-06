@@ -77,5 +77,36 @@ services:
       retries: 3
       start_period: 15s
 
+  api-net:
+    build:
+      context: .
+      dockerfile: Dockerfile.dotnet
+      args:
+        PROJECT: TechAvail.Api
+    # .NET port of the api service, shadow-run on the same database until it replaces it.
+    labels:
+      wud.watch: "false"
+      monitoring.ignore: "true"
+      monitoring.http.path: "/health"
+    restart: unless-stopped
+    ports:
+      - "8098:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      # curl isn't in the aspnet image; the app checks itself.
+      test: ["CMD", "dotnet", "/app/TechAvail.Api.dll", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
 volumes:
   postgres_data:
