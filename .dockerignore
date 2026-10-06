@@ -1,0 +1,8 @@
+.env
+.venv/
+.git/
+corpus/
+**/bin/
+**/obj/
+**/__pycache__/
+TestResults/
