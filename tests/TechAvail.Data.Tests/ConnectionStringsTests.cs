@@ -19,4 +19,8 @@ public class ConnectionStringsTests
             ("Host=h;Database=d", 5432),
             (ConnectionStrings.FromUrl("Host=h;Database=d"), new NpgsqlConnectionStringBuilder(ConnectionStrings.FromUrl("postgres://u@h/d")).Port)
         );
+
+    [Fact]
+    public void A_url_turns_off_gss_encryption() =>
+        Assert.Equal(GssEncryptionMode.Disable, new NpgsqlConnectionStringBuilder(ConnectionStrings.FromUrl("postgresql://u@h/d")).GssEncryptionMode);
 }

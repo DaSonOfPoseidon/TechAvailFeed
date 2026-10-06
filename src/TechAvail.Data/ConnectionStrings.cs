@@ -18,6 +18,8 @@ public static class ConnectionStrings
             Port = uri.IsDefaultPort || uri.Port < 0 ? 5432 : uri.Port,
             Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
             Username = Uri.UnescapeDataString(user[0]),
+            // No Kerberos here, and the aspnet image lacks libgssapi: probing for it logs an error.
+            GssEncryptionMode = GssEncryptionMode.Disable,
         };
         if (user.Length > 1)
             builder.Password = Uri.UnescapeDataString(user[1]);
