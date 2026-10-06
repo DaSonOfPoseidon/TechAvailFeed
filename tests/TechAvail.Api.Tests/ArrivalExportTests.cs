@@ -47,6 +47,29 @@ public class ArrivalExportTests
         Assert.DoesNotContain(headers, h => h is "latitude" or "longitude" or "gps precision");
     }
 
+    // WCAG 2 relative luminance and contrast ratio.
+    static double Luminance(string hex)
+    {
+        double Channel(int i)
+        {
+            var c = Convert.ToInt32(hex.Substring(i, 2), 16) / 255.0;
+            return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * Channel(1) + 0.7152 * Channel(3) + 0.0722 * Channel(5);
+    }
+
+    static double Contrast(string a, string b)
+    {
+        var (x, y) = (Luminance(a), Luminance(b));
+        return (Math.Max(x, y) + 0.05) / (Math.Min(x, y) + 0.05);
+    }
+
+    [Fact]
+    public void Highlight_text_meets_wcag_aaa_contrast()
+    {
+        Assert.All(ArrivalExport.Highlights, h => Assert.True(Contrast(h.Fill, h.Font) >= 7, $"{h.State}: {Contrast(h.Fill, h.Font):F2}"));
+    }
+
     [Fact]
     public void A_missing_815_run_is_said_on_its_sheet()
     {

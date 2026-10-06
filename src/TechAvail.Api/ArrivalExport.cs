@@ -13,11 +13,12 @@ public static class ArrivalExport
     const string TimeFormat = "h:mm AM/PM";
     const string StampFormat = "yyyy-mm-dd h:mm AM/PM";
 
-    // Excel's built-in "light red fill with dark red text" and yellow equivalents.
-    static readonly (string State, string Fill, string Font)[] Highlights =
+    // Excel's built-in light red and yellow fills, with the text darkened from Excel's to reach WCAG
+    // AAA contrast (at least 7:1; 7.3 for both).
+    public static readonly (string State, string Fill, string Font)[] Highlights =
     [
-        ("Not started", "#FFC7CE", "#9C0006"),
-        ("En route", "#FFEB9C", "#9C5700"),
+        ("Not started", "#FFC7CE", "#830005"),
+        ("En route", "#FFEB9C", "#703F00"),
     ];
 
     static readonly Dictionary<string, string> StateNames = new()
