@@ -49,9 +49,6 @@ public class OutcomesTests
     static Dictionary<string, IReadOnlyList<Block>?> Checkpoints(params (string, Block[]?)[] items) =>
         items.ToDictionary(i => i.Item1, i => (IReadOnlyList<Block>?)i.Item2);
 
-    static OrderedDictionary<string, object> Job(OrderedDictionary<string, object> summary) =>
-        (OrderedDictionary<string, object>)summary["job"];
-
     [Fact]
     public void Morning_is_the_first_snapshot_between_six_and_seven()
     {
@@ -135,10 +132,9 @@ public class OutcomesTests
             Checkpoints(("d0", d0), ("d1", d1), ("d2", d1))
         );
         var summary = Outcomes.Summarise(outcome);
-        var job = Job(summary);
-        var ticket = (OrderedDictionary<string, object>)summary["ticket"];
-        Assert.Equal((2, 1, 2, 2, 1), ((int)job["planned"], (int)job["completed_d0"], (int)job["completed_d1"], (int)job["completed_d2"], (int)job["added_after_morning"]));
-        Assert.Equal((1, 1), ((int)ticket["planned"], (int)ticket["completed_d0"]));
+        var (job, ticket) = (summary.Job, summary.Ticket);
+        Assert.Equal((2, 1, 2, 2, 1), (job.Planned, job.CompletedD0, job.CompletedD1, job.CompletedD2, job.AddedAfterMorning));
+        Assert.Equal((1, 1), (ticket.Planned, ticket.CompletedD0));
     }
 
     [Fact]
@@ -210,17 +206,7 @@ public class OutcomesTests
             [Work("1"), Work("2"), Work("3"), Work("4"), Work("5")],
             Checkpoints(("d0", d0))
         );
-        Assert.Equal(
-            [
-                KeyValuePair.Create("total", 4),
-                KeyValuePair.Create("in_progress", 1),
-                KeyValuePair.Create("en_route", 1),
-                KeyValuePair.Create("not_started", 1),
-                KeyValuePair.Create("unknown", 1),
-                KeyValuePair.Create("prereqs_open", 1),
-            ],
-            (OrderedDictionary<string, int>)Job(Outcomes.Summarise(outcome))["pulled_d0"]
-        );
+        Assert.Equal(new PulledCounts(4, 1, 1, 1, 1, 1), Outcomes.Summarise(outcome).Job.PulledD0);
     }
 
     [Fact]

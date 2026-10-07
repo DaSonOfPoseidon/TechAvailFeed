@@ -8,7 +8,7 @@ public sealed record HistoryDay(
     string Status,
     bool Provisional,
     DateTime? MorningAt,
-    OrderedDictionary<string, object>? ByKind
+    DaySummary? ByKind
 );
 
 public sealed record HistoryResult(DateTime? LatestSnapshotAt, List<HistoryDay> Days);

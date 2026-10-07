@@ -1,119 +1,126 @@
+using System.Text.Json.Serialization;
 using TechAvail.Core;
 
 namespace TechAvail.Api;
 
-// Port of api/kpis.py: rates over the outcome history's planned items. Each rate's denominator
-// is the planned count of that kind; a day without a morning plan is listed but adds nothing.
-// Built as ordered dictionaries with Python's keys, so the JSON matches the Python API.
+// Counts and rates for one kind of planned work. Rates are over the planned count, rounded to 3
+// places, and null when nothing was planned. Completed and its rate are keyed by checkpoint;
+// outcome and its rate by outcome name.
+public record KindStats(
+    int Planned,
+    Dictionary<string, int> Completed,
+    Dictionary<string, double?> CompletionRate,
+    Dictionary<string, int> Outcome,
+    Dictionary<string, double?> OutcomeRate
+);
+
+// Jobs also count the ones pulled on the plan day (canceled, unscheduled or rescheduled by d0),
+// split by how far the tech got.
+public sealed record JobStats(
+    int Planned,
+    Dictionary<string, int> Completed,
+    Dictionary<string, double?> CompletionRate,
+    Dictionary<string, int> Outcome,
+    Dictionary<string, double?> OutcomeRate,
+    PulledCounts PulledD0,
+    double? PulledD0Rate
+) : KindStats(Planned, Completed, CompletionRate, Outcome, OutcomeRate);
+
+public sealed record ByKind(JobStats Job, KindStats Ticket);
+
+// A day without a morning plan is listed with its status but no stats.
+public sealed record DayKpis(
+    DateOnly Date,
+    string Status,
+    bool Provisional,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JobStats? Job,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] KindStats? Ticket
+);
+
+public sealed record RegionKpis(string Region, JobStats Job, KindStats Ticket);
+
+public sealed record TechKpis(string TechId, string TechName, JobStats Job, KindStats Ticket);
+
+public sealed record OutcomeKpis(List<DayKpis> Days, ByKind Totals, List<RegionKpis> ByRegion, List<TechKpis> ByTech);
+
+// Rates over the outcome history's planned items. Each rate's denominator is the planned count of
+// that kind; a day without a morning plan is listed but adds nothing.
 public static class Kpis
 {
-    static readonly string[] Pulled = ["canceled", "unscheduled", "rescheduled"];
-
     // The latest checkpoint the item has: d2 once a day is final, the outcome so far before that.
-    static string? Final(Planned item)
-    {
-        foreach (var name in Outcomes.Checkpoints.Reverse())
-            if (item.Outcomes.TryGetValue(name, out var outcome))
-                return outcome;
-        return null;
-    }
+    static string? Final(Planned item) =>
+        Outcomes.Checkpoints.Reverse().Select(item.Outcomes.GetValueOrDefault).FirstOrDefault(o => o is not null);
 
     static double? Rate(int count, int total) => total != 0 ? Math.Round((double)count / total, 3) : null;
 
-    static OrderedDictionary<string, object?> Stats(IEnumerable<Planned> all, string kind)
+    static Dictionary<string, double?> Rates(Dictionary<string, int> counts, int total) =>
+        counts.ToDictionary(c => c.Key, c => Rate(c.Value, total));
+
+    static KindStats Stats(List<Planned> items)
     {
-        var items = all.Where(i => i.Kind == kind).ToList();
-        var planned = items.Count;
-        var completed = new OrderedDictionary<string, int>(
-            Outcomes.Checkpoints.Select(name =>
-                KeyValuePair.Create(name, items.Count(i => i.Outcomes.GetValueOrDefault(name) == "completed"))
-            )
+        var completed = Outcomes.Checkpoints.ToDictionary(
+            name => name,
+            name => items.Count(i => i.Outcomes.GetValueOrDefault(name) == "completed")
         );
         var latest = items.Select(Final).ToList();
-        var outcome = new OrderedDictionary<string, int>(
-            Outcomes.OutcomeNames.Select(name => KeyValuePair.Create(name, latest.Count(l => l == name)))
-        );
-        var result = new OrderedDictionary<string, object?>
-        {
-            ["planned"] = planned,
-            ["completed"] = completed,
-            ["completion_rate"] = new OrderedDictionary<string, double?>(completed.Select(c => KeyValuePair.Create(c.Key, Rate(c.Value, planned)))),
-            ["outcome"] = outcome,
-            ["outcome_rate"] = new OrderedDictionary<string, double?>(outcome.Select(o => KeyValuePair.Create(o.Key, Rate(o.Value, planned)))),
-        };
-        if (kind == "job")
-        {
-            var pulled = items.Where(i => Pulled.Contains(i.Outcomes.GetValueOrDefault("d0"))).ToList();
-            var pulledD0 = new OrderedDictionary<string, int> { ["total"] = pulled.Count };
-            foreach (var name in Outcomes.ReachedNames)
-                pulledD0[name] = pulled.Count(i => i.Reached == name);
-            pulledD0["prereqs_open"] = pulled.Count(i => i.PrereqsOpen == true);
-            result["pulled_d0"] = pulledD0;
-            result["pulled_d0_rate"] = Rate(pulled.Count, planned);
-        }
-        return result;
+        var outcome = Outcomes.OutcomeNames.ToDictionary(name => name, name => latest.Count(l => l == name));
+        return new KindStats(items.Count, completed, Rates(completed, items.Count), outcome, Rates(outcome, items.Count));
     }
 
-    static OrderedDictionary<string, object?> ByKind(IEnumerable<Planned> items)
+    static ByKind Kinds(IEnumerable<Planned> items)
     {
         var list = items.ToList();
-        return new OrderedDictionary<string, object?>(Outcomes.Kinds.Select(kind => KeyValuePair.Create(kind, (object?)Stats(list, kind))));
+        var jobs = list.Where(i => i.Kind == "job").ToList();
+        var stats = Stats(jobs);
+        var pulled = Outcomes.PulledCounts(jobs);
+        var job = new JobStats(
+            stats.Planned,
+            stats.Completed,
+            stats.CompletionRate,
+            stats.Outcome,
+            stats.OutcomeRate,
+            pulled,
+            Rate(pulled.Total, jobs.Count)
+        );
+        return new ByKind(job, Stats([.. list.Where(i => i.Kind == "ticket")]));
     }
 
-    static OrderedDictionary<string, object?> With(OrderedDictionary<string, object?> head, OrderedDictionary<string, object?> tail)
+    public static OutcomeKpis OutcomeKpis(IEnumerable<(DayOutcome Outcome, bool Provisional)> days, string? region = null, string? tech = null)
     {
-        foreach (var (key, value) in tail)
-            head[key] = value;
-        return head;
-    }
-
-    public static OrderedDictionary<string, object?> OutcomeKpis(
-        IEnumerable<(DayOutcome Outcome, bool Provisional)> days,
-        string? region = null,
-        string? tech = null
-    )
-    {
-        var series = new List<OrderedDictionary<string, object?>>();
+        var series = new List<DayKpis>();
         var pooled = new List<Planned>();
-        var regions = new Dictionary<string, List<Planned>>();
-        var techs = new Dictionary<string, List<Planned>>();
-        var names = new Dictionary<string, string>();
         foreach (var (outcome, provisional) in days.OrderBy(d => d.Outcome.Day))
         {
-            var items = outcome
-                .Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech))
-                .ToList();
-            var entry = new OrderedDictionary<string, object?>
-            {
-                ["date"] = outcome.Day,
-                ["status"] = outcome.Status,
-                ["provisional"] = provisional,
-            };
-            series.Add(outcome.Status == "ok" ? With(entry, ByKind(items)) : entry);
+            var items = outcome.Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech)).ToList();
+            var kinds = outcome.Status == "ok" ? Kinds(items) : null;
+            series.Add(new DayKpis(outcome.Day, outcome.Status, provisional, kinds?.Job, kinds?.Ticket));
             pooled.AddRange(items);
-            foreach (var item in items)
-            {
-                Group(regions, item.Region).Add(item);
-                Group(techs, item.TechId).Add(item);
-                names.TryAdd(item.TechId, item.TechName);
-            }
         }
-        return new OrderedDictionary<string, object?>
-        {
-            ["days"] = series,
-            ["totals"] = ByKind(pooled),
-            ["by_region"] = regions
-                .Keys.Order(StringComparer.Ordinal)
-                .Select(name => With(new() { ["region"] = name }, ByKind(regions[name])))
-                .ToList(),
-            ["by_tech"] = techs
-                .Keys.OrderBy(t => names[t], StringComparer.Ordinal)
-                .ThenBy(t => t, StringComparer.Ordinal)
-                .Select(t => With(new() { ["tech_id"] = t, ["tech_name"] = names[t] }, ByKind(techs[t])))
-                .ToList(),
-        };
+        var names = pooled.GroupBy(i => i.TechId).ToDictionary(g => g.Key, g => g.First().TechName);
+        return new OutcomeKpis(
+            series,
+            Kinds(pooled),
+            [
+                .. pooled
+                    .GroupBy(i => i.Region)
+                    .OrderBy(g => g.Key, StringComparer.Ordinal)
+                    .Select(g =>
+                    {
+                        var kinds = Kinds(g);
+                        return new RegionKpis(g.Key, kinds.Job, kinds.Ticket);
+                    }),
+            ],
+            [
+                .. pooled
+                    .GroupBy(i => i.TechId)
+                    .OrderBy(g => names[g.Key], StringComparer.Ordinal)
+                    .ThenBy(g => g.Key, StringComparer.Ordinal)
+                    .Select(g =>
+                    {
+                        var kinds = Kinds(g);
+                        return new TechKpis(g.Key, names[g.Key], kinds.Job, kinds.Ticket);
+                    }),
+            ]
+        );
     }
-
-    static List<Planned> Group(Dictionary<string, List<Planned>> groups, string key) =>
-        groups.TryGetValue(key, out var list) ? list : groups[key] = [];
 }

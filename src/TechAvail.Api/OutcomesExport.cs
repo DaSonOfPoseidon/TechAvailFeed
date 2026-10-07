@@ -57,41 +57,34 @@ public static class OutcomesExport
     static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
 
     // One row per day and kind; a day without a usable plan gets one row with just its status.
-    static List<object?[]> DayRows(OrderedDictionary<string, object?> kpis)
+    static List<object?[]> DayRows(OutcomeKpis kpis)
     {
         var rows = new List<object?[]>();
-        foreach (var entry in (List<OrderedDictionary<string, object?>>)kpis["days"]!)
+        foreach (var day in kpis.Days)
         {
-            if ((string)entry["status"]! != "ok")
+            if (day.Job is not { } job || day.Ticket is not { } ticket)
             {
                 var row = new object?[DayColumns.Length];
-                (row[0], row[1], row[2]) = (entry["date"], entry["status"], entry["provisional"]);
+                (row[0], row[1], row[2]) = (day.Date, day.Status, day.Provisional);
                 rows.Add(row);
                 continue;
             }
-            foreach (var kind in Outcomes.Kinds)
-            {
-                var stats = (OrderedDictionary<string, object?>)entry[kind]!;
-                var completed = (OrderedDictionary<string, int>)stats["completed"]!;
-                var rates = (OrderedDictionary<string, double?>)stats["completion_rate"]!;
-                var outcome = (OrderedDictionary<string, int>)stats["outcome"]!;
-                var pulled = stats.TryGetValue("pulled_d0", out var p) ? (OrderedDictionary<string, int>)p! : null;
+            foreach (var (kind, stats, pulled) in new[] { ("job", (KindStats)job, job.PulledD0), ("ticket", ticket, null) })
                 rows.Add(
                     [
-                        entry["date"],
-                        entry["status"],
-                        entry["provisional"],
+                        day.Date,
+                        day.Status,
+                        day.Provisional,
                         kind,
-                        stats["planned"],
-                        .. Outcomes.Checkpoints.Select(c => (object?)completed[c]),
-                        .. Outcomes.Checkpoints.Select(c => (object?)rates[c]),
-                        .. Outcomes.OutcomeNames.Select(o => (object?)outcome[o]),
-                        pulled?["total"],
-                        .. Outcomes.ReachedNames.Select(r => (object?)pulled?[r]),
-                        pulled?["prereqs_open"],
+                        stats.Planned,
+                        .. Outcomes.Checkpoints.Select(c => (object?)stats.Completed[c]),
+                        .. Outcomes.Checkpoints.Select(c => (object?)stats.CompletionRate[c]),
+                        .. Outcomes.OutcomeNames.Select(o => (object?)stats.Outcome[o]),
+                        pulled?.Total,
+                        .. Outcomes.ReachedNames.Select(r => (object?)pulled?.Reached(r)),
+                        pulled?.PrereqsOpen,
                     ]
                 );
-            }
         }
         return rows;
     }
@@ -128,7 +121,7 @@ public static class OutcomesExport
     internal static void WriteSheets(
         XLWorkbook wb,
         List<(DayOutcome Outcome, bool Provisional)> outcomes,
-        OrderedDictionary<string, object?> kpis,
+        OutcomeKpis kpis,
         string? region,
         string? tech
     )

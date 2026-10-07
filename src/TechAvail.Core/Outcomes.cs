@@ -33,7 +33,35 @@ public sealed record DayOutcome(
     public OrderedDictionary<string, int> AddedAfterMorning { get; init; } = AddedAfterMorning ?? [];
 }
 
-// Port of feed/outcomes.py: what happened to the work planned for each day.
+// Total, then one count per Outcomes.ReachedNames entry, then the pulled jobs whose prereqs were open.
+public sealed record PulledCounts(int Total, int InProgress, int EnRoute, int NotStarted, int Unknown, int PrereqsOpen)
+{
+    public int Reached(string name) =>
+        name switch
+        {
+            "in_progress" => InProgress,
+            "en_route" => EnRoute,
+            "not_started" => NotStarted,
+            "unknown" => Unknown,
+            _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
+        };
+}
+
+public record KindSummary(int Planned, int CompletedD0, int CompletedD1, int CompletedD2, Dictionary<string, int> AsOfD2, int AddedAfterMorning);
+
+public sealed record JobSummary(
+    int Planned,
+    int CompletedD0,
+    int CompletedD1,
+    int CompletedD2,
+    Dictionary<string, int> AsOfD2,
+    int AddedAfterMorning,
+    PulledCounts PulledD0
+) : KindSummary(Planned, CompletedD0, CompletedD1, CompletedD2, AsOfD2, AddedAfterMorning);
+
+public sealed record DaySummary(JobSummary Job, KindSummary Ticket);
+
+// What happened to the work planned for each day.
 public static class Outcomes
 {
     // The morning plan is the first snapshot in [06:00, 07:00) local; without one, never guess.
@@ -222,33 +250,51 @@ public static class Outcomes
         );
     }
 
-    // Per kind: planned count, completions per checkpoint, the d2 outcome counts, additions after
-    // the morning, and for jobs how far techs got on the ones pulled at d0. Keys and nesting match
-    // the Python dict, which the API serves as is.
-    public static OrderedDictionary<string, object> Summarise(DayOutcome outcome)
+    // The jobs pulled from the plan day by d0, split by how far the tech got.
+    public static PulledCounts PulledCounts(IEnumerable<Planned> jobs)
     {
-        var byKind = new OrderedDictionary<string, object>();
-        foreach (var kind in Kinds)
+        var pulled = jobs.Where(i => Pulled.Contains(i.Outcomes.GetValueOrDefault("d0"))).ToList();
+        int Reached(string name) => pulled.Count(i => i.Reached == name);
+        return new PulledCounts(
+            pulled.Count,
+            Reached("in_progress"),
+            Reached("en_route"),
+            Reached("not_started"),
+            Reached("unknown"),
+            pulled.Count(i => i.PrereqsOpen == true)
+        );
+    }
+
+    // Per kind: planned count, completions per checkpoint, the d2 outcome counts and additions after
+    // the morning; for jobs also how far techs got on the ones pulled at d0.
+    public static DaySummary Summarise(DayOutcome outcome)
+    {
+        KindSummary Kind(string kind)
         {
             var items = outcome.Items.Where(i => i.Kind == kind).ToList();
+            int Completed(string checkpoint) => items.Count(i => i.Outcomes.GetValueOrDefault(checkpoint) == "completed");
             var latest = items.Select(i => i.Outcomes.GetValueOrDefault("d2")).ToList();
-            var entry = new OrderedDictionary<string, object> { ["planned"] = items.Count };
-            foreach (var name in Checkpoints)
-                entry[$"completed_{name}"] = items.Count(i => i.Outcomes.GetValueOrDefault(name) == "completed");
-            entry["as_of_d2"] = new OrderedDictionary<string, int>(
-                OutcomeNames.Select(name => KeyValuePair.Create(name, latest.Count(l => l == name)))
+            return new KindSummary(
+                items.Count,
+                Completed("d0"),
+                Completed("d1"),
+                Completed("d2"),
+                OutcomeNames.ToDictionary(name => name, name => latest.Count(l => l == name)),
+                outcome.AddedAfterMorning.GetValueOrDefault(kind)
             );
-            entry["added_after_morning"] = outcome.AddedAfterMorning.GetValueOrDefault(kind);
-            byKind[kind] = entry;
         }
-        var pulled = outcome
-            .Items.Where(i => i.Kind == "job" && Pulled.Contains(i.Outcomes.GetValueOrDefault("d0")))
-            .ToList();
-        var pulledD0 = new OrderedDictionary<string, int> { ["total"] = pulled.Count };
-        foreach (var name in ReachedNames)
-            pulledD0[name] = pulled.Count(i => i.Reached == name);
-        pulledD0["prereqs_open"] = pulled.Count(i => i.PrereqsOpen == true);
-        ((OrderedDictionary<string, object>)byKind["job"])["pulled_d0"] = pulledD0;
-        return byKind;
+        var job = Kind("job");
+        return new DaySummary(
+            new JobSummary(
+                job.Planned,
+                job.CompletedD0,
+                job.CompletedD1,
+                job.CompletedD2,
+                job.AsOfD2,
+                job.AddedAfterMorning,
+                PulledCounts(outcome.Items.Where(i => i.Kind == "job"))
+            ),
+            Kind("ticket")
+        );
     }
 }

@@ -48,8 +48,7 @@ public class OutcomeHistoryTests
         Assert.Equal([true, true, true], live.Days.Select(d => d.Provisional));
         var planDay = live.Days.Single(d => d.Date == Day);
         Assert.Equal("ok", planDay.Status);
-        var job = (OrderedDictionary<string, object>)planDay.ByKind!["job"];
-        Assert.Equal((1, 1), ((int)job["planned"], (int)job["completed_d0"]));
+        Assert.Equal((1, 1), (planDay.ByKind!.Job.Planned, planDay.ByKind.Job.CompletedD0));
 
         // A snapshot after D+2 makes the day final; it is written once.
         Save(store, Day.AddDays(3).ToDateTime(new TimeOnly(0, 15)), "C");

@@ -30,21 +30,34 @@ public sealed class KpisController(FeedStore store, ApiSettings settings, TimePr
         );
     }
 
+    public sealed record OutcomeFilters(string? Region, string? Tech);
+
+    public sealed record OutcomesResponse(
+        SnapshotInfo? Snapshot,
+        OutcomeFilters Filters,
+        DateOnly Start,
+        DateOnly End,
+        List<DayKpis> Days,
+        ByKind Totals,
+        List<RegionKpis> ByRegion,
+        List<TechKpis> ByTech
+    );
+
     // Completion, cancellation and reschedule rates per day, region and technician.
     [HttpGet("kpis/outcomes")]
-    public OrderedDictionary<string, object?> Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
+    public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
     {
         var (from, to) = HistoryWindow(start, end);
-        var history = new OutcomeHistory(Store, Settings.Tz, Clock);
-        var response = new OrderedDictionary<string, object?>
-        {
-            ["snapshot"] = Info(Store.SnapshotMeta()),
-            ["filters"] = new OrderedDictionary<string, object?> { ["region"] = region, ["tech"] = tech },
-            ["start"] = from,
-            ["end"] = to,
-        };
-        foreach (var (key, value) in Kpis.OutcomeKpis(history.Range(from, to), region, tech))
-            response[key] = value;
-        return response;
+        var kpis = Kpis.OutcomeKpis(new OutcomeHistory(Store, Settings.Tz, Clock).Range(from, to), region, tech);
+        return new OutcomesResponse(
+            Info(Store.SnapshotMeta()),
+            new OutcomeFilters(region, tech),
+            from,
+            to,
+            kpis.Days,
+            kpis.Totals,
+            kpis.ByRegion,
+            kpis.ByTech
+        );
     }
 }
