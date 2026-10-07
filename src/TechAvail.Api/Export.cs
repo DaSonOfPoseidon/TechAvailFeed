@@ -12,42 +12,11 @@ public static class Export
 {
     const string DateFormat = Xlsx.Date;
     const string TimeFormat = Xlsx.Time;
-    const string PercentFormat = Xlsx.Percent;
 
     static readonly (string Name, object? Text)[] Definitions =
     [
         .. CapacityExport.Definitions,
-        (
-            "Planned",
-            "Install jobs and FIELD/TC tickets assigned for the day in the first snapshot "
-                + "between 06:00 and 07:00."
-        ),
-        (
-            "d0 / d1 / d2",
-            "The last snapshot before midnight ending the plan day, the next day, " + "and the day after."
-        ),
-        ("Outcome", "The latest checkpoint's result: d2 for final days, so far for provisional."),
-        (
-            "Pulled d0",
-            "Planned jobs canceled, unscheduled or rescheduled by the end of the plan day, "
-                + "split by how far the tech got (in progress, en route)."
-        ),
-        ("Provisional", "D+2 hasn't ended yet, so the day's outcomes can still change."),
-    ];
-
-    static readonly Column[] OutcomeDayColumns =
-    [
-        new("Date", DateFormat, 12),
-        new("Status"),
-        new("Provisional"),
-        new("Kind"),
-        new("Planned"),
-        .. Outcomes.Checkpoints.Select(c => new Column($"Completed {c}")),
-        .. Outcomes.Checkpoints.Select(c => new Column($"Completion {c}", PercentFormat)),
-        .. Outcomes.OutcomeNames.Select(o => new Column(Capitalize(o.Replace('_', ' ')))),
-        new("Pulled d0"),
-        .. Outcomes.ReachedNames.Select(r => new Column($"Pulled {r.Replace('_', ' ')}")),
-        new("Pulled, prereqs open"),
+        .. OutcomesExport.Definitions,
     ];
 
     static readonly Column[] DiagnosticColumns =
@@ -98,49 +67,7 @@ public static class Export
             r.MinutesPast,
         ];
 
-    // str.capitalize(): first character upper, the rest lower.
-    static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
-
     static object? Get(OrderedDictionary<string, object?> row, string key) => row.TryGetValue(key, out var value) ? value : null;
-
-    static List<object?[]> OutcomeDayRows(OrderedDictionary<string, object?> kpis)
-    {
-        var rows = new List<object?[]>();
-        foreach (var entry in (List<OrderedDictionary<string, object?>>)kpis["days"]!)
-        {
-            if ((string)entry["status"]! != "ok")
-            {
-                var row = new object?[OutcomeDayColumns.Length];
-                (row[0], row[1], row[2]) = (entry["date"], entry["status"], entry["provisional"]);
-                rows.Add(row);
-                continue;
-            }
-            foreach (var kind in Outcomes.Kinds)
-            {
-                var stats = (OrderedDictionary<string, object?>)entry[kind]!;
-                var completed = (OrderedDictionary<string, int>)stats["completed"]!;
-                var rates = (OrderedDictionary<string, double?>)stats["completion_rate"]!;
-                var outcome = (OrderedDictionary<string, int>)stats["outcome"]!;
-                var pulled = stats.TryGetValue("pulled_d0", out var p) ? (OrderedDictionary<string, int>)p! : null;
-                rows.Add(
-                    [
-                        entry["date"],
-                        entry["status"],
-                        entry["provisional"],
-                        kind,
-                        stats["planned"],
-                        .. Outcomes.Checkpoints.Select(c => (object?)completed[c]),
-                        .. Outcomes.Checkpoints.Select(c => (object?)rates[c]),
-                        .. Outcomes.OutcomeNames.Select(o => (object?)outcome[o]),
-                        pulled?["total"],
-                        .. Outcomes.ReachedNames.Select(r => (object?)pulled?[r]),
-                        pulled?["prereqs_open"],
-                    ]
-                );
-            }
-        }
-        return rows;
-    }
 
     // Fixed columns for the job or tech, and whatever else a check reports as "name: value".
     static List<object?[]> DiagnosticRows(IEnumerable<Check> checks) =>
@@ -176,55 +103,7 @@ public static class Export
         using var wb = new XLWorkbook();
         CapacityExport.WriteSheets(wb, entries, days, demand, schedule);
         Xlsx.WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
-        Xlsx.WriteSheet(wb, "Outcomes by day", OutcomeDayColumns, OutcomeDayRows(kpis));
-        var region = (string?)Get(filters, "region");
-        var tech = (string?)Get(filters, "tech");
-        Xlsx.WriteSheet(
-            wb,
-            "Outcome items",
-            [
-                new("Plan date", DateFormat, 12),
-                new("Provisional"),
-                new("Kind"),
-                new("Ref"),
-                new("Tech id"),
-                new("Tech"),
-                new("Region"),
-                new("Task type"),
-                new("Planned start", TimeFormat, 17),
-                new("d0"),
-                new("d1"),
-                new("d2"),
-                new("Reached"),
-                new("Prereqs open"),
-            ],
-            [
-                .. outcomes
-                    .OrderBy(o => o.Outcome.Day)
-                    .SelectMany(o =>
-                        o.Outcome.Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech))
-                            .Select(i =>
-                                (object?[])
-                                    [
-                                        o.Outcome.Day,
-                                        o.Provisional,
-                                        i.Kind,
-                                        i.RefId,
-                                        i.TechId,
-                                        i.TechName,
-                                        i.Region,
-                                        i.TaskType,
-                                        i.PlannedStart,
-                                        i.Outcomes.GetValueOrDefault("d0"),
-                                        i.Outcomes.GetValueOrDefault("d1"),
-                                        i.Outcomes.GetValueOrDefault("d2"),
-                                        i.Reached,
-                                        i.PrereqsOpen,
-                                    ]
-                            )
-                    ),
-            ]
-        );
+        OutcomesExport.WriteSheets(wb, outcomes, kpis, (string?)Get(filters, "region"), (string?)Get(filters, "tech"));
         Xlsx.WriteSheet(wb, "Diagnostics", DiagnosticColumns, DiagnosticRows(checks));
 
         // Excel has no time zones: both times are written as local time, like the block timestamps.

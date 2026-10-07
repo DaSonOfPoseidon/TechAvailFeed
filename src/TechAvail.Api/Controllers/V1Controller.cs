@@ -53,6 +53,15 @@ public abstract class V1Controller(FeedStore store, ApiSettings settings, TimePr
         return File(data, Xlsx.ContentType);
     }
 
+    // An outcome history range: end defaults to today and start to 30 days before it.
+    protected (DateOnly Start, DateOnly End) HistoryWindow(DateOnly? start, DateOnly? end)
+    {
+        var to = end ?? Today();
+        var from = start ?? to.AddDays(-29);
+        Check(from <= to && to.DayNumber - from.DayNumber < MaxHistoryDays, $"need start <= end, at most {MaxHistoryDays} days");
+        return (from, to);
+    }
+
     // The served blocks snapshot, or a 404 before there is one.
     protected (List<Block> Blocks, SnapshotRow Snapshot) Latest()
     {

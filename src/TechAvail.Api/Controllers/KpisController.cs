@@ -34,9 +34,7 @@ public sealed class KpisController(FeedStore store, ApiSettings settings, TimePr
     [HttpGet("kpis/outcomes")]
     public OrderedDictionary<string, object?> Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
     {
-        var to = end ?? Today();
-        var from = start ?? to.AddDays(-29);
-        Check(from <= to && to.DayNumber - from.DayNumber < MaxHistoryDays, $"need start <= end, at most {MaxHistoryDays} days");
+        var (from, to) = HistoryWindow(start, end);
         var history = new OutcomeHistory(Store, Settings.Tz, Clock);
         var response = new OrderedDictionary<string, object?>
         {

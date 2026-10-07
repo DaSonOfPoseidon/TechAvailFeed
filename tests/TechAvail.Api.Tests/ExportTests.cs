@@ -109,18 +109,6 @@ public class ExportTests
     }
 
     [Fact]
-    public void A_day_without_a_morning_plan_gets_a_full_width_row()
-    {
-        using var wb = Open(Workbook(outcomes: [(new DayOutcome(new DateOnly(2026, 9, 29), "no_morning"), false)]));
-        var sheet = wb.Worksheet("Outcomes by day");
-        var width = sheet.Row(1).CellsUsed().Count();
-        Assert.Equal(new DateTime(2026, 9, 29), sheet.Cell(2, 1).GetDateTime());
-        Assert.Equal(("no_morning", false), (sheet.Cell(2, 2).GetText(), sheet.Cell(2, 3).GetBoolean()));
-        Assert.True(sheet.Cell(2, 4).IsEmpty());
-        Assert.True(width > 4);
-    }
-
-    [Fact]
     public void Diagnostics_sheet_flattens_check_specific_fields_into_detail()
     {
         var check = new Check("tech_no_region", "tech_setup", "No region", "warning", "")
