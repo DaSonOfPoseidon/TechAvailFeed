@@ -13,7 +13,7 @@ public static class Snapshots
     {
         if (meta is null)
             return null;
-        double? age = meta.GeneratedAt is { } generated ? Core.PyMath.Round((now - generated).TotalSeconds / 60, 1) : null;
+        double? age = meta.GeneratedAt is { } generated ? Math.Round((now - generated).TotalSeconds / 60, 1) : null;
         return new SnapshotInfo(meta.Id, meta.GeneratedAt, age, age is null || age > StaleMinutes);
     }
 

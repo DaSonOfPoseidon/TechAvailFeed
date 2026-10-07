@@ -261,7 +261,7 @@ public class AvailabilityTests
     {
         var day = Assert.Single(Availability.TechDays([B("shift", Tuesday, "08:00", "17:00")], At(Tuesday, "13:10")));
         Assert.Equal(8, day.AvailableHours);
-        Assert.Equal(PyMath.Round(200.0 / 60, 2), day.FreeHours);
+        Assert.Equal(Math.Round(200.0 / 60, 2), day.FreeHours);
     }
 
     [Fact]

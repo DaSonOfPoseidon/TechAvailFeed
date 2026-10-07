@@ -111,7 +111,7 @@ public static class Diagnostics
                     noRegion[b.TechId] = days = [];
                 days.Add(b.WorkDate);
             }
-            if (PyText.Strip(b.Skills).Length == 0)
+            if (string.IsNullOrWhiteSpace(b.Skills))
                 noSkills.TryAdd(b.TechId, b.Region);
         }
 

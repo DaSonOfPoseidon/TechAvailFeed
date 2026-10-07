@@ -18,7 +18,7 @@ public static class Kpis
         return null;
     }
 
-    static double? Rate(int count, int total) => total != 0 ? PyMath.Round((double)count / total, 3) : null;
+    static double? Rate(int count, int total) => total != 0 ? Math.Round((double)count / total, 3) : null;
 
     static OrderedDictionary<string, object?> Stats(IEnumerable<Planned> all, string kind)
     {

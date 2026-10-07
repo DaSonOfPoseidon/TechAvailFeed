@@ -48,13 +48,13 @@ public class Capacity
 
     public Capacity Finish()
     {
-        ShiftH = PyMath.Round(ShiftH, 2);
-        AvailableH = PyMath.Round(AvailableH, 2);
-        BookedH = PyMath.Round(BookedH, 2);
-        FreeH = PyMath.Round(FreeH, 2);
-        UnassignedH = PyMath.Round(UnassignedH, 2);
-        Utilization = AvailableH != 0 ? PyMath.Round(BookedH / AvailableH, 3) : null;
-        NetH = PyMath.Round(FreeH - UnassignedH, 2);
+        ShiftH = Math.Round(ShiftH, 2);
+        AvailableH = Math.Round(AvailableH, 2);
+        BookedH = Math.Round(BookedH, 2);
+        FreeH = Math.Round(FreeH, 2);
+        UnassignedH = Math.Round(UnassignedH, 2);
+        Utilization = AvailableH != 0 ? Math.Round(BookedH / AvailableH, 3) : null;
+        NetH = Math.Round(FreeH - UnassignedH, 2);
         return this;
     }
 
@@ -125,7 +125,7 @@ public sealed record RegionTotal(
 public static class CapacityRollup
 {
     public static bool HasSkill(string skills, string skill) =>
-        skills.Split(',').Select(s => PyText.Strip(s).ToUpperInvariant()).Contains(skill.ToUpperInvariant());
+        skills.Split(',').Select(s => s.Trim().ToUpperInvariant()).Contains(skill.ToUpperInvariant());
 
     public static List<TechDay> FilterDays(IEnumerable<TechDay> days, string? region, string? skill) =>
         [.. days.Where(d => (region is null || d.Region == region) && (skill is null || HasSkill(d.Skills, skill)))];

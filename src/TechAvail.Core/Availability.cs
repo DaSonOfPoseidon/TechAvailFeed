@@ -304,12 +304,12 @@ public static class Availability
                             .ThenBy(b => b.RefId, StringComparer.Ordinal),
                     ],
                     slots,
-                    PyMath.Round(Hours(working), 2),
-                    PyMath.Round(Hours(lunchTaken), 2),
-                    PyMath.Round(Hours(off), 2),
-                    PyMath.Round(Hours(available), 2),
-                    PyMath.Round(Hours(booked), 2),
-                    PyMath.Round((double)slots.Sum(s => s.OpenMinutes) / 60, 2),
+                    Math.Round(Hours(working), 2),
+                    Math.Round(Hours(lunchTaken), 2),
+                    Math.Round(Hours(off), 2),
+                    Math.Round(Hours(available), 2),
+                    Math.Round(Hours(booked), 2),
+                    Math.Round((double)slots.Sum(s => s.OpenMinutes) / 60, 2),
                     work.Where(b => b.Kind == "job").Select(b => b.RefId).Distinct().Count(),
                     work.Where(b => b.Kind == "ticket").Select(b => b.RefId).Distinct().Count(),
                     off.Count > 0 || (working.Count == 0 && Intersect(span, leave).Count > 0)
@@ -349,7 +349,7 @@ public static class Availability
             .. totals
                 .OrderBy(t => t.Key.Item1)
                 .ThenBy(t => t.Key.Item2, StringComparer.Ordinal)
-                .Select(t => new UnassignedDemand(t.Key.Item1, t.Key.Item2, t.Value.Jobs, t.Value.Tickets, PyMath.Round(t.Value.Hours, 2))),
+                .Select(t => new UnassignedDemand(t.Key.Item1, t.Key.Item2, t.Value.Jobs, t.Value.Tickets, Math.Round(t.Value.Hours, 2))),
         ];
     }
 

@@ -88,7 +88,7 @@ public class SenderCheckTests
     [Fact]
     public void Other_sender_is_rejected() =>
         Assert.Equal(
-            "sender ['x@e.example'] is not MAIL_FROM alone",
+            "sender [x@e.example] is not MAIL_FROM alone",
             Reason(Message("x@e.example", null, GoodResults))
         );
 

@@ -15,7 +15,7 @@ public sealed record FeedMail(
     public static FeedMail FromMime(MimeMessage message, string uid) =>
         new(
             // Some senders omit Message-ID; the IMAP UID is stable enough within one mailbox.
-            PyStrip(RawHeader(message, "Message-ID") ?? $"uid:{uid}"),
+            (RawHeader(message, "Message-ID") ?? $"uid:{uid}").Trim(),
             RawHeader(message, "Subject") ?? "",
             MailDate(RawHeader(message, "Date")),
             CsvAttachments(message)
@@ -53,5 +53,4 @@ public sealed record FeedMail(
             .Headers.Where(h => h.Field.Equals(field, StringComparison.OrdinalIgnoreCase))
             .Select(h => Encoding.Latin1.GetString(h.RawValue).TrimStart(' ', '\t').TrimEnd('\r', '\n'));
 
-    static string PyStrip(string value) => Parsing.PyText.Strip(value);
 }

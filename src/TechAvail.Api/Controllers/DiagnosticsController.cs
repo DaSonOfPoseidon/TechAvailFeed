@@ -27,9 +27,9 @@ public sealed class DiagnosticsController(FeedStore store, ApiSettings settings,
     {
         Check(
             group is null || Diagnostics.Groups.Contains(group),
-            $"unknown group {PyText.Repr(group ?? "")}; use one of {string.Join(", ", Diagnostics.Groups)}"
+            $"unknown group '{group}'; use one of {string.Join(", ", Diagnostics.Groups)}"
         );
-        Check(check is null || found.Any(c => c.Id == check), $"unknown check {PyText.Repr(check ?? "")}");
+        Check(check is null || found.Any(c => c.Id == check), $"unknown check '{check}'");
         return [.. found.Where(c => (group is null || c.Group == group) && (check is null || c.Id == check))];
     }
 

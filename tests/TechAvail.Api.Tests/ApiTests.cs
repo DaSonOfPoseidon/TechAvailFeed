@@ -149,7 +149,7 @@ public class ApiTests
         using var api = new Api(Blocks);
         var body = await api.Get("/api/v1/kpis/capacity?days=2");
         Assert.Equal(2, body["series"]!.AsArray().Count);
-        Assert.Equal(Core.PyMath.Round(2.0 / 16, 3), body["series"]![0]!["utilization"]!.GetValue<double>());
+        Assert.Equal(Math.Round(2.0 / 16, 3), body["series"]![0]!["utilization"]!.GetValue<double>());
         Assert.Equal(["North", "South"], Strings(body["by_region"], "region"));
     }
 

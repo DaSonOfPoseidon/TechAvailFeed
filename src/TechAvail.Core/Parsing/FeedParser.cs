@@ -111,7 +111,7 @@ public static partial class FeedParser
             throw new FeedParseException($"bad header row: {exc.Message}");
         }
 
-        var columns = header.Select(name => PyText.Strip(name).ToLowerInvariant()).ToList();
+        var columns = header.Select(name => name.Trim().ToLowerInvariant()).ToList();
         if (columns.Contains("kind"))
             parsed.Format = "blocks";
         var required = parsed.Format == "blocks" ? BlockColumns : RequiredColumns;
@@ -135,7 +135,7 @@ public static partial class FeedParser
                 throw new FeedParseException($"malformed CSV: {exc.Message}");
             }
             var row = rows.Current;
-            if (!row.Any(cell => PyText.Strip(cell).Length > 0))
+            if (row.All(string.IsNullOrWhiteSpace))
                 continue;
             if (row.Count != columns.Count)
                 throw new FeedParseException(
@@ -153,24 +153,24 @@ public static partial class FeedParser
 
     public static DateOnly ParseDate(string value)
     {
-        var text = PyText.Strip(value);
+        var text = value.Trim();
         foreach (var format in DateFormats)
             if (PyTime.TryStrptime(text, format, out var parsed))
                 return DateOnly.FromDateTime(parsed);
-        throw new FeedParseException($"unrecognised date {PyText.Repr(value)}");
+        throw new FeedParseException($"unrecognised date '{value}'");
     }
 
     public static DateTime ParseTimestamp(string value)
     {
-        var text = PyText.Strip(value);
+        var text = value.Trim();
         foreach (var format in TimestampFormats)
             if (PyTime.TryStrptime(text, format, out var parsed))
                 return parsed;
-        throw new FeedParseException($"unrecognised timestamp {PyText.Repr(value)}");
+        throw new FeedParseException($"unrecognised timestamp '{value}'");
     }
 
     static DateTime? ParseOptionalTimestamp(string value) =>
-        PyText.Strip(value).Length > 0 ? ParseTimestamp(value) : null;
+        string.IsNullOrWhiteSpace(value) ? null : ParseTimestamp(value);
 
     // The export can render a user id as "Last, First (userid)"; keep only the id.
     [GeneratedRegex(@"\(([^()]+)\)\s*$")]
@@ -179,7 +179,7 @@ public static partial class FeedParser
     public static string ParseUserId(string value)
     {
         var match = UserId().Match(value);
-        return match.Success ? PyText.Strip(match.Groups[1].Value) : PyText.Strip(value);
+        return match.Success ? match.Groups[1].Value.Trim() : value.Trim();
     }
 
     // Python's float(): optional sign, digits with single underscores between them, an optional
@@ -193,7 +193,7 @@ public static partial class FeedParser
     static bool TryParseFloat(string value, out double number)
     {
         number = 0;
-        var text = PyText.Strip(value);
+        var text = value.Trim();
         if (!PyFloat().IsMatch(text))
             return false;
         text = text.Replace("_", "").ToLowerInvariant();
@@ -212,19 +212,19 @@ public static partial class FeedParser
     static double? ParseCoordinate(string value, string name, int lineNumber)
     {
         double number = 0;
-        if (PyText.Strip(value).Length > 0 && !TryParseFloat(value, out number))
-            throw new FeedParseException($"line {lineNumber}: bad {name} {PyText.Repr(value)}");
+        if (!string.IsNullOrWhiteSpace(value) && !TryParseFloat(value, out number))
+            throw new FeedParseException($"line {lineNumber}: bad {name} '{value}'");
         return number == 0 ? null : number;
     }
 
     // Postgres TO_CHAR ... OF gives a bare hour offset like "-05"; append the minutes.
     static DateTimeOffset ParseGeneratedAt(string value)
     {
-        var text = PyText.Strip(value);
+        var text = value.Trim();
         if (text.Length >= 3 && text[^3] is '+' or '-' && char.IsDigit(text[^2]) && char.IsDigit(text[^1]))
             text += ":00";
         if (!PyTime.TryFromIsoFormat(text, out var parsed))
-            throw new FeedParseException($"unrecognised generated_at {PyText.Repr(value)}");
+            throw new FeedParseException($"unrecognised generated_at '{value}'");
         return parsed;
     }
 
@@ -237,11 +237,11 @@ public static partial class FeedParser
             || Math.Abs(minutes) >= int.MaxValue
         )
             throw new FeedParseException(
-                $"line {lineNumber}: bad open_minutes {PyText.Repr(values["open_minutes"])}"
+                $"line {lineNumber}: bad open_minutes '{values["open_minutes"]}'"
             );
         var workDate = ParseDate(values["work_date"]);
-        var techId = PyText.Strip(values["tech_id"]);
-        var techName = PyText.Strip(values["tech_name"]);
+        var techId = values["tech_id"].Trim();
+        var techName = values["tech_name"].Trim();
         var openFrom = ParseTimestamp(values["open_from"]);
         var openUntil = ParseTimestamp(values["open_until"]);
         return new Slot(
@@ -251,8 +251,8 @@ public static partial class FeedParser
             openFrom,
             openUntil,
             (int)Math.Truncate(minutes),
-            PyText.Strip(values["region"]),
-            PyText.Strip(values["skills"])
+            values["region"].Trim(),
+            values["skills"].Trim()
         );
     }
 
@@ -260,9 +260,9 @@ public static partial class FeedParser
     static Block ParseBlock(Dictionary<string, string> values, int lineNumber)
     {
         string Get(string name) => values.GetValueOrDefault(name, "");
-        var kind = PyText.Strip(values["kind"]).ToLowerInvariant();
+        var kind = values["kind"].Trim().ToLowerInvariant();
         if (!BlockKinds.Contains(kind))
-            throw new FeedParseException($"line {lineNumber}: unknown kind {PyText.Repr(values["kind"])}");
+            throw new FeedParseException($"line {lineNumber}: unknown kind '{values["kind"]}'");
         var workDate = ParseDate(values["work_date"]);
         var startsAt = ParseTimestamp(values["starts_at"]);
         var endsAt = ParseTimestamp(values["ends_at"]);
@@ -276,25 +276,25 @@ public static partial class FeedParser
         {
             Kind = kind,
             WorkDate = workDate,
-            TechId = PyText.Strip(values["tech_id"]),
-            TechName = PyText.Strip(values["tech_name"]),
+            TechId = values["tech_id"].Trim(),
+            TechName = values["tech_name"].Trim(),
             StartsAt = startsAt,
             EndsAt = endsAt,
-            RefId = PyText.Strip(values["ref_id"]),
-            Status = PyText.Strip(values["status"]),
-            Department = PyText.Strip(Get("department")),
-            Region = PyText.Strip(values["region"]),
-            Skills = PyText.Strip(values["skills"]),
-            TaskType = PyText.Strip(Get("task_type")),
+            RefId = values["ref_id"].Trim(),
+            Status = values["status"].Trim(),
+            Department = Get("department").Trim(),
+            Region = values["region"].Trim(),
+            Skills = values["skills"].Trim(),
+            TaskType = Get("task_type").Trim(),
             ModifiedAt = modifiedAt,
             ModifiedBy = modifiedBy,
             EnrouteAt = enrouteAt,
             InprogressAt = inprogressAt,
-            PrereqsStatus = PyText.Strip(Get("pre-reqs status")),
-            AddressIssue = values.TryGetValue("address_issue", out var issue) ? PyText.Strip(issue) : null,
+            PrereqsStatus = Get("pre-reqs status").Trim(),
+            AddressIssue = values.TryGetValue("address_issue", out var issue) ? issue.Trim() : null,
             Latitude = latitude,
             Longitude = longitude,
-            GpsPrecision = PyText.Strip(Get("gps_precision")).ToUpperInvariant(),
+            GpsPrecision = Get("gps_precision").Trim().ToUpperInvariant(),
         };
     }
 }

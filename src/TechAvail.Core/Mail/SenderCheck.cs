@@ -12,7 +12,7 @@ public static class SenderCheck
     {
         var senders = FeedMail.RawHeaders(message, "From").SelectMany(Addresses).ToList();
         if (senders.Count != 1 || !senders[0].Equals(mailFrom, StringComparison.OrdinalIgnoreCase))
-            return $"sender {PyText.Repr(senders)} is not MAIL_FROM alone";
+            return $"sender [{string.Join(", ", senders)}] is not MAIL_FROM alone";
 
         // The receiving server adds its header on top; any copies further down came from the sender.
         var results = FeedMail.RawHeaders(message, "Authentication-Results").ToList();

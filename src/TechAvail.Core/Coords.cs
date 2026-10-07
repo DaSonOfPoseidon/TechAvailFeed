@@ -12,7 +12,7 @@ public static class Coords
     public static (double? Latitude, double? Longitude) Public(double? latitude, double? longitude, bool exact = false) =>
         exact || latitude is null || longitude is null
             ? (latitude, longitude)
-            : (PyMath.Round(latitude.Value, Decimals), PyMath.Round(longitude.Value, Decimals));
+            : (Math.Round(latitude.Value, Decimals), Math.Round(longitude.Value, Decimals));
 
     public static Block PublicBlock(Block block, bool exact = false)
     {
