@@ -53,9 +53,12 @@ services:
       start_period: 15s
 
   api:
-    build: .
-    # Dashboard backend: calendar, KPIs and the Excel export. Read-only on the ingest's tables.
-    command: ["uvicorn", "--factory", "api.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dotnet
+      args:
+        PROJECT: TechAvail.Api
+    # Dashboard backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.
     labels:
       wud.watch: "false"
       # Like the ingest: no phone alerts until the dashboard goes live. Then drop the ignore.
@@ -72,36 +75,6 @@ services:
       postgres:
         condition: service_healthy
       # The ingest creates the schema on start.
-      ingest:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  api-net:
-    build:
-      context: .
-      dockerfile: Dockerfile.dotnet
-      args:
-        PROJECT: TechAvail.Api
-    # .NET port of the api service, shadow-run on the same database until it replaces it.
-    labels:
-      wud.watch: "false"
-      monitoring.ignore: "true"
-      monitoring.http.path: "/health"
-    restart: unless-stopped
-    ports:
-      - "8098:8000"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
-    depends_on:
-      postgres:
-        condition: service_healthy
       ingest:
         condition: service_healthy
     healthcheck:

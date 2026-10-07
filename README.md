@@ -19,8 +19,8 @@ scheduling system ──scheduled report (CSV by email)──▶ mailbox ──I
 
 | Service | Path | Port | Role |
 |---|---|---|---|
-| `ingest` | `feed/` | 8095 | Polls IMAP, parses and stores snapshots, records delivery latency |
-| `api` | `api/` | 8097 | Read-only REST API: calendar, KPIs, outcomes, diagnostics, map, Excel export |
+| `ingest` | `src/TechAvail.Ingest/` | 8095 | Polls IMAP, parses and stores snapshots, records delivery latency |
+| `api` | `src/TechAvail.Api/` | 8097 | Read-only REST API: calendar, KPIs, outcomes, diagnostics, map, Excel exports |
 | `postgres` | | (internal) | Storage |
 
 The domain rules (free time, outcomes, diagnostics) live in plain Python modules under `feed/`, not in SQL
@@ -97,7 +97,7 @@ is strangler-style: the same database is shared, so no data migration is needed.
 TechAvailFeed.slnx
 src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
 src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
-src/TechAvail.Api/           the dashboard API (api-net, :8098, shadowing the Python api)
+src/TechAvail.Api/           the dashboard API (the live api service since 2026-10-07)
 src/TechAvail.Ingest/        the ingest worker (the live ingest service since 2026-10-06)
 Dockerfile.dotnet            one image per project, chosen with the PROJECT build arg
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
@@ -118,7 +118,7 @@ scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no S
 - [x] REST API (every endpoint and the Excel export identical to Python on a production copy)
 - [x] Ingest worker (MailKit), checked read-only against the live mailbox
 - [x] Dockerfile and compose services; the .NET ingest replaced the Python one
-- [ ] The .NET API replaces the Python one on :8097
+- [x] The .NET API replaced the Python one on :8097
 - [ ] Angular dashboard
 - [ ] Retire the Python services
 
