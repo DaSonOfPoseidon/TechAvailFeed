@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using Dapper;
 using MailKit;
 using Microsoft.Extensions.Configuration;
@@ -10,7 +11,7 @@ using TechAvail.Data.Tests;
 
 namespace TechAvail.Ingest.Tests;
 
-// The poll loop of feed/__main__.py against an in-memory mailbox.
+// The poll loop against an in-memory mailbox.
 public class PollerTests
 {
     const string Csv =
@@ -92,18 +93,16 @@ public class PollerTests
 public class MailArchiveTests
 {
     [Fact]
-    public void Archive_layout_matches_the_python_ingest()
+    public void Archive_keeps_the_raw_mail_once_with_its_metadata()
     {
         var directory = Directory.CreateTempSubdirectory().FullName;
         var received = new DateTimeOffset(2026, 10, 5, 14, 44, 45, TimeSpan.Zero);
         Assert.True(MailArchive.Save(directory, "<abc@example.com>", received, "raw"u8.ToArray()));
         Assert.False(MailArchive.Save(directory, "<abc@example.com>", received, "raw"u8.ToArray()));
-        // hashlib.sha256(b"<abc@example.com>").hexdigest()[:32]
+        // The first 32 hex digits of the Message-ID's SHA-256.
         const string name = "a1c01306268e0d2c69f4426068f5e4d0";
         Assert.Equal("raw", File.ReadAllText(Path.Combine(directory, $"{name}.eml")));
-        Assert.Equal(
-            "{\n \"message_id\": \"<abc@example.com>\",\n \"mailbox_received_at\": \"2026-10-05T14:44:45+00:00\"\n}",
-            File.ReadAllText(Path.Combine(directory, $"{name}.json")).ReplaceLineEndings("\n")
-        );
+        var meta = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, $"{name}.json")))!;
+        Assert.Equal(("<abc@example.com>", "2026-10-05T14:44:45+00:00"), ((string)meta["message_id"]!, (string)meta["mailbox_received_at"]!));
     }
 }

@@ -6,18 +6,12 @@ using System.Text.Json.Nodes;
 
 namespace TechAvail.Ingest;
 
-// Port of feed/mail.py's archive: keeps the raw mail for replay and parity tests, since Gmail only
-// holds today's. Named by a hash of the Message-ID so a re-run skips mail it already has; same
-// file layout as the Python ingest, so the tools read either.
+// Keeps the raw mail for replays and the IMAP check, since Gmail only holds today's. Named by a hash
+// of the Message-ID so a re-run skips mail it already has.
 public static class MailArchive
 {
-    // json.dumps(meta, indent=1): one-space indent, "<" and ">" in the Message-ID left as they are.
-    static readonly JsonSerializerOptions Json = new()
-    {
-        WriteIndented = true,
-        IndentSize = 1,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
+    // "<" and ">" in the Message-ID are left as they are.
+    static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     public static bool Save(string directory, string messageId, DateTimeOffset? mailboxReceivedAt, byte[] raw)
     {
@@ -29,7 +23,7 @@ public static class MailArchive
         var meta = new JsonObject
         {
             ["message_id"] = messageId,
-            // Python's isoformat() of the IMAP internal date, in UTC.
+            // The IMAP internal date, in UTC.
             ["mailbox_received_at"] = mailboxReceivedAt?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:sszzz"),
         };
         File.WriteAllText(Path.ChangeExtension(path, ".json"), meta.ToJsonString(Json));
