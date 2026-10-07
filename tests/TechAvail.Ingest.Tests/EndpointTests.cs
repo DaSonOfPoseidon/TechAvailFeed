@@ -63,8 +63,38 @@ public class EndpointTests
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/latest.json")).StatusCode);
         var missing = await client.GetAsync("/nope");
         Assert.Equal("not found", JsonNode.Parse(await missing.Content.ReadAsStringAsync())!["error"]!.GetValue<string>());
-        // No blocks snapshot yet: no days, and no latest_snapshot_at key at all.
+        // No blocks snapshot yet: no days and no latest snapshot time.
         Assert.Equal("""{"latest_snapshot_at":null,"days":[]}""", JsonNode.Parse(await client.GetStringAsync("/history.json"))!.ToJsonString());
+    }
+
+    [DbFact]
+    public async Task Latest_json_serves_a_slots_snapshot_as_stored()
+    {
+        using var db = new TestDatabase();
+        var feed = new ParsedFeed { Sha256 = "x", GeneratedAt = DateTimeOffset.UtcNow };
+        feed.Slots.Add(new Slot(new DateOnly(2026, 10, 6), "b", "Bea", new DateTime(2026, 10, 6, 13, 0, 0), new DateTime(2026, 10, 6, 15, 0, 0), 120, "North", "INS"));
+        feed.Slots.Add(new Slot(new DateOnly(2026, 10, 6), "a", "Al", new DateTime(2026, 10, 6, 9, 0, 0), new DateTime(2026, 10, 6, 10, 0, 0), 60, "South", ""));
+        new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, DateTimeOffset.UtcNow, feed);
+        using var factory = new Factory(db, "");
+        var body = JsonNode.Parse(await factory.CreateClient().GetStringAsync("/latest.json"))!.AsObject();
+        Assert.Equal(["snapshot", "slots"], body.Select(p => p.Key));
+        Assert.Equal("slots", (string)body["snapshot"]!["format"]!);
+        // Ordered by day, then tech name.
+        var slots = body["slots"]!.AsArray();
+        Assert.Equal(["Al", "Bea"], slots.Select(s => (string)s!["tech_name"]!));
+        var bea = slots[1]!;
+        Assert.Equal(
+            ("b", "2026-10-06", "2026-10-06T13:00:00", "2026-10-06T15:00:00", 120, "North", "INS"),
+            (
+                (string)bea["tech_id"]!,
+                (string)bea["work_date"]!,
+                (string)bea["open_from"]!,
+                (string)bea["open_until"]!,
+                (int)bea["open_minutes"]!,
+                (string)bea["region"]!,
+                (string)bea["skills"]!
+            )
+        );
     }
 
     [DbFact]

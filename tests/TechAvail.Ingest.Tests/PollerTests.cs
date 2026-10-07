@@ -90,6 +90,102 @@ public class PollerTests
     }
 }
 
+public class PollWorkerTests
+{
+    // The first poll fails to connect. The second waits for Proceed, so the test can see the recorded
+    // error before it is cleared; later polls find an empty inbox.
+    sealed class FlakyMailbox : IMailbox, IMailboxSession
+    {
+        int opens;
+
+        public SemaphoreSlim Proceed { get; } = new(0);
+
+        public int Opens => Volatile.Read(ref opens);
+
+        public IMailboxSession Open()
+        {
+            var n = Interlocked.Increment(ref opens);
+            if (n == 1)
+                throw new InvalidOperationException("IMAP login failed");
+            if (n == 2)
+                Proceed.Wait();
+            return this;
+        }
+
+        public IReadOnlyList<FetchedMail> FetchNew() => [];
+
+        public IReadOnlyList<FetchedMail> Peek(string label) => [];
+
+        public void FileAway(UniqueId uid, string label) { }
+
+        public void EnsureLabels() { }
+
+        public int PurgeProcessed(DateOnly before) => 0;
+
+        public void Dispose() { }
+    }
+
+    static PollWorker Worker(bool mail, FlakyMailbox mailbox, PollState state)
+    {
+        var settings = IngestSettings.From(
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        // An empty inbox never touches the database.
+                        ["DATABASE_URL"] = "Host=unused",
+                        ["IMAP_USER"] = mail ? "feed@example.com" : "",
+                        ["IMAP_PASSWORD"] = "x",
+                        ["MAIL_SUBJECT"] = "TechAvailFeed",
+                        ["MAIL_FROM"] = "mbs@example.com",
+                        ["POLL_SECONDS"] = "0",
+                    }
+                )
+                .Build()
+        );
+        var poller = new Poller(new FeedStore(settings.ConnectionString), mailbox, settings, TimeProvider.System, NullLogger<Poller>.Instance);
+        return new PollWorker(poller, state, settings, TimeProvider.System, NullLogger<PollWorker>.Instance);
+    }
+
+    static async Task Until(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "timed out");
+            await Task.Delay(10);
+        }
+    }
+
+    [Fact]
+    public async Task A_failed_poll_is_recorded_and_the_next_one_clears_it()
+    {
+        var (mailbox, state) = (new FlakyMailbox(), new PollState());
+        using var worker = Worker(mail: true, mailbox, state);
+        await worker.StartAsync(CancellationToken.None);
+
+        await Until(() => state.Get().Error is not null);
+        var (failedAt, error) = state.Get();
+        Assert.Equal("IMAP login failed", error);
+
+        mailbox.Proceed.Release();
+        await Until(() => state.Get().Error is null);
+        Assert.True(state.Get().At >= failedAt);
+        await worker.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Without_mail_settings_the_worker_never_polls()
+    {
+        var (mailbox, state) = (new FlakyMailbox(), new PollState());
+        using var worker = Worker(mail: false, mailbox, state);
+        await worker.StartAsync(CancellationToken.None);
+        await worker.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, mailbox.Opens);
+        Assert.Null(state.Get().At);
+    }
+}
+
 public class MailArchiveTests
 {
     [Fact]
