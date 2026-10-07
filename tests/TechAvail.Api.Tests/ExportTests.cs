@@ -108,21 +108,6 @@ public class ExportTests
         Assert.Equal("=cmd|' /C calc'!A0", About(wb)["Filter: region"].GetText());
     }
 
-    [Fact]
-    public void Diagnostics_sheet_flattens_check_specific_fields_into_detail()
-    {
-        var check = new Check("tech_no_region", "tech_setup", "No region", "warning", "")
-        {
-            Rows = [new() { ["tech_id"] = "a", ["tech_name"] = "A", ["days"] = 3, ["first_date"] = new DateOnly(2026, 10, 6) }],
-        };
-        using var wb = Open(Workbook(checks: [check]));
-        var rows = Rows(wb.Worksheet("Diagnostics"));
-        var header = rows[0].Select(v => v.ToString()).ToList();
-        Assert.Equal("No region", rows[1][header.IndexOf("Check")].GetText());
-        Assert.Equal("a", rows[1][header.IndexOf("Tech id")].GetText());
-        Assert.Equal("days: 3; first date: 2026-10-06", rows[1][header.IndexOf("Detail")].GetText());
-    }
-
     [DbFact]
     public async Task Export_is_a_workbook()
     {

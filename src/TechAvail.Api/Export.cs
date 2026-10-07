@@ -19,24 +19,6 @@ public static class Export
         .. OutcomesExport.Definitions,
     ];
 
-    static readonly Column[] DiagnosticColumns =
-    [
-        new("Check"),
-        new("Severity"),
-        new("Ref"),
-        new("Kind"),
-        new("Status"),
-        new("Date", DateFormat, 12),
-        new("Starts", TimeFormat, 17),
-        new("Ends", TimeFormat, 17),
-        new("Tech id"),
-        new("Tech"),
-        new("Region"),
-        new("Detail", Width: 60),
-    ];
-
-    static readonly string[] DiagnosticFields = ["ref_id", "kind", "status", "work_date", "starts_at", "ends_at", "tech_id", "tech_name", "region"];
-
     static readonly Column[] JeopardyColumns =
     [
         new("Tech"),
@@ -69,21 +51,6 @@ public static class Export
 
     static object? Get(OrderedDictionary<string, object?> row, string key) => row.TryGetValue(key, out var value) ? value : null;
 
-    // Fixed columns for the job or tech, and whatever else a check reports as "name: value".
-    static List<object?[]> DiagnosticRows(IEnumerable<Check> checks) =>
-    [
-        .. checks.SelectMany(check =>
-            check.Rows.Select(row =>
-            {
-                var detail = string.Join(
-                    "; ",
-                    row.Where(f => !DiagnosticFields.Contains(f.Key)).Select(f => $"{f.Key.Replace('_', ' ')}: {Xlsx.PyStr(f.Value)}")
-                );
-                return (object?[])[check.Title, check.Severity, .. DiagnosticFields.Select(f => Get(row, f)), detail];
-            })
-        ),
-    ];
-
     public static byte[] Workbook(
         TimeZoneInfo tz,
         DateTimeOffset now,
@@ -104,7 +71,7 @@ public static class Export
         CapacityExport.WriteSheets(wb, entries, days, demand, schedule);
         Xlsx.WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
         OutcomesExport.WriteSheets(wb, outcomes, kpis, (string?)Get(filters, "region"), (string?)Get(filters, "tech"));
-        Xlsx.WriteSheet(wb, "Diagnostics", DiagnosticColumns, DiagnosticRows(checks));
+        DiagnosticsExport.WriteSheet(wb, checks);
 
         // Excel has no time zones: both times are written as local time, like the block timestamps.
         var about = wb.Worksheets.Add("About");
@@ -136,8 +103,8 @@ public static class Export
             Append(name, text);
         rowNumber++;
         Append("Diagnostic", "Rows", bold: true);
-        foreach (var check in checks)
-            Append(check.Title, check.Available ? check.Rows.Count : "not in feed yet");
+        foreach (var (name, rows) in DiagnosticsExport.Counts(checks))
+            Append(name, rows);
         // Last, so the rows above stay where the Python export has them.
         rowNumber++;
         Append(
