@@ -5,12 +5,11 @@ from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Response, Security
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 
 from api.capacity import calendar_entries, filter_days, region_totals, unassigned_work
-from api.export import workbook
 from api.kpis import outcome_kpis
 from feed.availability import CALENDARS, NOT_BUSY, TechDay, tech_days
 from feed.coords import public_coords
@@ -19,14 +18,13 @@ from feed.history import outcomes
 from feed.parse import Block
 from feed.store import Store
 
-# Dashboard API: JSON for the calendar and KPI charts, and the Excel export. Read-only; the
+# Dashboard API: JSON for the calendar and KPI charts. Read-only; the
 # ingest service writes everything. Any web page or server calls it over HTTP.
 
 # MBS sends every 15 minutes, so three missed runs means the numbers are going stale.
 STALE_MINUTES = 45
 MAX_DAYS = 62
 MAX_HISTORY_DAYS = 366
-WORK_KINDS = ("job", "ticket", "time_off")
 MAP_KINDS = ("job", "ticket", "job_unassigned", "ticket_unassigned")
 
 Region = Annotated[str | None, Query(description="Exact region name; omit for all")]
@@ -87,22 +85,6 @@ def tech_detail(day: TechDay) -> dict:
             for s in day.free
         ],
     }
-
-
-def schedule_rows(
-    blocks: list[Block], days: list[TechDay], start: date, end: date, calendar: str
-) -> list[Block]:
-    # The raw rows behind the filtered tech days: their shifts, work and any overlapping leave.
-    keys = {(d.tech_id, d.work_date) for d in days}
-    techs = {d.tech_id for d in days}
-    rows = []
-    for b in blocks:
-        if b.kind == "time_off":
-            if b.tech_id in techs and b.starts_at.date() <= end and b.ends_at.date() >= start:
-                rows.append(b)
-        elif b.kind in (CALENDARS[calendar], *WORK_KINDS) and (b.tech_id, b.work_date) in keys:
-            rows.append(b)
-    return sorted(rows, key=lambda b: (b.work_date, b.tech_name, b.starts_at, b.kind))
 
 
 def check_summary(check: Check) -> dict:
@@ -219,7 +201,7 @@ def create_app(
 
     app = FastAPI(
         title="TechAvailFeed API",
-        description="30-day tech capacity calendar, KPIs and Excel export from the MBS feed.",
+        description="30-day tech capacity calendar and KPIs from the MBS feed.",
         version="1.0",
     )
     if cors_origins:
@@ -374,54 +356,6 @@ def create_app(
             "points": points,
             "unmapped": unmapped,
         }
-
-    @v1.get(
-        "/export.xlsx",
-        response_class=Response,
-        responses={
-            200: {
-                "content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}}
-            }
-        },
-    )
-    def export(
-        start: date | None = None,
-        days: Annotated[int, Query(ge=1, le=MAX_DAYS)] = 30,
-        history_days: Annotated[int, Query(ge=1, le=MAX_HISTORY_DAYS)] = 30,
-        region: Region = None,
-        skill: Skill = None,
-        calendar: Calendar = "install",
-    ) -> Response:
-        # The forward calendar from start, plus the last history_days of outcomes up to today.
-        blocks, meta = latest()
-        start, end = window(start, days)
-        tech_rows, demand, entries = capacity(blocks, start, end, region, skill, calendar)
-        today = local_now().date()
-        past = outcomes(store, tz, today - timedelta(days=history_days - 1), today)
-        data = workbook(
-            tz=tz,
-            meta=meta,
-            filters={
-                "calendar": calendar,
-                "region": region,
-                "skill": skill,
-                "from": start,
-                "to": end,
-            },
-            entries=entries,
-            days=tech_rows,
-            demand=demand,
-            schedule=schedule_rows(blocks, tech_rows, start, end, calendar),
-            outcomes=past,
-            kpis=outcome_kpis(past, region),
-            checks=diagnose(blocks, today),
-        )
-        filename = f"techavail_{today.isoformat()}.xlsx"
-        return Response(
-            data,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
 
     app.include_router(v1)
     return app

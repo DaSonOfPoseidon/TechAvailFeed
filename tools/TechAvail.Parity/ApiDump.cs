@@ -36,14 +36,6 @@ public static class ApiDump
         foreach (var (path, expected) in python["responses"]!.AsObject())
         {
             var response = await client.GetAsync(path);
-            if (path.StartsWith("/api/v1/export.xlsx", StringComparison.Ordinal))
-            {
-                var name = $"{Path.GetFileNameWithoutExtension(output)}_export{responses.Count}.xlsx";
-                File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(output)!, name), await response.Content.ReadAsByteArrayAsync());
-                var disposition = response.Content.Headers.TryGetValues("Content-Disposition", out var values) ? values.First() : null;
-                responses[path] = new JsonObject { ["status"] = (int)response.StatusCode, ["body"] = disposition };
-                continue;
-            }
             var text = await response.Content.ReadAsStringAsync();
             var body = text.Length > 0 ? JsonNode.Parse(text) : null;
             // Like the Python side: only the status of framework validation errors, whose wording

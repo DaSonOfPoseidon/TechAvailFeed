@@ -1,10 +1,8 @@
-import io
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from openpyxl import load_workbook
 
 from api.main import create_app
 from feed.parse import Block
@@ -148,33 +146,6 @@ def test_outcome_kpis(api):
 def test_outcome_range_is_validated(api):
     params = {"start": "2026-10-06", "end": "2026-10-01"}
     assert api.get("/api/v1/kpis/outcomes", params=params).status_code == 422
-
-
-def test_export_is_a_workbook(api):
-    response = api.get("/api/v1/export.xlsx", params={"days": 2, "history_days": 1})
-    assert response.status_code == 200
-    assert "techavail_2026-10-06.xlsx" in response.headers["content-disposition"]
-    wb = load_workbook(io.BytesIO(response.content))
-    assert wb.sheetnames == [
-        "Summary",
-        "Tech days",
-        "Free slots",
-        "Schedule",
-        "Unassigned work",
-        "Outcomes by day",
-        "Outcome items",
-        "Diagnostics",
-        "About",
-    ]
-    summary = list(wb["Summary"].iter_rows(values_only=True))
-    assert summary[0][:3] == ("Date", "Region", "Techs on")
-    assert summary[1][:3] == (datetime(2026, 10, 6), "(all)", 2)
-    assert len(list(wb["Schedule"].iter_rows())) == 1 + 3
-    items = list(wb["Outcome items"].iter_rows(values_only=True))
-    assert items[1][3] == "j1"
-    headers = {c.value for ws in wb for c in ws[1] if isinstance(c.value, str)}
-    assert not {h for h in headers if "lat" in h.lower() or "lon" in h.lower()}
-    assert "Address issue" in headers
 
 
 def located(b: Block, lat: float, lon: float, issue: str = "") -> Block:

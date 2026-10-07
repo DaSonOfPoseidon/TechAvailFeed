@@ -5,7 +5,7 @@ scheduled report emailed as CSV.
 
 An ingest service polls a mailbox over IMAP, parses each CSV into Postgres and tracks how fresh the data is.
 A REST API turns the snapshots into a 30-day capacity calendar, KPI series, an outcome history (what happened
-to the work planned for each day), data-quality diagnostics, a map feed and an Excel export.
+to the work planned for each day), data-quality diagnostics, a map feed and Excel workbooks for each.
 
 All sample data in this repository is fictional.
 
@@ -37,8 +37,8 @@ or in the API layer. That keeps them unit-testable without a database.
   With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally for replay and parity tests.
 - **Freshness is part of every response.** Each API response includes the snapshot it was computed from and
   its age, and is flagged `stale` when deliveries stop.
-- **Location privacy.** Job coordinates are stored exactly but served rounded to about 110 m. The Excel export
-  never includes them, and the feed carries no address text.
+- **Location privacy.** Job coordinates are stored exactly but served rounded to about 110 m. The Excel exports
+  never include them, and the feed carries no address text.
 - **Format evolution.** New columns are optional, so older exports still parse. The parser recognises the
   format from the header row. See [`docs/feed-format.md`](docs/feed-format.md).
 
@@ -57,9 +57,11 @@ Interactive docs are served at `/docs` and the OpenAPI schema at `/openapi.json`
 | `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day, region and technician |
 | `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps |
 | `GET /api/v1/map` | Jobs as map points with rounded coordinates |
-| `GET /api/v1/export.xlsx` | All of the above as a multi-sheet workbook. The .NET API adds a "Jobs in jeopardy" sheet: today's jobs not completed by 30 minutes before their scheduled end (JIJ) |
-| `GET /api/v1/arrivals.xlsx` | On-time arrival workbook for `date` (default today): the 8:00 jobs as of the 8:15 run, the day so far, or a past day's completed jobs, highlighted en route (yellow) / not started (red). .NET API only |
-| `GET /api/v1/jeopardy.xlsx` | The VP's jobs-in-jeopardy status update (sent at 10 AM, 1 PM, 3 PM and 5 PM). `at=HH:mm` reads that time's run (default: the day's latest); `date`, and `region`, which is a VP region. One sheet holds Green/Yellow/Red per VP region and the areas/techs of concern (job in jeopardy, previous job going long, a slot with more jobs than techs), with a blank *Actions Taking* column for the dispatcher. Rules: `src/TechAvail.Core/StatusUpdate.cs`. The area to VP region map follows MBSReporter's multiregion rules. **Hannibal-Bowling Green → STL West and Carrollton → West are inferred and still need the VP to confirm them.** .NET API only |
+| `GET /api/v1/capacity.xlsx` | The calendar as a workbook (same filters as `/calendar`): capacity per day and region, tech days, free slots, the schedule behind them and unassigned work |
+| `GET /api/v1/outcomes.xlsx` | The outcome history as a workbook (same filters as `/kpis/outcomes`): outcomes per day, and per planned job |
+| `GET /api/v1/diagnostics.xlsx` | The data-quality checks as a workbook (same filters as `/diagnostics`), one row per finding |
+| `GET /api/v1/arrivals.xlsx` | On-time arrival workbook for `date` (default today): the 8:00 jobs as of the 8:15 run, the day so far, or a past day's completed jobs, highlighted en route (yellow) / not started (red). |
+| `GET /api/v1/jeopardy.xlsx` | The VP's jobs-in-jeopardy status update (sent at 10 AM, 1 PM, 3 PM and 5 PM). `at=HH:mm` reads that time's run (default: the day's latest); `date`, and `region`, which is a VP region. One sheet holds Green/Yellow/Red per VP region and the areas/techs of concern (job in jeopardy, previous job going long, a slot with more jobs than techs), with a blank *Actions Taking* column for the dispatcher. Rules: `src/TechAvail.Core/StatusUpdate.cs`. The area to VP region map follows MBSReporter's multiregion rules. **Hannibal-Bowling Green → STL West and Carrollton → West are inferred and still need the VP to confirm them.** |
 
 Most endpoints take `start`, `days`, `region` and `skill` query parameters.
 
@@ -131,7 +133,7 @@ Both APIs were measured live, side by side on the same database and snapshot (20
 |---|---|---|
 | `/calendar` | 123 ms | 57 ms |
 | `/kpis/outcomes` | 362 ms | 58 ms |
-| `/export.xlsx` | 1.76 s | 0.43 s |
+| `/export.xlsx` (since split into capacity/outcomes/diagnostics) | 1.76 s | 0.43 s |
 | 40 `/kpis/outcomes`, 10 at a time | 3.86 s | 0.67 s |
 | 12 exports, 3 at a time | 21.5 s | 2.3 s |
 | Memory after that load | 183 MiB | 184 MiB |
