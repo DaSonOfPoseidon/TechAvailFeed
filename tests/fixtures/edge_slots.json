@@ -1,0 +1,28 @@
+{
+  "sha256": "1b15fe99593c8434d2a940a183134abb321ec50b70c0c764ffa1f2ae196f2dd2",
+  "format": "slots",
+  "generated_at": "2026-09-28T06:00:00-05:00",
+  "row_count": 2,
+  "rows": [
+    {
+      "work_date": "2026-09-28",
+      "tech_id": "jdoe0170",
+      "tech_name": "Jane Doe",
+      "open_from": "2026-09-28T08:00:00",
+      "open_until": "2026-09-28T10:30:00",
+      "open_minutes": 150,
+      "region": "North Core",
+      "skills": "CONN"
+    },
+    {
+      "work_date": "2026-09-28",
+      "tech_id": "jsmi0171",
+      "tech_name": "John Smith",
+      "open_from": "2026-09-28T13:00:00",
+      "open_until": "2026-09-28T15:00:00",
+      "open_minutes": 120,
+      "region": "South",
+      "skills": ""
+    }
+  ]
+}
