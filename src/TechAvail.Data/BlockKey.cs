@@ -53,11 +53,6 @@ public sealed record BlockKey(
             b.Longitude,
             b.GpsPrecision
         );
-
-    // A NaN coordinate read back from the table is a new float in Python, and NaN == NaN is false,
-    // so such a stored row never matches. (Within one parsed snapshot a row is the same object,
-    // which Python treats as equal, so plain record equality is right there.)
-    public bool HasNaN => double.IsNaN(Latitude ?? 0) || double.IsNaN(Longitude ?? 0);
 }
 
 public static class BlockDiff
@@ -75,7 +70,7 @@ public static class BlockDiff
         var close = new List<long>();
         foreach (var (id, key) in current)
         {
-            if (!key.HasNaN && wanted.TryGetValue(key, out var count) && count > 0)
+            if (wanted.TryGetValue(key, out var count) && count > 0)
                 wanted[key] = count - 1;
             else
                 close.Add(id);

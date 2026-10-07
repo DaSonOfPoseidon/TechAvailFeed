@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.VisualBasic.FileIO;
 
 namespace TechAvail.Core.Parsing;
 
-// Port of feed/parse.py. Accepts, rejects and reports (error messages included) exactly what the
-// Python parser does; tools/TechAvail.Parity checks that against the real feed.
+// Parses the scheduled feed CSV (docs/feed-format.md) into blocks, or slots for the legacy format.
+// Anything malformed rejects the whole file with a FeedParseException naming the line.
 public static partial class FeedParser
 {
     // Legacy gap format, still emitted by the registered feed query until it is updated.
@@ -69,16 +70,12 @@ public static partial class FeedParser
         "ticket_unassigned",
     ];
 
-    static readonly string[] DateFormats = ["%Y-%m-%d", "%m-%d-%Y", "%m/%d/%Y"];
+    static readonly string[] DateFormats = ["yyyy-M-d", "M-d-yyyy", "M/d/yyyy"];
 
     // The scheduling system rewrites a seconds-precision value as "09-29-2026 12:03:34".
-    static readonly string[] TimestampFormats =
-    [
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%m-%d-%Y %H:%M:%S",
-        "%m-%d-%Y %I:%M %p",
-    ];
+    static readonly string[] TimestampFormats = ["yyyy-M-d H:mm", "yyyy-M-d H:mm:ss", "M-d-yyyy H:mm:ss", "M-d-yyyy h:mm tt"];
+
+    const DateTimeStyles Lenient = DateTimeStyles.AllowWhiteSpaces;
 
     static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
@@ -98,76 +95,65 @@ public static partial class FeedParser
         if (text.StartsWith('﻿'))
             text = text[1..];
 
-        using var rows = PyCsv.Read(text).GetEnumerator();
-        List<string> header;
-        try
+        using var csv = new TextFieldParser(new StringReader(text))
         {
-            if (!rows.MoveNext())
-                throw new FeedParseException("file is empty, no header row");
-            header = rows.Current;
-        }
-        catch (CsvException exc)
-        {
-            throw new FeedParseException($"bad header row: {exc.Message}");
-        }
-
-        var columns = header.Select(name => name.Trim().ToLowerInvariant()).ToList();
+            TextFieldType = FieldType.Delimited,
+            Delimiters = [","],
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false,
+        };
+        var header = ReadRow(csv) ?? throw new FeedParseException("file is empty, no header row");
+        var columns = header.Fields.Select(name => name.Trim().ToLowerInvariant()).ToList();
         if (columns.Contains("kind"))
             parsed.Format = "blocks";
         var required = parsed.Format == "blocks" ? BlockColumns : RequiredColumns;
         var missing = required.Where(name => !columns.Contains(name)).ToList();
         if (missing.Count > 0)
             throw new FeedParseException($"missing columns: {string.Join(", ", missing)}");
-        var index = required.ToDictionary(name => name, columns.IndexOf);
-        if (parsed.Format == "blocks")
-            foreach (var name in OptionalBlockColumns.Where(columns.Contains))
-                index[name] = columns.IndexOf(name);
+        var index = required.Concat(parsed.Format == "blocks" ? OptionalBlockColumns.Where(columns.Contains) : [])
+            .ToDictionary(name => name, columns.IndexOf);
 
-        for (int lineNumber = 2; ; lineNumber++)
+        // Blank lines are skipped by the reader.
+        while (ReadRow(csv) is { } next)
         {
-            try
-            {
-                if (!rows.MoveNext())
-                    break;
-            }
-            catch (CsvException exc)
-            {
-                throw new FeedParseException($"malformed CSV: {exc.Message}");
-            }
-            var row = rows.Current;
+            var (line, row) = next;
             if (row.All(string.IsNullOrWhiteSpace))
                 continue;
-            if (row.Count != columns.Count)
-                throw new FeedParseException(
-                    $"line {lineNumber}: expected {columns.Count} fields, got {row.Count}"
-                );
+            if (row.Length != columns.Count)
+                throw new FeedParseException($"line {line}: expected {columns.Count} fields, got {row.Length}");
             var values = index.ToDictionary(pair => pair.Key, pair => row[pair.Value]);
             parsed.GeneratedAt ??= ParseGeneratedAt(values["generated_at"]);
             if (parsed.Format == "blocks")
-                parsed.Blocks.Add(ParseBlock(values, lineNumber));
+                parsed.Blocks.Add(ParseBlock(values, line));
             else
-                parsed.Slots.Add(ParseSlot(values, lineNumber));
+                parsed.Slots.Add(ParseSlot(values, line));
         }
         return parsed;
     }
 
-    public static DateOnly ParseDate(string value)
+    // The next record and the line it starts on, or null at the end of the file.
+    static (long Line, string[] Fields)? ReadRow(TextFieldParser csv)
     {
-        var text = value.Trim();
-        foreach (var format in DateFormats)
-            if (PyTime.TryStrptime(text, format, out var parsed))
-                return DateOnly.FromDateTime(parsed);
-        throw new FeedParseException($"unrecognised date '{value}'");
+        var line = csv.LineNumber;
+        try
+        {
+            return csv.ReadFields() is { } fields ? (line, fields) : null;
+        }
+        catch (MalformedLineException exc)
+        {
+            throw new FeedParseException($"line {exc.LineNumber}: malformed CSV");
+        }
     }
 
-    public static DateTime ParseTimestamp(string value)
-    {
-        var text = value.Trim();
-        foreach (var format in TimestampFormats)
-            if (PyTime.TryStrptime(text, format, out var parsed))
-                return parsed;
-        throw new FeedParseException($"unrecognised timestamp '{value}'");
-    }
+    public static DateOnly ParseDate(string value) =>
+        DateOnly.TryParseExact(value, DateFormats, CultureInfo.InvariantCulture, Lenient, out var parsed)
+            ? parsed
+            : throw new FeedParseException($"unrecognised date '{value}'");
+
+    public static DateTime ParseTimestamp(string value) =>
+        DateTime.TryParseExact(value, TimestampFormats, CultureInfo.InvariantCulture, Lenient, out var parsed)
+            ? parsed
+            : throw new FeedParseException($"unrecognised timestamp '{value}'");
 
     static DateTime? ParseOptionalTimestamp(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : ParseTimestamp(value);
@@ -182,37 +168,14 @@ public static partial class FeedParser
         return match.Success ? match.Groups[1].Value.Trim() : value.Trim();
     }
 
-    // Python's float(): optional sign, digits with single underscores between them, an optional
-    // fraction and exponent, or inf/infinity/nan, with surrounding whitespace.
-    [GeneratedRegex(
-        @"^[+-]?(?:(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[eE][+-]?[0-9](?:_?[0-9])*)?|inf|infinity|nan)$",
-        RegexOptions.IgnoreCase
-    )]
-    private static partial Regex PyFloat();
-
-    static bool TryParseFloat(string value, out double number)
-    {
-        number = 0;
-        var text = value.Trim();
-        if (!PyFloat().IsMatch(text))
-            return false;
-        text = text.Replace("_", "").ToLowerInvariant();
-        var negative = text.StartsWith('-');
-        var unsigned = text.TrimStart('+', '-');
-        if (unsigned is "inf" or "infinity")
-            number = negative ? double.NegativeInfinity : double.PositiveInfinity;
-        else if (unsigned == "nan")
-            number = double.NaN;
-        else
-            number = double.Parse(text, NumberStyles.Float, CultureInfo.InvariantCulture);
-        return true;
-    }
+    static bool TryParseNumber(string value, out double number) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) && double.IsFinite(number);
 
     // The scheduling system stores a missing GPS position as 0.
-    static double? ParseCoordinate(string value, string name, int lineNumber)
+    static double? ParseCoordinate(string value, string name, long lineNumber)
     {
         double number = 0;
-        if (!string.IsNullOrWhiteSpace(value) && !TryParseFloat(value, out number))
+        if (!string.IsNullOrWhiteSpace(value) && !TryParseNumber(value, out number))
             throw new FeedParseException($"line {lineNumber}: bad {name} '{value}'");
         return number == 0 ? null : number;
     }
@@ -223,77 +186,57 @@ public static partial class FeedParser
         var text = value.Trim();
         if (text.Length >= 3 && text[^3] is '+' or '-' && char.IsDigit(text[^2]) && char.IsDigit(text[^1]))
             text += ":00";
-        if (!PyTime.TryFromIsoFormat(text, out var parsed))
-            throw new FeedParseException($"unrecognised generated_at '{value}'");
-        return parsed;
+        // Without an offset, the time is UTC (as Postgres stores it).
+        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            ? parsed
+            : throw new FeedParseException($"unrecognised generated_at '{value}'");
     }
 
-    static Slot ParseSlot(Dictionary<string, string> values, int lineNumber)
+    static Slot ParseSlot(Dictionary<string, string> values, long lineNumber)
     {
-        // int(float(x)): the fraction is truncated toward zero.
-        if (
-            !TryParseFloat(values["open_minutes"], out var minutes)
-            || !double.IsFinite(minutes)
-            || Math.Abs(minutes) >= int.MaxValue
-        )
-            throw new FeedParseException(
-                $"line {lineNumber}: bad open_minutes '{values["open_minutes"]}'"
-            );
-        var workDate = ParseDate(values["work_date"]);
-        var techId = values["tech_id"].Trim();
-        var techName = values["tech_name"].Trim();
-        var openFrom = ParseTimestamp(values["open_from"]);
-        var openUntil = ParseTimestamp(values["open_until"]);
+        // A fractional minute count is truncated toward zero.
+        if (!TryParseNumber(values["open_minutes"], out var minutes) || Math.Abs(minutes) >= int.MaxValue)
+            throw new FeedParseException($"line {lineNumber}: bad open_minutes '{values["open_minutes"]}'");
         return new Slot(
-            workDate,
-            techId,
-            techName,
-            openFrom,
-            openUntil,
+            ParseDate(values["work_date"]),
+            values["tech_id"].Trim(),
+            values["tech_name"].Trim(),
+            ParseTimestamp(values["open_from"]),
+            ParseTimestamp(values["open_until"]),
             (int)Math.Truncate(minutes),
             values["region"].Trim(),
             values["skills"].Trim()
         );
     }
 
-    // Fields are read in the Python constructor's order, so the first bad value reported matches.
-    static Block ParseBlock(Dictionary<string, string> values, int lineNumber)
+    static Block ParseBlock(Dictionary<string, string> values, long lineNumber)
     {
         string Get(string name) => values.GetValueOrDefault(name, "");
         var kind = values["kind"].Trim().ToLowerInvariant();
         if (!BlockKinds.Contains(kind))
             throw new FeedParseException($"line {lineNumber}: unknown kind '{values["kind"]}'");
-        var workDate = ParseDate(values["work_date"]);
-        var startsAt = ParseTimestamp(values["starts_at"]);
-        var endsAt = ParseTimestamp(values["ends_at"]);
-        var modifiedAt = ParseOptionalTimestamp(Get("modified_at"));
-        var modifiedBy = ParseUserId(Get("modified_by"));
-        var enrouteAt = ParseOptionalTimestamp(Get("enroute_at"));
-        var inprogressAt = ParseOptionalTimestamp(Get("inprogress_at"));
-        var latitude = ParseCoordinate(Get("latitude"), "latitude", lineNumber);
-        var longitude = ParseCoordinate(Get("longitude"), "longitude", lineNumber);
         return new Block
         {
             Kind = kind,
-            WorkDate = workDate,
+            WorkDate = ParseDate(values["work_date"]),
             TechId = values["tech_id"].Trim(),
             TechName = values["tech_name"].Trim(),
-            StartsAt = startsAt,
-            EndsAt = endsAt,
+            StartsAt = ParseTimestamp(values["starts_at"]),
+            EndsAt = ParseTimestamp(values["ends_at"]),
             RefId = values["ref_id"].Trim(),
             Status = values["status"].Trim(),
             Department = Get("department").Trim(),
             Region = values["region"].Trim(),
             Skills = values["skills"].Trim(),
             TaskType = Get("task_type").Trim(),
-            ModifiedAt = modifiedAt,
-            ModifiedBy = modifiedBy,
-            EnrouteAt = enrouteAt,
-            InprogressAt = inprogressAt,
+            ModifiedAt = ParseOptionalTimestamp(Get("modified_at")),
+            ModifiedBy = ParseUserId(Get("modified_by")),
+            EnrouteAt = ParseOptionalTimestamp(Get("enroute_at")),
+            InprogressAt = ParseOptionalTimestamp(Get("inprogress_at")),
             PrereqsStatus = Get("pre-reqs status").Trim(),
             AddressIssue = values.TryGetValue("address_issue", out var issue) ? issue.Trim() : null,
-            Latitude = latitude,
-            Longitude = longitude,
+            Latitude = ParseCoordinate(Get("latitude"), "latitude", lineNumber),
+            Longitude = ParseCoordinate(Get("longitude"), "longitude", lineNumber),
             GpsPrecision = Get("gps_precision").Trim().ToUpperInvariant(),
         };
     }

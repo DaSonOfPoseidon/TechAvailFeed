@@ -88,7 +88,7 @@ public class FeedParserTests
         "\"2026-09-29T09:15:02-05\",\"job\",\"2026-09-29\",\"jdoe0170\",\"Jane Doe\","
         + "\"2026-09-29 09:00\",\"2026-09-29 11:00\",\"123456\",\"A\",\"FIELD\",\"\",\"\"\n";
 
-    // JOB_ROW.replace('"",""\n', ...) in the Python tests: swaps the trailing region and skills.
+    // JobRow with its trailing region and skills swapped for tail.
     static string Job(string tail) => JobRow.Replace("\"\",\"\"\n", tail);
 
     [Fact]
@@ -255,11 +255,11 @@ public class FeedParserTests
         Assert.Equal("shift_tc", Parse(BlockHeader + ShiftRow.Replace("\"shift\"", "\"shift_tc\"")).Blocks[0].Kind);
 
     [Theory]
-    [InlineData(" 1_000.5 ", 1000.5)]
+    [InlineData(" 1000.5 ", 1000.5)]
     [InlineData("1e2", 100.0)]
     [InlineData("-.5", -0.5)]
     [InlineData("-0.0", null)]
-    public void Coordinates_follow_python_float(string value, double? expected)
+    public void Coordinates_are_invariant_numbers(string value, double? expected)
     {
         var block = Parse(AddressHeader + Job($"\"\",\"\",\"\",\"{value}\",\"\",\"\"\n")).Blocks[0];
         Assert.Equal(expected, block.Latitude);
@@ -270,7 +270,9 @@ public class FeedParserTests
     [InlineData("_1")]
     [InlineData("1.2.3")]
     [InlineData("0x10")]
-    public void Coordinates_python_rejects_are_rejected(string value) =>
+    [InlineData("NaN")]
+    [InlineData("Infinity")]
+    public void Malformed_or_non_finite_coordinates_are_rejected(string value) =>
         Assert.Equal(
             $"line 2: bad latitude '{value}'",
             ParseError(AddressHeader + Job($"\"\",\"\",\"\",\"{value}\",\"\",\"\"\n"))

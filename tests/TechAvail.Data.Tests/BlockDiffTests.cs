@@ -85,16 +85,4 @@ public class BlockDiffTests
         Assert.Equal([Block("a")], insert);
         Assert.Equal([1L], close);
     }
-
-    [Fact]
-    public void Nan_rows_are_inserted_but_a_stored_one_never_matches()
-    {
-        var nan = Block("a") with { Latitude = double.NaN };
-        var (insert, close) = Diff([], nan, nan);
-        Assert.Equal(2, insert.Count);
-        Assert.Empty(close);
-        (insert, close) = Diff([(1, nan)], nan);
-        Assert.Single(insert);
-        Assert.Equal([1L], close);
-    }
 }
