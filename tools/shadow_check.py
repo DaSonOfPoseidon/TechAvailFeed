@@ -13,6 +13,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from openpyxl.utils.cell import coordinate_from_string
+
 from tools.api_golden import paths
 from tools.compare_xlsx import describe
 from tools.replay import diff
@@ -43,13 +45,31 @@ def get(base: str, path: str, key: str) -> tuple[int, bytes]:
         return exc.code, exc.read()
 
 
+# Only the .NET export has the jobs in jeopardy sheet and the JIJ definition ending About.
+JEOPARDY_SHEET = "Jobs in jeopardy"
+
+
+def without_jeopardy(found: dict) -> dict:
+    found.pop(JEOPARDY_SHEET, None)
+    found["sheets"] = [s for s in found["sheets"] if s != JEOPARDY_SHEET]
+    cells = found["About"]["cells"]
+    start = next((int(c[1:]) for c, v in cells.items() if c[0] == "A" and v[0] == "JIJ"), None)
+    if start is not None:
+        found["About"]["cells"] = {
+            c: v for c, v in cells.items() if coordinate_from_string(c)[1] < start
+        }
+    return found
+
+
 def comparable(path: str, status: int, body: bytes):
     if path.startswith("/api/v1/export.xlsx"):
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as file:
             file.write(body)
             file.flush()
             # The export time is the wall clock.
-            return status, describe(file.name, {"About!B1"}) if status == 200 else None
+            return status, (
+                without_jeopardy(describe(file.name, {"About!B1"})) if status == 200 else None
+            )
     return status, without_age(json.loads(body))
 
 
