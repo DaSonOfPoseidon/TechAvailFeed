@@ -72,7 +72,7 @@ public static class Arrivals
         && b.RefId.Length > 0
         && (b.Department.Length == 0 || Departments.Contains(b.Department));
 
-    static List<Block> Scope(IEnumerable<Block> blocks, DateOnly day) =>
+    internal static List<Block> Scope(IEnumerable<Block> blocks, DateOnly day) =>
         [.. blocks.Where(b => InScope(b, day)).DistinctBy(b => (b.Kind, b.RefId, b.TechId))];
 
     // A trace mark only counts on the report day and once it had happened: the feed sends the latest

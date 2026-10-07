@@ -49,6 +49,8 @@ public sealed class ExportController(FeedStore store, ApiSettings settings, Time
         var (from, to) = Window(start, days);
         var (techDays, demand, entries) = new CalendarController(Store, Settings, Clock).CapacityFor(blocks, from, to, region, skill, calendar);
         var today = Today();
+        var asOf = TimeZoneInfo.ConvertTime(snapshot.GeneratedAt ?? Clock.GetUtcNow(), Settings.Tz).DateTime;
+        var jeopardy = Jeopardy.Find(blocks, today, asOf).Where(r => region is null || r.Job.Region == region).ToList();
         var past = new OutcomeHistory(Store, Settings.Tz, Clock).Range(today.AddDays(-(historyDays - 1)), today);
         var data = Export.Workbook(
             Settings.Tz,
@@ -67,6 +69,7 @@ public sealed class ExportController(FeedStore store, ApiSettings settings, Time
             techDays,
             demand,
             ScheduleRows(blocks, techDays, from, to, calendar),
+            jeopardy,
             past,
             Kpis.OutcomeKpis(past, region),
             Diagnostics.Diagnose(blocks, today)

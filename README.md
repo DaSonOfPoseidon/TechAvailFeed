@@ -57,7 +57,7 @@ Interactive docs are served at `/docs` and the OpenAPI schema at `/openapi.json`
 | `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day, region and technician |
 | `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps |
 | `GET /api/v1/map` | Jobs as map points with rounded coordinates |
-| `GET /api/v1/export.xlsx` | All of the above as a multi-sheet workbook |
+| `GET /api/v1/export.xlsx` | All of the above as a multi-sheet workbook. The .NET API adds a "Jobs in jeopardy" sheet: today's jobs not completed by 30 minutes before their scheduled end (JIJ) |
 | `GET /api/v1/arrivals.xlsx` | On-time arrival workbook for `date` (default today): the 8:00 jobs as of the 8:15 run, the day so far, or a past day's completed jobs, highlighted en route (yellow) / not started (red). .NET API only |
 
 Most endpoints take `start`, `days`, `region` and `skill` query parameters.

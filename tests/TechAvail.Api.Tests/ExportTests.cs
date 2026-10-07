@@ -20,7 +20,8 @@ public class ExportTests
     static byte[] Workbook(
         OrderedDictionary<string, object?>? filters = null,
         List<(DayOutcome, bool)>? outcomes = null,
-        List<Check>? checks = null
+        List<Check>? checks = null,
+        List<JeopardyRow>? jeopardy = null
     ) =>
         Export.Workbook(
             Chicago,
@@ -32,6 +33,7 @@ public class ExportTests
             [],
             [],
             [],
+            jeopardy ?? [],
             outcomes ?? [],
             Kpis.OutcomeKpis(outcomes ?? []),
             checks ?? []
@@ -60,6 +62,36 @@ public class ExportTests
         var about = About(wb);
         Assert.Equal("North", about["Filter: region"].GetText());
         Assert.True(about.ContainsKey("Net h"));
+    }
+
+    [Fact]
+    public void Jobs_in_jeopardy_sheet_lists_each_job_and_about_defines_jij()
+    {
+        var job = new Block
+        {
+            Kind = "ticket",
+            WorkDate = new(2026, 10, 6),
+            TechId = "t1",
+            TechName = "Ann",
+            StartsAt = new(2026, 10, 6, 10, 0, 0),
+            EndsAt = new(2026, 10, 6, 12, 0, 0),
+            RefId = "77",
+            Status = "E",
+            Region = "North",
+            Skills = "",
+        };
+        using var wb = Open(Workbook(jeopardy: [new(job, new(2026, 10, 6, 11, 30, 0), 5)]));
+        var rows = Rows(wb.Worksheet("Jobs in jeopardy"));
+        Assert.Equal("JIJ at", rows[0][9]);
+        Assert.Equal(
+            ["Ann", "t1", "Trouble Call", "77", "", "En Route", "North"],
+            rows[1].Take(7).Select(v => v.IsBlank ? "" : v.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        );
+        Assert.Equal(new DateTime(2026, 10, 6, 11, 30, 0), rows[1][9].GetDateTime());
+        Assert.Equal(5, rows[1][10].GetNumber());
+        var about = wb.Worksheet("About");
+        Assert.Equal("JIJ", about.LastRowUsed()!.Cell(1).GetString());
+        Assert.Contains("30 minutes before", about.LastRowUsed()!.Cell(2).GetString());
     }
 
     [Fact]
@@ -141,7 +173,7 @@ public class ExportTests
         Assert.Equal("attachment; filename=\"techavail_2026-10-06.xlsx\"", response.Content.Headers.GetValues("Content-Disposition").Single());
         using var wb = Open(await response.Content.ReadAsByteArrayAsync());
         Assert.Equal(
-            ["Summary", "Tech days", "Free slots", "Schedule", "Unassigned work", "Outcomes by day", "Outcome items", "Diagnostics", "About"],
+            ["Summary", "Tech days", "Free slots", "Schedule", "Unassigned work", "Jobs in jeopardy", "Outcomes by day", "Outcome items", "Diagnostics", "About"],
             wb.Worksheets.Select(ws => ws.Name)
         );
         var summary = wb.Worksheet("Summary");

@@ -135,6 +135,36 @@ public static class Export
         new("Address issue"),
     ];
 
+    static readonly Column[] JeopardyColumns =
+    [
+        new("Tech"),
+        new("Tech id"),
+        new("Type"),
+        new("Job #"),
+        new("Task type"),
+        new("Status"),
+        new("Region"),
+        new("Scheduled start", TimeFormat, 17),
+        new("Scheduled end", TimeFormat, 17),
+        new("JIJ at", TimeFormat, 17),
+        new("Minutes past JIJ"),
+    ];
+
+    static object?[] JeopardyRow(JeopardyRow r) =>
+        [
+            r.Job.TechName,
+            r.Job.TechId,
+            Arrivals.KindNames[r.Job.Kind],
+            r.Job.RefId,
+            r.Job.TaskType,
+            Arrivals.StatusNames[r.Job.Kind].GetValueOrDefault(r.Job.Status, r.Job.Status),
+            r.Job.Region,
+            r.Job.StartsAt,
+            r.Job.EndsAt,
+            r.JijAt,
+            r.MinutesPast,
+        ];
+
     // str.capitalize(): first character upper, the rest lower.
     static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
 
@@ -298,6 +328,7 @@ public static class Export
         List<TechDay> days,
         List<Block> demand,
         List<Block> schedule,
+        List<JeopardyRow> jeopardy,
         List<(DayOutcome Outcome, bool Provisional)> outcomes,
         OrderedDictionary<string, object?> kpis,
         List<Check> checks
@@ -378,6 +409,7 @@ public static class Export
         );
         WriteSheet(wb, "Schedule", BlockColumns, [.. schedule.Select(BlockRow)]);
         WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
+        WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
         WriteSheet(wb, "Outcomes by day", OutcomeDayColumns, OutcomeDayRows(kpis));
         var region = (string?)Get(filters, "region");
         var tech = (string?)Get(filters, "tech");
@@ -461,6 +493,13 @@ public static class Export
         Append("Diagnostic", "Rows", bold: true);
         foreach (var check in checks)
             Append(check.Title, check.Available ? check.Rows.Count : "not in feed yet");
+        // Last, so the rows above stay where the Python export has them.
+        rowNumber++;
+        Append(
+            "JIJ",
+            $"Job in jeopardy: today's job or trouble call that isn't completed by {Jeopardy.Lead.TotalMinutes:0} minutes before "
+                + "its scheduled end (JIJ at), as of the snapshot."
+        );
         SetWidth(about.Column(1), 24);
         SetWidth(about.Column(2), 100);
 
