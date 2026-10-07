@@ -12,27 +12,11 @@ public static class Export
 {
     const string DateFormat = Xlsx.Date;
     const string TimeFormat = Xlsx.Time;
-    const string HoursFormat = Xlsx.Hours;
     const string PercentFormat = Xlsx.Percent;
 
-    static readonly (string Name, string Text)[] Definitions =
+    static readonly (string Name, object? Text)[] Definitions =
     [
-        ("Shift h", "Scheduled shift hours."),
-        ("Available h", "Shift minus lunch (12-1, Sat 1-2) minus time off."),
-        (
-            "Booked h",
-            "Jobs and tickets inside available time. Canceled/unnecessary tasks and "
-                + "closed/deleted/held/cleared tickets don't count."
-        ),
-        (
-            "Free h",
-            "Open slots of at least 60 minutes; today's start no sooner than 30 minutes "
-                + "after the snapshot was read."
-        ),
-        ("Utilization", "Booked h / available h."),
-        ("Unassigned h", "Scheduled jobs and tickets with no tech yet, in the region their address maps to."),
-        ("Net h", "Free h minus unassigned h: capacity left once unassigned work is placed."),
-        ("Techs off", "Techs with time off overlapping their shift, or a day off entirely."),
+        .. CapacityExport.Definitions,
         (
             "Planned",
             "Install jobs and FIELD/TC tickets assigned for the day in the first snapshot "
@@ -50,40 +34,6 @@ public static class Export
         ),
         ("Provisional", "D+2 hasn't ended yet, so the day's outcomes can still change."),
     ];
-
-    static readonly Column[] CapacityColumns =
-    [
-        new("Techs on"),
-        new("Techs off"),
-        new("Shift h", HoursFormat),
-        new("Available h", HoursFormat),
-        new("Booked h", HoursFormat),
-        new("Free h", HoursFormat),
-        new("Utilization", PercentFormat),
-        new("Jobs"),
-        new("Tickets"),
-        new("Unassigned jobs"),
-        new("Unassigned tickets"),
-        new("Unassigned h", HoursFormat),
-        new("Net h", HoursFormat),
-    ];
-
-    static object?[] CapacityValues(Capacity c) =>
-        [
-            c.TechsOn,
-            c.TechsOff,
-            c.ShiftH,
-            c.AvailableH,
-            c.BookedH,
-            c.FreeH,
-            c.Utilization,
-            c.Jobs,
-            c.Tickets,
-            c.UnassignedJobs,
-            c.UnassignedTickets,
-            c.UnassignedH,
-            c.NetH,
-        ];
 
     static readonly Column[] OutcomeDayColumns =
     [
@@ -117,21 +67,6 @@ public static class Export
     ];
 
     static readonly string[] DiagnosticFields = ["ref_id", "kind", "status", "work_date", "starts_at", "ends_at", "tech_id", "tech_name", "region"];
-
-    static readonly Column[] BlockColumns =
-    [
-        new("Date", DateFormat, 12),
-        new("Kind"),
-        new("Ref"),
-        new("Status"),
-        new("Task type"),
-        new("Tech id"),
-        new("Tech"),
-        new("Region"),
-        new("Starts", TimeFormat, 17),
-        new("Ends", TimeFormat, 17),
-        new("Address issue"),
-    ];
 
     static readonly Column[] JeopardyColumns =
     [
@@ -222,9 +157,6 @@ public static class Export
         ),
     ];
 
-    static object?[] BlockRow(Block b) =>
-        [b.WorkDate, b.Kind, b.RefId, b.Status, b.TaskType, b.TechId, b.TechName, b.Region, b.StartsAt, b.EndsAt, b.AddressIssue];
-
     public static byte[] Workbook(
         TimeZoneInfo tz,
         DateTimeOffset now,
@@ -242,80 +174,7 @@ public static class Export
     )
     {
         using var wb = new XLWorkbook();
-        Xlsx.WriteSheet(
-            wb,
-            "Summary",
-            [new("Date", DateFormat, 12), new("Region"), .. CapacityColumns],
-            [
-                .. entries.SelectMany(entry =>
-                    entry
-                        .ByRegion.Select(r => (object?[])[entry.Date, r.Region.Length > 0 ? r.Region : "(none)", .. CapacityValues(r)])
-                        .Prepend([entry.Date, "(all)", .. CapacityValues(entry.Totals)])
-                ),
-            ]
-        );
-        Xlsx.WriteSheet(
-            wb,
-            "Tech days",
-            [
-                new("Date", DateFormat, 12),
-                new("Tech id"),
-                new("Tech"),
-                new("Region"),
-                new("Skills"),
-                new("Shift h", HoursFormat),
-                new("Lunch h", HoursFormat),
-                new("Time off h", HoursFormat),
-                new("Available h", HoursFormat),
-                new("Booked h", HoursFormat),
-                new("Free h", HoursFormat),
-                new("Jobs"),
-                new("Tickets"),
-                new("On time off"),
-            ],
-            [
-                .. days.Select(d =>
-                    (object?[])
-                        [
-                            d.WorkDate,
-                            d.TechId,
-                            d.TechName,
-                            d.Region,
-                            d.Skills,
-                            d.ShiftHours,
-                            d.LunchHours,
-                            d.TimeOffHours,
-                            d.AvailableHours,
-                            d.BookedHours,
-                            d.FreeHours,
-                            d.Jobs,
-                            d.Tickets,
-                            d.OnTimeOff,
-                        ]
-                ),
-            ]
-        );
-        Xlsx.WriteSheet(
-            wb,
-            "Free slots",
-            [
-                new("Date", DateFormat, 12),
-                new("Tech id"),
-                new("Tech"),
-                new("Region"),
-                new("Skills"),
-                new("Open from", TimeFormat, 17),
-                new("Open until", TimeFormat, 17),
-                new("Minutes"),
-            ],
-            [
-                .. days.SelectMany(d =>
-                    d.Free.Select(s => (object?[])[s.WorkDate, s.TechId, s.TechName, s.Region, s.Skills, s.OpenFrom, s.OpenUntil, s.OpenMinutes])
-                ),
-            ]
-        );
-        Xlsx.WriteSheet(wb, "Schedule", BlockColumns, [.. schedule.Select(BlockRow)]);
-        Xlsx.WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
+        CapacityExport.WriteSheets(wb, entries, days, demand, schedule);
         Xlsx.WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
         Xlsx.WriteSheet(wb, "Outcomes by day", OutcomeDayColumns, OutcomeDayRows(kpis));
         var region = (string?)Get(filters, "region");

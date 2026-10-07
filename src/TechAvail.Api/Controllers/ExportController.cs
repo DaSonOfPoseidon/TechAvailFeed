@@ -7,28 +7,6 @@ namespace TechAvail.Api.Controllers;
 
 public sealed class ExportController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
-    static readonly string[] WorkKinds = ["job", "ticket", "time_off"];
-
-    // The raw rows behind the filtered tech days: their shifts, work and any overlapping leave.
-    internal static List<Block> ScheduleRows(List<Block> blocks, List<TechDay> days, DateOnly start, DateOnly end, string calendar)
-    {
-        var keys = days.Select(d => (d.TechId, d.WorkDate)).ToHashSet();
-        var techs = days.Select(d => d.TechId).ToHashSet();
-        var shiftKind = Availability.Calendars[calendar];
-        var rows = blocks.Where(b =>
-            b.Kind == "time_off"
-                ? techs.Contains(b.TechId) && DateOnly.FromDateTime(b.StartsAt) <= end && DateOnly.FromDateTime(b.EndsAt) >= start
-                : (b.Kind == shiftKind || WorkKinds.Contains(b.Kind)) && keys.Contains((b.TechId, b.WorkDate))
-        );
-        return
-        [
-            .. rows.OrderBy(b => b.WorkDate)
-                .ThenBy(b => b.TechName, StringComparer.Ordinal)
-                .ThenBy(b => b.StartsAt)
-                .ThenBy(b => b.Kind, StringComparer.Ordinal),
-        ];
-    }
-
     // All of the above as a multi-sheet workbook: the forward calendar from start, plus the last
     // history_days of outcomes up to today.
     [HttpGet("export.xlsx")]
@@ -68,7 +46,7 @@ public sealed class ExportController(FeedStore store, ApiSettings settings, Time
             entries,
             techDays,
             demand,
-            ScheduleRows(blocks, techDays, from, to, calendar),
+            CapacityExportController.ScheduleRows(blocks, techDays, from, to, calendar),
             jeopardy,
             past,
             Kpis.OutcomeKpis(past, region),

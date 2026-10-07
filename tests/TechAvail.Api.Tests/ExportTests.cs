@@ -135,38 +135,11 @@ public class ExportTests
         Assert.Equal("days: 3; first date: 2026-10-06", rows[1][header.IndexOf("Detail")].GetText());
     }
 
-    static Block B(string kind, string start, string end, string tech = "a", string region = "", string skills = "", string reference = "") =>
-        new()
-        {
-            Kind = kind,
-            WorkDate = new DateOnly(2026, 10, 6),
-            TechId = tech,
-            TechName = tech.ToUpperInvariant(),
-            StartsAt = new DateOnly(2026, 10, 6).ToDateTime(TimeOnly.Parse(start)),
-            EndsAt = new DateOnly(2026, 10, 6).ToDateTime(TimeOnly.Parse(end)),
-            RefId = reference,
-            Status = "A",
-            Department = "FIELD",
-            Region = region,
-            Skills = skills,
-            TaskType = kind == "job" ? "3" : "",
-        };
-
     [DbFact]
     public async Task Export_is_a_workbook()
     {
         using var db = new TestDatabase();
-        var generated = new DateTimeOffset(2026, 10, 6, 11, 5, 0, TimeSpan.Zero);
-        var feed = new ParsedFeed { Sha256 = "x", Format = "blocks", GeneratedAt = generated };
-        feed.Blocks.AddRange(
-            [
-                B("shift", "08:00", "17:00", "a", "North", "INS, RECO"),
-                B("shift", "08:00", "17:00", "b", "South", "INS"),
-                B("job", "08:00", "10:00", "a", reference: "j1"),
-                B("job_unassigned", "09:00", "11:00", "", "North", reference: "u1"),
-            ]
-        );
-        new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, generated, feed);
+        CapacityExportTests.Seed(db);
         using var factory = new ApiFactory(db, Now);
         var response = await factory.CreateClient().GetAsync("/api/v1/export.xlsx?days=2&history_days=1");
         Assert.True(response.IsSuccessStatusCode);
