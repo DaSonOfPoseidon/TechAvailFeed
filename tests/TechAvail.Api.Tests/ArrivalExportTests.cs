@@ -68,7 +68,7 @@ public class ArrivalExportTests
     public void Highlight_text_meets_wcag_aaa_contrast()
     {
         Assert.All(ArrivalExport.Highlights, h => Assert.True(Contrast(h.Fill, h.Font) >= 7, $"{h.State}: {Contrast(h.Fill, h.Font):F2}"));
-        Assert.True(Contrast(Export.Header.Fill, Export.Header.Font) >= 7);
+        Assert.True(Contrast(Xlsx.Header.Fill, Xlsx.Header.Font) >= 7);
     }
 
     [Fact]

@@ -7,7 +7,6 @@ namespace TechAvail.Api;
 // into an email, with "Actions taking" left blank for the dispatcher. Job coordinates are never written.
 public static class JeopardyExport
 {
-    const string StampFormat = "yyyy-mm-dd h:mm AM/PM";
     public const string UpdateSheet = "Update";
     public const string JeopardySheet = "Jobs in jeopardy";
 
@@ -20,27 +19,42 @@ public static class JeopardyExport
         ("Red", "#FFC7CE", "#830005"),
     ];
 
+    static readonly Xlsx.Column[] Columns =
+    [
+        new("Tech"),
+        new("Tech id"),
+        new("Type"),
+        new("Job #"),
+        new("Task type"),
+        new("Status"),
+        new("Region"),
+        new("Scheduled start", Xlsx.Time, 17),
+        new("Scheduled end", Xlsx.Time, 17),
+        new("JIJ at", Xlsx.Time, 17),
+        new("Minutes past JIJ"),
+        new("VP region"),
+    ];
+
+    static object?[] Values(JeopardyRow r) =>
+        [
+            r.Job.TechName,
+            r.Job.TechId,
+            Arrivals.KindNames[r.Job.Kind],
+            r.Job.RefId,
+            r.Job.TaskType,
+            Arrivals.StatusNames[r.Job.Kind].GetValueOrDefault(r.Job.Status, r.Job.Status),
+            r.Job.Region,
+            r.Job.StartsAt,
+            r.Job.EndsAt,
+            r.JijAt,
+            r.MinutesPast,
+            StatusUpdate.RegionFor(r.Job.Region),
+        ];
+
     // "10 AM Update" for a requested time, "Update as of 10:47 AM" otherwise.
     public static string Title(TimeOnly? at, DateTime asOf) =>
         at is { } t ? $"{t.ToString(t.Minute == 0 ? "h tt" : "h:mm tt", System.Globalization.CultureInfo.InvariantCulture)} Update"
         : $"Update as of {asOf.ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture)}";
-
-    static void HeaderRow(IXLWorksheet ws, int row, params string[] headers)
-    {
-        for (var c = 0; c < headers.Length; c++)
-            ws.Cell(row, c + 1).Value = headers[c];
-        var range = ws.Range(row, 1, row, headers.Length);
-        range.Style.Font.Bold = true;
-        range.Style.Fill.SetBackgroundColor(XLColor.FromHtml(Export.Header.Fill));
-        range.Style.Font.SetFontColor(XLColor.FromHtml(Export.Header.Font));
-    }
-
-    static void Borders(IXLWorksheet ws, int fromRow, int toRow, int columns)
-    {
-        var range = ws.Range(fromRow, 1, toRow, columns);
-        range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        range.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-    }
 
     static void WriteUpdate(XLWorkbook wb, string title, DateTime asOf, StatusReport report)
     {
@@ -50,13 +64,13 @@ public static class JeopardyExport
         ws.Cell(1, 1).Style.Font.FontSize = 14;
         ws.Cell(2, 1).Value = "As of";
         ws.Cell(2, 2).Value = asOf;
-        ws.Cell(2, 2).Style.NumberFormat.Format = StampFormat;
+        ws.Cell(2, 2).Style.NumberFormat.Format = Xlsx.Stamp;
         ws.Cell(2, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
         var row = 4;
         ws.Cell(row, 1).Value = "Tech Progress Overview by Region";
         ws.Cell(row, 1).Style.Font.Bold = true;
-        HeaderRow(ws, ++row, "Region", "Status");
+        Xlsx.HeaderRow(ws, ++row, "Region", "Status");
         var first = row + 1;
         foreach (var region in report.Regions)
         {
@@ -67,10 +81,10 @@ public static class JeopardyExport
             ws.Cell(row, 2).Style.Fill.SetBackgroundColor(XLColor.FromHtml(fill));
             ws.Cell(row, 2).Style.Font.SetFontColor(XLColor.FromHtml(font));
         }
-        Borders(ws, first - 1, row, 2);
+        Xlsx.Borders(ws, first - 1, row, 2);
 
         row += 2;
-        HeaderRow(ws, row, "Areas/Techs of Concern", "Reason", "Actions Taking");
+        Xlsx.HeaderRow(ws, row, "Areas/Techs of Concern", "Reason", "Actions Taking");
         first = row;
         foreach (var concern in report.Concerns)
         {
@@ -83,65 +97,46 @@ public static class JeopardyExport
             ws.Cell(++row, 1).Value = "None";
         // A few spare rows for concerns the feed can't see (a blown tire, a sick call).
         row += 3;
-        Borders(ws, first, row, 3);
+        Xlsx.Borders(ws, first, row, 3);
         ws.Range(first + 1, 1, row, 3).Style.Alignment.WrapText = true;
         ws.Range(first + 1, 1, row, 3).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
 
-        Export.SetWidth(ws.Column(1), 44);
-        Export.SetWidth(ws.Column(2), 48);
-        Export.SetWidth(ws.Column(3), 56);
+        Xlsx.SetWidth(ws.Column(1), 44);
+        Xlsx.SetWidth(ws.Column(2), 48);
+        Xlsx.SetWidth(ws.Column(3), 56);
     }
 
     public static byte[] Workbook(TimeZoneInfo tz, DateTimeOffset now, DateOnly day, TimeOnly? at, DateTime asOf, string? region, StatusReport report)
     {
         using var wb = new XLWorkbook();
         WriteUpdate(wb, Title(at, asOf), asOf, report);
-        Export.WriteSheet(
-            wb,
-            JeopardySheet,
-            [.. Export.JeopardyColumns, new("VP region")],
-            [.. report.Jeopardy.Select(r => (object?[])[.. Export.JeopardyRow(r), StatusUpdate.RegionFor(r.Job.Region)])]
-        );
+        Xlsx.WriteSheet(wb, JeopardySheet, Columns, [.. report.Jeopardy.Select(Values)]);
 
-        var about = wb.Worksheets.Add("About");
-        var rowNumber = 0;
-        void Append(object? name, object? value, string? format = null, bool bold = false)
-        {
-            rowNumber++;
-            foreach (var (column, cellValue) in new[] { (1, name), (2, value) })
-            {
-                var cell = about.Cell(rowNumber, column);
-                cell.Value = Export.Cell(cellValue);
-                if (format is not null && column == 2)
-                    cell.Style.NumberFormat.Format = format;
-                if (bold)
-                    cell.Style.Font.Bold = true;
-            }
-        }
-        var local = TimeZoneInfo.ConvertTime(now, tz).DateTime;
-        Append("Report day", day, "yyyy-mm-dd");
-        Append("Exported at", local.AddTicks(-(local.Ticks % TimeSpan.TicksPerSecond)), StampFormat);
-        Append("Snapshot", asOf, StampFormat);
-        Append("Filter: region", region ?? "(all)");
-        rowNumber++;
-        Append("Term", "Meaning", bold: true);
-        Append("Region", "The VP region. Areas are the feed's region, grouped as MBSReporter's multiregion rules group them.");
-        foreach (var (name, areas) in StatusUpdate.Regions)
-            Append($"  {name}", string.Join(", ", areas));
-        Append($"  {StatusUpdate.Unmapped}", "An area not in the list above; only shown when it has a concern.");
-        Append("Status", $"Green: no concerns. Yellow: 1 to {StatusUpdate.YellowMax}. Red: more than {StatusUpdate.YellowMax}.");
-        Append(
-            "In jeopardy",
-            $"Today's job or trouble call that isn't completed by {Jeopardy.Lead.TotalMinutes:0} minutes before its scheduled end."
-        );
-        Append("Going long", "The tech's job is En Route or In Progress past its scheduled end, and their next job hasn't started.");
-        Append("Slot", "A booking window (weekday 8, 10, 1, 3, 5; Saturday 9, 11, 2, 4) that isn't over, holding more open jobs than techs assigned to them.");
-        Append("Actions Taking", "Left blank for the dispatcher. The spare rows are for concerns the feed can't see.");
-        Export.SetWidth(about.Column(1), 24);
-        Export.SetWidth(about.Column(2), 100);
-
-        using var stream = new MemoryStream();
-        wb.SaveAs(stream);
-        return stream.ToArray();
+        new AboutSheet(wb)
+            .Add("Report day", day)
+            .ExportedAt(tz, now)
+            .Add("Snapshot", asOf)
+            .Filters([new("region", region)])
+            .Section(
+                "Term",
+                "Meaning",
+                [
+                    ("Region", "The VP region. Areas are the feed's region, grouped as MBSReporter's multiregion rules group them."),
+                    .. StatusUpdate.Regions.Select(r => ($"  {r.Region}", (object?)string.Join(", ", r.Areas))),
+                    ($"  {StatusUpdate.Unmapped}", "An area not in the list above; only shown when it has a concern."),
+                    ("Status", $"Green: no concerns. Yellow: 1 to {StatusUpdate.YellowMax}. Red: more than {StatusUpdate.YellowMax}."),
+                    (
+                        "In jeopardy",
+                        $"Today's job or trouble call that isn't completed by {Jeopardy.Lead.TotalMinutes:0} minutes before its scheduled end."
+                    ),
+                    ("Going long", "The tech's job is En Route or In Progress past its scheduled end, and their next job hasn't started."),
+                    (
+                        "Slot",
+                        "A booking window (weekday 8, 10, 1, 3, 5; Saturday 9, 11, 2, 4) that isn't over, holding more open jobs than techs assigned to them."
+                    ),
+                    ("Actions Taking", "Left blank for the dispatcher. The spare rows are for concerns the feed can't see."),
+                ]
+            );
+        return Xlsx.Save(wb);
     }
 }

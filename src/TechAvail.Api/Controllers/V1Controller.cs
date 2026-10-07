@@ -46,6 +46,13 @@ public abstract class V1Controller(FeedStore store, ApiSettings settings, TimePr
         return (from, from.AddDays(days - 1));
     }
 
+    // A workbook download. The header is set by hand: File(..., name) would add a filename* parameter.
+    protected FileContentResult Workbook(byte[] data, string filename)
+    {
+        Response.Headers.ContentDisposition = $"attachment; filename=\"{filename}\"";
+        return File(data, Xlsx.ContentType);
+    }
+
     // The served blocks snapshot, or a 404 before there is one.
     protected (List<Block> Blocks, SnapshotRow Snapshot) Latest()
     {

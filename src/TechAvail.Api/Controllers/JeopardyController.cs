@@ -8,7 +8,7 @@ public sealed class JeopardyController(FeedStore store, ApiSettings settings, Ti
 {
     // The VP's status update (10 AM, 1 PM, 3 PM, 5 PM). With at, the run for that time; else the day's latest.
     [HttpGet("jeopardy.xlsx")]
-    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [Produces(Xlsx.ContentType)]
     public IActionResult Get(DateOnly? date, TimeOnly? at, string? region)
     {
         var today = Today();
@@ -31,7 +31,6 @@ public sealed class JeopardyController(FeedStore store, ApiSettings settings, Ti
             );
         var data = JeopardyExport.Workbook(Settings.Tz, Clock.GetUtcNow(), day, at, snapshot.At, region, report);
         var suffix = at is { } stamp ? $"_{stamp:HHmm}" : "";
-        Response.Headers.ContentDisposition = $"attachment; filename=\"jeopardy_{day:yyyy-MM-dd}{suffix}.xlsx\"";
-        return File(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return Workbook(data, $"jeopardy_{day:yyyy-MM-dd}{suffix}.xlsx");
     }
 }

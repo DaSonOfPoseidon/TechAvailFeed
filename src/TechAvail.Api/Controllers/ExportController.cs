@@ -32,7 +32,7 @@ public sealed class ExportController(FeedStore store, ApiSettings settings, Time
     // All of the above as a multi-sheet workbook: the forward calendar from start, plus the last
     // history_days of outcomes up to today.
     [HttpGet("export.xlsx")]
-    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [Produces(Xlsx.ContentType)]
     public IActionResult Get(
         DateOnly? start,
         string? region,
@@ -74,8 +74,6 @@ public sealed class ExportController(FeedStore store, ApiSettings settings, Time
             Kpis.OutcomeKpis(past, region),
             Diagnostics.Diagnose(blocks, today)
         );
-        // Set by hand: File(..., name) would add a filename* parameter the Python API doesn't send.
-        Response.Headers.ContentDisposition = $"attachment; filename=\"techavail_{today:yyyy-MM-dd}.xlsx\"";
-        return File(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return Workbook(data, $"techavail_{today:yyyy-MM-dd}.xlsx");
     }
 }

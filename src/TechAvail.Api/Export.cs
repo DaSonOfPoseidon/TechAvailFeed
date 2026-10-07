@@ -1,5 +1,5 @@
-using System.Globalization;
 using ClosedXML.Excel;
+using Column = TechAvail.Api.Xlsx.Column;
 using TechAvail.Core;
 using TechAvail.Core.Parsing;
 
@@ -10,10 +10,10 @@ namespace TechAvail.Api;
 // never written.
 public static class Export
 {
-    const string DateFormat = "yyyy-mm-dd";
-    const string TimeFormat = "yyyy-mm-dd hh:mm";
-    const string HoursFormat = "0.00";
-    const string PercentFormat = "0.0%";
+    const string DateFormat = Xlsx.Date;
+    const string TimeFormat = Xlsx.Time;
+    const string HoursFormat = Xlsx.Hours;
+    const string PercentFormat = Xlsx.Percent;
 
     static readonly (string Name, string Text)[] Definitions =
     [
@@ -50,8 +50,6 @@ public static class Export
         ),
         ("Provisional", "D+2 hasn't ended yet, so the day's outcomes can still change."),
     ];
-
-    public sealed record Column(string Header, string? Format = null, int? Width = null);
 
     static readonly Column[] CapacityColumns =
     [
@@ -135,7 +133,7 @@ public static class Export
         new("Address issue"),
     ];
 
-    internal static readonly Column[] JeopardyColumns =
+    static readonly Column[] JeopardyColumns =
     [
         new("Tech"),
         new("Tech id"),
@@ -150,7 +148,7 @@ public static class Export
         new("Minutes past JIJ"),
     ];
 
-    internal static object?[] JeopardyRow(JeopardyRow r) =>
+    static object?[] JeopardyRow(JeopardyRow r) =>
         [
             r.Job.TechName,
             r.Job.TechId,
@@ -167,97 +165,6 @@ public static class Export
 
     // str.capitalize(): first character upper, the rest lower.
     static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
-
-    // Python's str() of a cell value, for column widths and diagnostic details.
-    static string PyStr(object? value) =>
-        value switch
-        {
-            null => "None",
-            bool b => b ? "True" : "False",
-            DateOnly d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            DateTime t => t.ToString(t.Ticks % TimeSpan.TicksPerSecond == 0 ? "yyyy-MM-dd HH:mm:ss" : "yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture),
-            double x => Repr(x),
-            _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "",
-        };
-
-    // repr() of a float: shortest round-trip digits, always with a decimal point or exponent.
-    static string Repr(double x)
-    {
-        var text = x.ToString("R", CultureInfo.InvariantCulture);
-        if (text.Contains('E'))
-        {
-            // 1E-05 -> 1e-05, 1E+20 -> 1e+20
-            var parts = text.Split('E');
-            var exponent = int.Parse(parts[1], CultureInfo.InvariantCulture);
-            return $"{parts[0]}e{(exponent < 0 ? "-" : "+")}{Math.Abs(exponent):00}";
-        }
-        return text.Contains('.') || text.Contains("Infinity") || text == "NaN" ? text : text + ".0";
-    }
-
-    // The width Python computes: str(value or "") of the first 500 rows, so 0, False and None count as "".
-    static int Width(Column column, int index, List<object?[]> rows)
-    {
-        if (column.Width is { } width)
-            return width;
-        var longest = rows.Take(500)
-            .Select(row => row[index] is null or false or 0 or 0.0 or "" ? 0 : PyStr(row[index]).Length)
-            .Prepend(column.Header.Length)
-            .Max();
-        return Math.Min(Math.Max(longest + 2, 8), 50);
-    }
-
-    // ClosedXML adds this padding to every width it writes; taking it off stores the width the
-    // Python export stores, so columns look the same in Excel.
-    const double WidthPadding = 0.710625;
-
-    internal static void SetWidth(IXLColumn column, double width) => column.Width = width - WidthPadding;
-
-    internal static XLCellValue Cell(object? value) =>
-        value switch
-        {
-            // openpyxl never writes an empty string; the cell stays blank.
-            null or "" => Blank.Value,
-            string s => s,
-            bool b => b,
-            int n => n,
-            long n => n,
-            double x => x,
-            DateOnly d => d.ToDateTime(TimeOnly.MinValue),
-            DateTime t => t,
-            _ => throw new InvalidOperationException($"unexpected {value.GetType()} in the export"),
-        };
-
-    // Every workbook's header: Excel's standard purple under white bold text (8.0:1, WCAG AAA). The
-    // grey row stripes keep black text at well over 7:1. api/export.py uses the same colours.
-    public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
-
-    internal static void WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows)
-    {
-        var ws = wb.Worksheets.Add(title);
-        for (int c = 0; c < columns.Count; c++)
-            ws.Cell(1, c + 1).Value = columns[c].Header;
-        var header = ws.Row(1).Cells(1, columns.Count).Style;
-        header.Fill.SetBackgroundColor(XLColor.FromHtml(Header.Fill));
-        header.Font.SetFontColor(XLColor.FromHtml(Header.Font));
-        header.Font.SetBold(true);
-        for (int r = 0; r < rows.Count; r++)
-            for (int c = 0; c < columns.Count; c++)
-                ws.Cell(r + 2, c + 1).Value = Cell(rows[r][c]);
-        for (int c = 0; c < columns.Count; c++)
-        {
-            if (columns[c].Format is { } format && rows.Count > 0)
-                ws.Range(2, c + 1, rows.Count + 1, c + 1).Style.NumberFormat.Format = format;
-            SetWidth(ws.Column(c + 1), Width(columns[c], c, rows));
-        }
-        ws.SheetView.FreezeRows(1);
-        if (rows.Count > 0)
-        {
-            // Excel rejects a table with no data rows; an empty sheet keeps just its header.
-            var table = ws.Range(1, 1, rows.Count + 1, columns.Count).CreateTable(title.Replace(" ", ""));
-            table.Theme = XLTableTheme.TableStyleLight1;
-            table.ShowRowStripes = true;
-        }
-    }
 
     static object? Get(OrderedDictionary<string, object?> row, string key) => row.TryGetValue(key, out var value) ? value : null;
 
@@ -308,7 +215,7 @@ public static class Export
             {
                 var detail = string.Join(
                     "; ",
-                    row.Where(f => !DiagnosticFields.Contains(f.Key)).Select(f => $"{f.Key.Replace('_', ' ')}: {PyStr(f.Value)}")
+                    row.Where(f => !DiagnosticFields.Contains(f.Key)).Select(f => $"{f.Key.Replace('_', ' ')}: {Xlsx.PyStr(f.Value)}")
                 );
                 return (object?[])[check.Title, check.Severity, .. DiagnosticFields.Select(f => Get(row, f)), detail];
             })
@@ -335,7 +242,7 @@ public static class Export
     )
     {
         using var wb = new XLWorkbook();
-        WriteSheet(
+        Xlsx.WriteSheet(
             wb,
             "Summary",
             [new("Date", DateFormat, 12), new("Region"), .. CapacityColumns],
@@ -347,7 +254,7 @@ public static class Export
                 ),
             ]
         );
-        WriteSheet(
+        Xlsx.WriteSheet(
             wb,
             "Tech days",
             [
@@ -388,7 +295,7 @@ public static class Export
                 ),
             ]
         );
-        WriteSheet(
+        Xlsx.WriteSheet(
             wb,
             "Free slots",
             [
@@ -407,13 +314,13 @@ public static class Export
                 ),
             ]
         );
-        WriteSheet(wb, "Schedule", BlockColumns, [.. schedule.Select(BlockRow)]);
-        WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
-        WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
-        WriteSheet(wb, "Outcomes by day", OutcomeDayColumns, OutcomeDayRows(kpis));
+        Xlsx.WriteSheet(wb, "Schedule", BlockColumns, [.. schedule.Select(BlockRow)]);
+        Xlsx.WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
+        Xlsx.WriteSheet(wb, "Jobs in jeopardy", JeopardyColumns, [.. jeopardy.Select(JeopardyRow)]);
+        Xlsx.WriteSheet(wb, "Outcomes by day", OutcomeDayColumns, OutcomeDayRows(kpis));
         var region = (string?)Get(filters, "region");
         var tech = (string?)Get(filters, "tech");
-        WriteSheet(
+        Xlsx.WriteSheet(
             wb,
             "Outcome items",
             [
@@ -459,7 +366,7 @@ public static class Export
                     ),
             ]
         );
-        WriteSheet(wb, "Diagnostics", DiagnosticColumns, DiagnosticRows(checks));
+        Xlsx.WriteSheet(wb, "Diagnostics", DiagnosticColumns, DiagnosticRows(checks));
 
         // Excel has no time zones: both times are written as local time, like the block timestamps.
         var about = wb.Worksheets.Add("About");
@@ -470,7 +377,7 @@ public static class Export
             foreach (var (column, cellValue) in new[] { (1, name), (2, value) })
             {
                 var cell = about.Cell(rowNumber, column);
-                cell.Value = Cell(cellValue);
+                cell.Value = Xlsx.Cell(cellValue);
                 if (cellValue is DateTime)
                     cell.Style.NumberFormat.Format = TimeFormat;
                 else if (cellValue is DateOnly)
@@ -500,11 +407,9 @@ public static class Export
             $"Job in jeopardy: today's job or trouble call that isn't completed by {Jeopardy.Lead.TotalMinutes:0} minutes before "
                 + "its scheduled end (JIJ at), as of the snapshot."
         );
-        SetWidth(about.Column(1), 24);
-        SetWidth(about.Column(2), 100);
+        Xlsx.SetWidth(about.Column(1), 24);
+        Xlsx.SetWidth(about.Column(2), 100);
 
-        using var buffer = new MemoryStream();
-        wb.SaveAs(buffer);
-        return buffer.ToArray();
+        return Xlsx.Save(wb);
     }
 }

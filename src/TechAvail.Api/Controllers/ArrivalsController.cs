@@ -11,7 +11,7 @@ public sealed class ArrivalsController(FeedStore store, ApiSettings settings, Ti
     // Today: the 8:00 jobs as of the 8:15 run, then the day so far from the latest snapshot. A past
     // day: each tech's completed jobs as of the day's last snapshot, then its 8:15 view.
     [HttpGet("arrivals.xlsx")]
-    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [Produces(Xlsx.ContentType)]
     public IActionResult Get(DateOnly? date, string? region)
     {
         var today = Today();
@@ -34,7 +34,6 @@ public sealed class ArrivalsController(FeedStore store, ApiSettings settings, Ti
                 ? [eightSheet, new("Today so far", last.At, InRegion(Arrivals.SoFar(lastBlocks, day, last.At)), Highlight: true)]
                 : [new("Completed", last.At, InRegion(Arrivals.Completed(lastBlocks, day, last.At)), Highlight: false), eightSheet];
         var data = ArrivalExport.Workbook(Settings.Tz, Clock.GetUtcNow(), day, region, sheets);
-        Response.Headers.ContentDisposition = $"attachment; filename=\"arrivals_{day:yyyy-MM-dd}.xlsx\"";
-        return File(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return Workbook(data, $"arrivals_{day:yyyy-MM-dd}.xlsx");
     }
 }

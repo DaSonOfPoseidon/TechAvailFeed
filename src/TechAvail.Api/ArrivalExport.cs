@@ -10,9 +10,6 @@ public sealed record ArrivalSheet(string Title, DateTime? AsOf, List<ArrivalRow>
 // column, so it follows the rows when they're sorted or filtered. Job coordinates are never written.
 public static class ArrivalExport
 {
-    const string TimeFormat = "h:mm AM/PM";
-    const string StampFormat = "yyyy-mm-dd h:mm AM/PM";
-
     // Excel's built-in light red and yellow fills, with the text darkened from Excel's to reach WCAG
     // AAA contrast (at least 7:1; 7.3 for both).
     public static readonly (string State, string Fill, string Font)[] Highlights =
@@ -28,7 +25,7 @@ public static class ArrivalExport
         ["arrived"] = "Arrived",
     };
 
-    static readonly Export.Column[] Columns =
+    static readonly Xlsx.Column[] Columns =
     [
         new("Tech"),
         new("Tech id"),
@@ -37,14 +34,14 @@ public static class ArrivalExport
         new("Task type"),
         new("Status"),
         new("Region"),
-        new("Scheduled start", TimeFormat, 16),
-        new("En route", TimeFormat, 11),
-        new("In progress", TimeFormat, 13),
+        new("Scheduled start", Xlsx.Clock, 16),
+        new("En route", Xlsx.Clock, 11),
+        new("In progress", Xlsx.Clock, 13),
         new("Minutes late"),
         new("Minutes en route"),
     ];
 
-    static readonly Export.Column StateColumn = new("State");
+    static readonly Xlsx.Column StateColumn = new("State");
 
     static object?[] Values(ArrivalRow r) =>
         [
@@ -64,25 +61,16 @@ public static class ArrivalExport
 
     static void WriteSheet(XLWorkbook wb, ArrivalSheet sheet)
     {
-        Export.Column[] columns = sheet.Highlight ? [.. Columns, StateColumn] : Columns;
+        Xlsx.Column[] columns = sheet.Highlight ? [.. Columns, StateColumn] : Columns;
         List<object?[]> rows =
         [
             .. sheet.Rows.Select(r => sheet.Highlight ? [.. Values(r), StateNames.GetValueOrDefault(r.State, "")] : Values(r)),
         ];
-        Export.WriteSheet(wb, sheet.Title, columns, rows);
-        var ws = wb.Worksheet(sheet.Title);
+        var ws = Xlsx.WriteSheet(wb, sheet.Title, columns, rows);
         if (sheet.Missing is { } missing)
             ws.Cell(2, 1).Value = missing;
-        if (!sheet.Highlight || rows.Count == 0)
-            return;
-        var state = XLHelper.GetColumnLetterFromNumber(columns.Length);
-        var range = ws.Range(2, 1, rows.Count + 1, columns.Length);
-        foreach (var (name, fill, font) in Highlights)
-        {
-            var style = range.AddConditionalFormat().WhenIsTrue($"${state}2=\"{name}\"");
-            style.Fill.SetBackgroundColor(XLColor.FromHtml(fill));
-            style.Font.SetFontColor(XLColor.FromHtml(font));
-        }
+        if (sheet.Highlight)
+            Xlsx.Highlight(ws, rows.Count, columns.Length, columns.Length, Highlights);
     }
 
     public static byte[] Workbook(TimeZoneInfo tz, DateTimeOffset now, DateOnly day, string? region, IReadOnlyList<ArrivalSheet> sheets)
@@ -91,46 +79,27 @@ public static class ArrivalExport
         foreach (var sheet in sheets)
             WriteSheet(wb, sheet);
 
-        var about = wb.Worksheets.Add("About");
-        var rowNumber = 0;
-        void Append(object? name, object? value, string? format = null, bool bold = false)
-        {
-            rowNumber++;
-            foreach (var (column, cellValue) in new[] { (1, name), (2, value) })
-            {
-                var cell = about.Cell(rowNumber, column);
-                cell.Value = Export.Cell(cellValue);
-                if (format is not null && column == 2)
-                    cell.Style.NumberFormat.Format = format;
-                if (bold)
-                    cell.Style.Font.Bold = true;
-            }
-        }
-        var local = TimeZoneInfo.ConvertTime(now, tz).DateTime;
-        Append("Report day", day, "yyyy-mm-dd");
-        Append("Exported at", local.AddTicks(-(local.Ticks % TimeSpan.TicksPerSecond)), StampFormat);
-        Append("Filter: region", region ?? "(all)");
+        var about = new AboutSheet(wb).Add("Report day", day).ExportedAt(tz, now).Filters([new("region", region)]);
         foreach (var sheet in sheets)
-            Append($"{sheet.Title}: as of", sheet.AsOf is { } at ? at : "no snapshot", StampFormat);
-        rowNumber++;
-        Append("Column", "Meaning", bold: true);
-        Append(
-            "Arrivals 8 AM",
-            "Each tech with an 8:00 job, as of the 8:15 run. In progress is the tech's first In Progress mark that day "
-                + "on any job (techs swap job order), so it can be earlier than 8:00."
+            about.Add($"{sheet.Title}: as of", sheet.AsOf is { } at ? at : "no snapshot");
+        about.Section(
+            "Column",
+            "Meaning",
+            [
+                (
+                    "Arrivals 8 AM",
+                    "Each tech with an 8:00 job, as of the 8:15 run. In progress is the tech's first In Progress mark that day "
+                        + "on any job (techs swap job order), so it can be earlier than 8:00."
+                ),
+                ("Today so far", "Every job completed today, plus every job whose window has already started."),
+                ("Completed", "Every job each tech completed that day, as of the day's last snapshot."),
+                ("Minutes late", "In progress minus the scheduled start. Negative is early."),
+                ("Minutes en route", "In progress minus En route; for a tech still on the way, the snapshot time minus En route."),
+                ("Red", "Not started: the job is still Active (task) or Open (trouble call)."),
+                ("Yellow", "En route: no In Progress mark yet, but En Route."),
+                ("Trouble calls", "The feed carries no En route / In progress times for trouble calls, so those cells are blank."),
+            ]
         );
-        Append("Today so far", "Every job completed today, plus every job whose window has already started.");
-        Append("Completed", "Every job each tech completed that day, as of the day's last snapshot.");
-        Append("Minutes late", "In progress minus the scheduled start. Negative is early.");
-        Append("Minutes en route", "In progress minus En route; for a tech still on the way, the snapshot time minus En route.");
-        Append("Red", "Not started: the job is still Active (task) or Open (trouble call).");
-        Append("Yellow", "En route: no In Progress mark yet, but En Route.");
-        Append("Trouble calls", "The feed carries no En route / In progress times for trouble calls, so those cells are blank.");
-        Export.SetWidth(about.Column(1), 24);
-        Export.SetWidth(about.Column(2), 100);
-
-        using var stream = new MemoryStream();
-        wb.SaveAs(stream);
-        return stream.ToArray();
+        return Xlsx.Save(wb);
     }
 }

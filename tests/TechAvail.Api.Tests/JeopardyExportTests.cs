@@ -58,7 +58,7 @@ public class JeopardyExportTests
 
         var header = ws.RowsUsed().First(r => r.Cell(1).GetFormattedString() == "Areas/Techs of Concern").RowNumber();
         Assert.Equal(("Reason", "Actions Taking"), (ws.Cell(header, 2).GetText(), ws.Cell(header, 3).GetText()));
-        Assert.Equal(XLColor.FromHtml(Export.Header.Fill), ws.Cell(header, 3).Style.Fill.BackgroundColor);
+        Assert.Equal(XLColor.FromHtml(Xlsx.Header.Fill), ws.Cell(header, 3).Style.Fill.BackgroundColor);
         Assert.Equal(
             [("Hannibal-Bowling Green / A", "8AM job going long – 10AM in jeopardy"), ("Carrollton / B", "8AM job in jeopardy")],
             Enumerable.Range(header + 1, 2).Select(r => (ws.Cell(r, 1).GetText(), ws.Cell(r, 2).GetText()))
