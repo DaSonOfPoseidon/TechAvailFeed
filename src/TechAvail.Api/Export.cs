@@ -135,7 +135,7 @@ public static class Export
         new("Address issue"),
     ];
 
-    static readonly Column[] JeopardyColumns =
+    internal static readonly Column[] JeopardyColumns =
     [
         new("Tech"),
         new("Tech id"),
@@ -150,7 +150,7 @@ public static class Export
         new("Minutes past JIJ"),
     ];
 
-    static object?[] JeopardyRow(JeopardyRow r) =>
+    internal static object?[] JeopardyRow(JeopardyRow r) =>
         [
             r.Job.TechName,
             r.Job.TechId,
