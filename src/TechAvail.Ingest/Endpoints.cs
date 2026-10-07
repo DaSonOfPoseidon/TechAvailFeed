@@ -11,12 +11,11 @@ namespace TechAvail.Ingest;
 // API_KEY when one is set.
 public static class Endpoints
 {
-    // feed/web.py's to_json: snake_case, timestamps as isoformat() (UTC as +00:00), one-space indent.
+    // snake_case and indented, since people read these endpoints directly.
     public static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
-        IndentSize = 1,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
@@ -99,18 +98,10 @@ public static class Endpoints
         app.MapGet(
             "/history.json",
             (FeedStore store, IngestSettings settings, TimeProvider clock) =>
-            {
-                var history = new OutcomeHistory(store, settings.Tz, clock).History();
-                // Python leaves latest_snapshot_at out entirely before the first blocks snapshot.
-                var body = new Dictionary<string, object?>();
-                if (history.LatestSnapshotAt is { } latest)
-                    body["latest_snapshot_at"] = latest;
-                body["days"] = history.Days;
-                return Send(200, body);
-            }
+                Send(200, new OutcomeHistory(store, settings.Tz, clock).History())
         );
 
-        app.MapGet("/runs.json", (FeedStore store) => Send(200, new Dictionary<string, object?> { ["summary"] = store.Latency(), ["runs"] = store.Runs() }));
+        app.MapGet("/runs.json", (FeedStore store) => Send(200, new { Summary = store.Latency(), Runs = store.Runs() }));
 
         app.MapFallback(() => Error(404, "not found"));
     }

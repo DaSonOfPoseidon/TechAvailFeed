@@ -33,7 +33,7 @@ public static class DiagnosticsExport
             {
                 var detail = string.Join(
                     "; ",
-                    row.Where(f => !Fields.Contains(f.Key)).Select(f => $"{f.Key.Replace('_', ' ')}: {Xlsx.PyStr(f.Value)}")
+                    row.Where(f => !Fields.Contains(f.Key)).Select(f => $"{f.Key.Replace('_', ' ')}: {Xlsx.Text(f.Value)}")
                 );
                 return (object?[])[check.Title, check.Severity, .. Fields.Select(f => row.GetValueOrDefault(f)), detail];
             })

@@ -22,44 +22,20 @@ public static class Xlsx
     // grey row stripes keep black text at well over 7:1.
     public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
 
-    // Python's str() of a cell value, for column widths and diagnostic details.
-    internal static string PyStr(object? value) =>
+    // A cell value as text, for column widths and diagnostic details.
+    internal static string Text(object? value) =>
         value switch
         {
-            null => "None",
-            bool b => b ? "True" : "False",
+            null => "",
             DateOnly d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            DateTime t => t.ToString(t.Ticks % TimeSpan.TicksPerSecond == 0 ? "yyyy-MM-dd HH:mm:ss" : "yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture),
-            double x => Repr(x),
+            DateTime t => t.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "",
         };
 
-    // repr() of a float: shortest round-trip digits, always with a decimal point or exponent.
-    static string Repr(double x)
-    {
-        var text = x.ToString("R", CultureInfo.InvariantCulture);
-        if (text.Contains('E'))
-        {
-            // 1E-05 -> 1e-05, 1E+20 -> 1e+20
-            var parts = text.Split('E');
-            var exponent = int.Parse(parts[1], CultureInfo.InvariantCulture);
-            return $"{parts[0]}e{(exponent < 0 ? "-" : "+")}{Math.Abs(exponent):00}";
-        }
-        return text.Contains('.') || text.Contains("Infinity") || text == "NaN" ? text : text + ".0";
-    }
-
-    // The fixed width, else the longest of the header and the first 500 values (0, False and None count
-    // as empty), between 8 and 50.
-    static int Width(Column column, int index, List<object?[]> rows)
-    {
-        if (column.Width is { } width)
-            return width;
-        var longest = rows.Take(500)
-            .Select(row => row[index] is null or false or 0 or 0.0 or "" ? 0 : PyStr(row[index]).Length)
-            .Prepend(column.Header.Length)
-            .Max();
-        return Math.Min(Math.Max(longest + 2, 8), 50);
-    }
+    // The fixed width, else the longest of the header and the first 500 values, between 8 and 50.
+    static int Width(Column column, int index, List<object?[]> rows) =>
+        column.Width
+        ?? Math.Clamp(rows.Take(500).Select(row => Text(row[index]).Length).Prepend(column.Header.Length).Max() + 2, 8, 50);
 
     // ClosedXML adds this padding to every width it writes; taking it off stores the width asked for.
     const double WidthPadding = 0.710625;

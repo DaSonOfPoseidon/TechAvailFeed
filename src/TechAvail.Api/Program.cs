@@ -31,7 +31,6 @@ builder.Services
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-        options.JsonSerializerOptions.Converters.Add(new UtcZConverter());
     });
 // Bad query values are a 422, as in FastAPI (ASP.NET Core would answer 400).
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>

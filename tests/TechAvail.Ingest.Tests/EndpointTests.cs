@@ -65,7 +65,7 @@ public class EndpointTests
         var missing = await client.GetAsync("/nope");
         Assert.Equal("not found", JsonNode.Parse(await missing.Content.ReadAsStringAsync())!["error"]!.GetValue<string>());
         // No blocks snapshot yet: no days, and no latest_snapshot_at key at all.
-        Assert.Equal("""{"days":[]}""", JsonNode.Parse(await client.GetStringAsync("/history.json"))!.ToJsonString());
+        Assert.Equal("""{"latest_snapshot_at":null,"days":[]}""", JsonNode.Parse(await client.GetStringAsync("/history.json"))!.ToJsonString());
     }
 
     [DbFact]

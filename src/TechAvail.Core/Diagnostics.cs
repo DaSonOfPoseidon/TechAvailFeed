@@ -239,7 +239,7 @@ public static class Diagnostics
         foreach (var (techId, techWork) in work)
         {
             var off = Availability.Merge(leave.GetValueOrDefault(techId, []));
-            // Python's dict: a repeated key keeps its first position and takes the last value.
+            // Repeated copies of the same work count once: the first one's place, the last one's values.
             var unique = new OrderedDictionary<(string, DateTime, DateTime), Block>();
             foreach (var b in techWork)
                 unique[(b.RefId, b.StartsAt, b.EndsAt)] = b;
