@@ -4,8 +4,8 @@ namespace TechAvail.Data;
 
 public static class ConnectionStrings
 {
-    // DATABASE_URL is shared with the Python services, which take a postgresql:// URL; Npgsql
-    // takes key=value pairs. Either form is accepted.
+    // DATABASE_URL is usually a postgresql:// URL (compose builds one); Npgsql takes key=value
+    // pairs. Either form is accepted.
     public static string FromUrl(string value)
     {
         if (!value.StartsWith("postgres://", StringComparison.Ordinal) && !value.StartsWith("postgresql://", StringComparison.Ordinal))

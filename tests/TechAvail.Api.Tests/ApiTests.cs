@@ -6,7 +6,6 @@ using TechAvail.Data.Tests;
 
 namespace TechAvail.Api.Tests;
 
-// Port of tests/test_api.py, over a seeded test database instead of a fake store.
 public class ApiTests
 {
     static readonly DateOnly Day = new(2026, 10, 6);

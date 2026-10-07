@@ -23,8 +23,8 @@ scheduling system ──scheduled report (CSV by email)──▶ mailbox ──I
 | `api` | `src/TechAvail.Api/` | 8097 | Read-only REST API: calendar, KPIs, outcomes, diagnostics, map, Excel exports |
 | `postgres` | | (internal) | Storage |
 
-The domain rules (free time, outcomes, diagnostics) live in plain Python modules under `feed/`, not in SQL
-or in the API layer. That keeps them unit-testable without a database.
+The domain rules (free time, outcomes, diagnostics, arrivals, jeopardy) live in `src/TechAvail.Core`, with no
+I/O, not in SQL or in the API layer. That keeps them unit-testable without a database.
 
 ## Design highlights
 
@@ -34,7 +34,7 @@ or in the API layer. That keeps them unit-testable without a database.
 - **Safe ingestion.** Duplicate deliveries are skipped by `Message-ID`. A file that fails to parse is archived
   with the reason. An empty or failed run never replaces the last good snapshot in anything user-facing.
 - **Mailbox hygiene.** Processed mail is labelled, then deleted the next day. Failed mail is kept for inspection.
-  With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally for replay and parity tests.
+  With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally (`corpus/mail`, never committed).
 - **Freshness is part of every response.** Each API response includes the snapshot it was computed from and
   its age, and is flagged `stale` when deliveries stop.
 - **Location privacy.** Job coordinates are stored exactly but served rounded to about 110 m. The Excel exports
@@ -44,8 +44,8 @@ or in the API layer. That keeps them unit-testable without a database.
 
 ## API
 
-Interactive docs are served at `/docs` and the OpenAPI schema at `/openapi.json`. When `API_KEY` is set,
-`/api/v1/*` requires an `X-API-Key` header.
+The OpenAPI schema is served at `/openapi.json`. When `API_KEY` is set, `/api/v1/*` requires an `X-API-Key`
+header. Errors are `{"detail": "..."}`, with 422 for bad query values.
 
 | Endpoint | Returns |
 |---|---|
@@ -83,51 +83,59 @@ start. See `.env.example` for all the settings.
 
 ## Development
 
-```
-uv sync
-uv run pytest && uv run ruff check . && uv run black --check .
-```
+The .NET SDK runs in Docker, so the host needs only Docker:
 
-## .NET rewrite (`dotnet` branch)
-
-The Python implementation is tagged `v0-python`. This branch rewrites it in C#/.NET: an ASP.NET Core REST
-API and a worker service, using Dapper and SQL-first migrations on the same Postgres schema, with an
-Angular/TypeScript dashboard. Python keeps running in production until each part is proven identical. The port
-is strangler-style: the same database is shared, so no data migration is needed.
+```
+scripts/test-db.sh up                          # throwaway Postgres for the data tests
+scripts/dotnet.sh build
+scripts/dotnet.sh test TechAvailFeed.slnx -m:1 # one project at a time keeps the SDK container under 1 GiB
+scripts/dotnet.sh format TechAvailFeed.slnx --verify-no-changes
+docker compose up -d --build ingest api        # deploy a change; the source is baked into the images
+```
 
 ```
 TechAvailFeed.slnx
 src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
 src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
-src/TechAvail.Api/           the dashboard API (the live api service since 2026-10-07)
-src/TechAvail.Ingest/        the ingest worker (the live ingest service since 2026-10-06)
+src/TechAvail.Api/           the dashboard API and its Excel exports (Xlsx.cs and AboutSheet.cs are shared)
+src/TechAvail.Ingest/        the ingest worker
 Dockerfile                   one image per project, chosen with the PROJECT build arg
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
-tools/TechAvail.Parity/      compares .NET output with the Python golden files
-contract/golden/fixtures/    Python's output for the fake fixtures in tests/fixtures/
-scripts/dotnet.sh            runs the .NET SDK in Docker, so the host needs no SDK
+tests/fixtures/              fake feed files (.csv) and what the parser makes of them (.json)
+tools/TechAvail.ImapCheck/   read-only check of the mailbox code against the live mailbox
+scripts/dotnet.sh            runs the .NET SDK in Docker
 ```
+
+The fixture snapshots cover edge and error cases. After an intended parser change, rewrite them with
+`UPDATE_SNAPSHOTS=1 scripts/dotnet.sh test tests/TechAvail.Core.Tests` and review the diff.
+`scripts/imap-check.sh` fetches every processed mail still in the mailbox (EXAMINE and BODY.PEEK only) and
+compares it with the archived copy in `corpus/mail`. The corpus never leaves the machine, because it holds real
+schedules and locations.
+
+## History
+
+The first version was Python (FastAPI and a polling worker), tagged `v0-python`. It was rewritten in C#/.NET
+strangler-style on the same Postgres schema, so no data was migrated. Each part ran side by side with Python
+until its output was identical on the real feed corpus, a replay of every archived mail, the outcome history
+and every API response on a production copy. The .NET ingest took over on 2026-10-06 and the .NET API on
+2026-10-07, after the daily shadow checks (2026-10-06 and 2026-10-07) found no differences. The Python code was then removed, and the
+C# that existed only to reproduce Python's exact formatting was replaced with .NET's own parsers and
+serialisation.
 
 ### Status
 
-- [x] Solution scaffold, Python-compatible text helpers and strict CSV reader
-- [x] Feed parser (`feed/parse.py`), identical to Python on every mail in the real feed corpus
-- [x] Mail reading and sender check (`feed/mail.py`)
-- [x] Parity tool and CI
-- [x] Data layer (DbUp baseline, diff-only writes, reads), identical to Python when the corpus is replayed
-- [x] Availability and outcome history, identical to Python on the corpus and a production copy
-- [x] Diagnostics, capacity and KPIs
-- [x] REST API (every endpoint and the Excel export identical to Python on a production copy)
-- [x] Ingest worker (MailKit), checked read-only against the live mailbox
-- [x] Dockerfile and compose services; the .NET ingest replaced the Python one
-- [x] The .NET API replaced the Python one on :8097
+- [x] Feed parser, mail reading and sender check
+- [x] Data layer (DbUp baseline, diff-only writes, reads)
+- [x] Availability, outcome history, diagnostics, capacity and KPIs
+- [x] REST API and Excel exports
+- [x] Ingest worker (MailKit)
+- [x] Python retired
 - [ ] Angular dashboard
-- [ ] Retire the Python services
 
 ### Performance
 
-Both APIs were measured live, side by side on the same database and snapshot (2026-10-06, 24-core host,
-1 GiB container cap). Single requests are medians of 9, after a warm-up.
+Before the cutover, both APIs were measured live, side by side on the same database and snapshot
+(2026-10-06, 24-core host, 1 GiB container cap). Single requests are medians of 9, after a warm-up.
 
 | | Python (FastAPI) | .NET |
 |---|---|---|
@@ -147,41 +155,6 @@ GC the services settle at about 165 MiB, but concurrent bursts take 1.2–2× as
 difference beyond run-to-run noise. Tuning server GC (`GCConserveMemory`, a 16 or 32 MB gen0 budget, 4 heaps)
 saved at most 15%. For a dashboard with a few users, memory matters more than burst throughput. If that
 changes, removing `ServerGarbageCollection` restores server GC.
-
-### Parity testing
-
-The Python code is the reference. `tools/golden.py` records what it makes of each input, and the .NET code
-has to produce identical output:
-
-- **Fake fixtures** (`tests/fixtures/*.csv`, including edge and error cases): their golden files are committed
-  and checked by `dotnet test`. To regenerate them, run `uv run python -m tools.golden --fixtures`.
-- **Real feed mail**: the ingest keeps a copy of each processed mail when `ARCHIVE_DIR` is set, and
-  `tools/export_corpus.py` copies whatever is still in the mailbox. That corpus and its golden files live in the
-  gitignored `corpus/` and never leave the machine, because they hold real schedules and locations.
-  `tools/golden.py` also cross-checks every mail against the snapshot production stored for it.
-
-```
-scripts/dotnet.sh build
-scripts/dotnet.sh test
-scripts/dotnet.sh format --verify-no-changes
-```
-
-To check the real corpus, regenerate the golden files with the Python code, then run the parity tool with the
-feed's sender address:
-
-```
-docker compose run --rm --no-deps -v $PWD/tools:/app/tools -v $PWD/corpus:/app/corpus api python -m tools.golden
-MAIL_FROM=<sender> scripts/dotnet.sh run --project tools/TechAvail.Parity -- corpus
-```
-
-The tool prints counts and the JSON paths that differ, never values, and exits non-zero on any difference.
-
-Two more checks run against a throwaway Postgres (`scripts/test-db.sh up`):
-
-- `scripts/replay-parity.sh` replays the corpus through both ingests into empty databases and compares
-  `snapshots`, `blocks` and `slots` row by row, ids included.
-- `scripts/history-parity.sh` copies the production database (read-only) twice, finalizes the outcome history
-  with each implementation and compares `outcome_days`, `job_outcomes` and every day's computed outcome.
 
 ## License
 

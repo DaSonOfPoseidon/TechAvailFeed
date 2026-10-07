@@ -49,7 +49,7 @@ public sealed record LatencySummary(
     decimal? TotalMaxMin
 );
 
-// The read side of feed/store.py's Store.
+// The read side of the store.
 public sealed partial class FeedStore
 {
     // Every Block field, with NULLs from older snapshots read as the parser's defaults.
@@ -149,7 +149,7 @@ public sealed partial class FeedStore
             TechName = Get<string>(r, "tech_name")!,
             StartsAt = Get<DateTime>(r, "starts_at"),
             EndsAt = Get<DateTime>(r, "ends_at"),
-            // ref_id and status have no COALESCE in Python either; a NULL reads as None there.
+            // ref_id and status are never NULL in rows the ingest wrote.
             RefId = Get<string>(r, "ref_id")!,
             Status = Get<string>(r, "status")!,
             Department = Get<string>(r, "department")!,

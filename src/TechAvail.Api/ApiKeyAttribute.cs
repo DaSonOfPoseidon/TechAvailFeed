@@ -21,7 +21,7 @@ public sealed class ApiKeyAttribute : Attribute, IAuthorizationFilter
 
 public static class Errors
 {
-    // FastAPI's error body, so clients see the same shape.
+    // Every error is {"detail": "..."}.
     public static ObjectResult Detail(int status, string detail) =>
         new(new Dictionary<string, string> { ["detail"] = detail }) { StatusCode = status };
 }

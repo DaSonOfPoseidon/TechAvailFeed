@@ -4,9 +4,8 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Api;
 
-// Port of api/capacity.py: rollups of Availability's per-tech days for the calendar and the
-// capacity KPIs. No scheduling rules live here: hours come from TechDays, demand from the
-// unassigned rows. Serialized with snake_case names in declaration order, as Python's asdict.
+// Rollups of Availability's per-tech days for the calendar and the capacity KPIs. No scheduling
+// rules live here: hours come from TechDays, demand from the unassigned rows.
 public class Capacity
 {
     public int TechsOn { get; set; }

@@ -1,6 +1,5 @@
 namespace TechAvail.Data.Tests;
 
-// Port of the diff_blocks tests in tests/test_store.py.
 public class BlockDiffTests
 {
     static BlockKey Block(string reference, string status = "A") =>

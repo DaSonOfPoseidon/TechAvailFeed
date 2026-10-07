@@ -8,7 +8,6 @@ using TechAvail.Data.Tests;
 
 namespace TechAvail.Ingest.Tests;
 
-// Ports of tests/test_web.py and tests/test_web_auth.py.
 public class EndpointTests
 {
     sealed class Factory(TestDatabase db, string apiKey) : WebApplicationFactory<Program>

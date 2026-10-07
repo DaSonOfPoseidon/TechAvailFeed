@@ -3,7 +3,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Tests;
 
-// Port of tests/test_outcomes.py.
 public class OutcomesTests
 {
     static readonly DateOnly Day = new(2026, 10, 6);

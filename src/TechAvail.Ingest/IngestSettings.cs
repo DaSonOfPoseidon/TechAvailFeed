@@ -2,7 +2,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Ingest;
 
-// The same environment the Python ingest reads (feed/config.py).
+// The ingest's settings, from the environment (see .env.example).
 public sealed record IngestSettings(
     string ConnectionString,
     string ImapHost,
@@ -43,7 +43,7 @@ public sealed record IngestSettings(
             TimeZoneInfo.FindSystemTimeZoneById(Get("MAIL_TZ", "America/Chicago")),
             int.Parse(Get("POLL_SECONDS", "60")),
             int.Parse(Get("HTTP_PORT", "8000")),
-            // Optional: keep a raw copy of every processed mail (local replay/parity corpus).
+            // Optional: keep a raw copy of every processed mail (the local corpus).
             Get("ARCHIVE_DIR"),
             Get("API_KEY")
         );

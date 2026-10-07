@@ -27,7 +27,7 @@ public abstract class V1Controller(FeedStore store, ApiSettings settings, TimePr
     public const int MaxDays = 62;
     public const int MaxHistoryDays = 366;
 
-    // FastAPI's Query(ge=1, le=...) and pattern checks: out of range is a 422.
+    // Out-of-range or malformed query values are a 422.
     protected static void Check(bool valid, string detail)
     {
         if (!valid)
@@ -72,7 +72,7 @@ public abstract class V1Controller(FeedStore store, ApiSettings settings, TimePr
     }
 }
 
-// Thrown from an endpoint to answer with FastAPI's {"detail": ...} body.
+// Thrown from an endpoint to answer with a {"detail": ...} body.
 public sealed class ApiException(int status, string detail) : Exception(detail)
 {
     public int Status { get; } = status;

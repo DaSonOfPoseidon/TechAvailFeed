@@ -3,7 +3,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// Port of ingest() in feed/__main__.py: one feed mail into the store. Returns true when the mail
+// One feed mail into the store. Returns true when the mail
 // should be filed as processed, false for the failed label.
 public static class FeedIngest
 {

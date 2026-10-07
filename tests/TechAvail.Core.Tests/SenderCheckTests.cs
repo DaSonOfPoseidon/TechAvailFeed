@@ -4,7 +4,6 @@ using TechAvail.Core.Mail;
 
 namespace TechAvail.Core.Tests;
 
-// Port of tests/test_sender_auth.py.
 public class SenderCheckTests
 {
     const string From = "reports@v.example";
@@ -113,7 +112,6 @@ public class SenderCheckTests
     }
 }
 
-// Port of the to_feed_mail tests in tests/test_mail.py.
 public class FeedMailTests
 {
     static MimeMessage Build(string? date = "Tue, 29 Sep 2026 09:16:40 -0500", bool messageId = true, params (string Name, byte[] Data)[] attachments)

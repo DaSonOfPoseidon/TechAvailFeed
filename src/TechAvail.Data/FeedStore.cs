@@ -4,7 +4,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// Port of feed/store.py's Store: snapshots, legacy slots and the diff-only blocks table.
+// The write side of the store: snapshots, legacy slots and the diff-only blocks table.
 public sealed partial class FeedStore(string connectionString)
 {
     // The blocks content columns, in table (and BlockKey) order.
@@ -141,7 +141,7 @@ public sealed partial class FeedStore(string connectionString)
         }
         if (insert.Count == 0)
             return;
-        // COPY keeps row order, so ids are assigned in snapshot order as Python's inserts do.
+        // COPY keeps row order, so ids are assigned in snapshot order.
         using var copy = connection.BeginBinaryImport(
             $"COPY blocks (first_snapshot_id, {BlockColumns}) FROM STDIN (FORMAT BINARY)"
         );

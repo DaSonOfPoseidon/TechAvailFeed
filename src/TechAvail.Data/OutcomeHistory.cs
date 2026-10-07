@@ -13,7 +13,7 @@ public sealed record HistoryDay(
 
 public sealed record HistoryResult(DateTime? LatestSnapshotAt, List<HistoryDay> Days);
 
-// Port of feed/history.py: the outcome rules wired to the store. Days whose d2 has ended are
+// The outcome rules wired to the store. Days whose d2 has ended are
 // written once (outcome_days / job_outcomes) and never recomputed; later days are computed live.
 public sealed class OutcomeHistory(FeedStore store, TimeZoneInfo tz, TimeProvider? clock = null)
 {

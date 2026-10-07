@@ -1,5 +1,5 @@
--- Baseline: the schema feed/store.py creates, verbatim. Every statement is idempotent, so it
--- runs cleanly against a database the Python ingest already set up.
+-- Baseline: the original schema. Every statement is idempotent, so it runs cleanly against the
+-- production database, which predates the migrations journal.
 CREATE TABLE IF NOT EXISTS snapshots (
 	id BIGSERIAL PRIMARY KEY
 ,	message_id TEXT NOT NULL UNIQUE

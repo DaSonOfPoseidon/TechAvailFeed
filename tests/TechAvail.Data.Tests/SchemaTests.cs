@@ -5,7 +5,7 @@ namespace TechAvail.Data.Tests;
 public class SchemaTests
 {
     [DbFact]
-    public void Baseline_creates_the_python_schema()
+    public void Baseline_creates_the_schema()
     {
         using var db = new TestDatabase();
         using var connection = db.Open();
@@ -28,9 +28,9 @@ public class SchemaTests
     }
 
     [DbFact]
-    public void Baseline_runs_on_a_database_python_already_set_up()
+    public void Baseline_runs_on_a_database_that_predates_the_journal()
     {
-        // The live database was created by store.py, without DbUp's journal: the baseline must apply
+        // The live database was created before the migrations journal: the baseline must apply
         // cleanly on top of it.
         using var db = new TestDatabase(migrate: false);
         var baseline = new StreamReader(

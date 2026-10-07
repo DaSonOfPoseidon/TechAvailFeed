@@ -3,7 +3,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Tests;
 
-// Port of tests/test_parse.py.
 public class FeedParserTests
 {
     const string Header =

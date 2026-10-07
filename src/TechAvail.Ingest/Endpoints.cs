@@ -7,7 +7,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Ingest;
 
-// Port of feed/web.py: the ingest service's own JSON endpoints. /health is open; the rest need
+// The ingest service's own JSON endpoints. /health is open; the rest need
 // API_KEY when one is set.
 public static class Endpoints
 {

@@ -2,7 +2,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Tests;
 
-// Port of tests/test_diagnostics.py.
 public class DiagnosticsTests
 {
     static readonly DateOnly Today = new(2026, 10, 6);

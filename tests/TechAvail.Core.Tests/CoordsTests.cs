@@ -7,8 +7,8 @@ public class CoordsTests
         Assert.Equal((40.123, -100.654), Coords.Public(40.123456, -100.654321));
 
     [Fact]
-    public void Rounding_is_pythons_on_the_exact_binary_value() =>
-        // 1.2345 is stored just below the tie, so Python's round gives 1.234, not 1.235.
+    public void Rounding_uses_the_exact_binary_value() =>
+        // 1.2345 is stored just below the tie, so it rounds to 1.234, not 1.235.
         Assert.Equal((1.234, -1.234), Coords.Public(1.2345, -1.2345));
 
     [Fact]

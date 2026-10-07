@@ -9,7 +9,7 @@ namespace TechAvail.Ingest;
 // A fetched feed mail: its IMAP uid, raw bytes, parsed form and when the mailbox received it.
 public sealed record FetchedMail(UniqueId Uid, byte[] Raw, FeedMail Mail, DateTimeOffset? ReceivedAt);
 
-// One poll's connection to the mailbox. Port of feed/mail.py's Mailbox; an interface so the poll
+// One poll's connection to the mailbox; an interface so the poll
 // loop can be tested without Gmail.
 public interface IMailboxSession : IDisposable
 {

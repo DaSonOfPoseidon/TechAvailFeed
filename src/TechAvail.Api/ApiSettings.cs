@@ -2,7 +2,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api;
 
-// The same environment the Python API reads (api/main.py create_app).
+// The API's settings, from the environment (see .env.example).
 public sealed record ApiSettings(
     string ConnectionString,
     TimeZoneInfo Tz,

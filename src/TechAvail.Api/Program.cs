@@ -3,8 +3,8 @@ using TechAvail.Api;
 using TechAvail.Api.Controllers;
 using TechAvail.Data;
 
-// Dashboard API: JSON for the calendar and KPI charts, and the Excel export. Read-only; the
-// ingest service writes everything. Port of api/main.py.
+// Dashboard API: JSON for the calendar and KPI charts, and the Excel exports. Read-only; the
+// ingest service writes everything.
 if (args.Contains("--healthcheck"))
 {
     // For the container healthcheck: the aspnet image has no curl.
@@ -32,7 +32,7 @@ builder.Services
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
     });
-// Bad query values are a 422, as in FastAPI (ASP.NET Core would answer 400).
+// Bad query values are a 422 (ASP.NET Core would answer 400), with the usual {"detail": ...} body.
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>
         Errors.Detail(422, string.Join("; ", context.ModelState.Where(e => e.Value?.Errors.Count > 0).Select(e => $"{e.Key}: invalid value")))

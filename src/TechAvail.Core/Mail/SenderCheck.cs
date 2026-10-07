@@ -4,7 +4,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Mail;
 
-// Port of feed/mail.py's sender_rejection: a From header is trivially forged, so the receiving
+// A From header is trivially forged, so the receiving
 // server's DMARC verdict decides. Returns why a mail is rejected, or null when it is accepted.
 public static class SenderCheck
 {

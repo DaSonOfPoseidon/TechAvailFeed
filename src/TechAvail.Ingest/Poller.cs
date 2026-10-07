@@ -22,7 +22,7 @@ public sealed class PollState
     }
 }
 
-// Port of poll_once in feed/__main__.py: fetch new feed mail, ingest each once, file it as processed
+// One poll: fetch new feed mail, ingest each once, file it as processed
 // or failed, purge processed mail from before today, then finalize the outcome history.
 public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings settings, TimeProvider clock, ILogger<Poller> log)
 {

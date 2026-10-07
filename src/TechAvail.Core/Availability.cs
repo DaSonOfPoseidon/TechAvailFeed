@@ -39,7 +39,7 @@ public sealed record TechDay(
 
 public sealed record UnassignedDemand(DateOnly WorkDate, string Region, int Jobs, int Tickets, double Hours);
 
-// Port of feed/availability.py: free time from the raw calendar blocks.
+// Free time from the raw calendar blocks.
 public static class Availability
 {
     // Ported from the feed query: a slot must be at least this long, and can't start sooner than
@@ -134,7 +134,7 @@ public static class Availability
         && !(NotBusy.TryGetValue(block.Kind, out var statuses) && statuses.Contains(block.Status));
 
     // One calendar's shift segments per tech and day, and every busy block per tech (time off can
-    // span days). Both keep first-seen order, like Python's dicts.
+    // span days), in first-seen order.
     static (OrderedDictionary<(string, DateOnly), List<Block>>, OrderedDictionary<string, List<Block>>) Group(
         IEnumerable<Block> blocks,
         string calendar

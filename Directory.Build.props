@@ -12,7 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- The feed's 9999-12-31 sentinel is DateOnly.MaxValue, which Npgsql would otherwise store as
-         'infinity'. Python stores the real date, and so must the port. -->
+         'infinity'. The tables hold the real date. -->
     <RuntimeHostConfigurationOption Include="Npgsql.DisableDateTimeInfinityConversions" Value="true" />
   </ItemGroup>
 </Project>

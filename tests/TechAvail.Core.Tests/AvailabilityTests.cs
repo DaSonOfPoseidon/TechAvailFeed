@@ -2,7 +2,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Tests;
 
-// Port of tests/test_availability.py.
 public class AvailabilityTests
 {
     static readonly DateOnly Tuesday = new(2026, 10, 6);

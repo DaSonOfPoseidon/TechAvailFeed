@@ -11,11 +11,11 @@ public sealed class Check(string id, string group, string title, string severity
     public string Description { get; } = description;
     public bool Available { get; init; } = true;
 
-    // Each row's fields in Python's order; values are strings, numbers, dates and timestamps.
+    // Each row's fields in display order; values are strings, numbers, dates and timestamps.
     public List<OrderedDictionary<string, object?>> Rows { get; set; } = [];
 }
 
-// Port of feed/diagnostics.py: data-quality checks over one snapshot's blocks. Rows name the job
+// Data-quality checks over one snapshot's blocks. Rows name the job
 // or tech to fix; they never carry coordinates.
 public static class Diagnostics
 {

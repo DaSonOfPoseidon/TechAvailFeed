@@ -4,7 +4,7 @@ using MimeKit.Utils;
 
 namespace TechAvail.Core.Mail;
 
-// Port of feed/mail.py's to_feed_mail: the parts of a feed email the ingest stores.
+// The parts of a feed email the ingest stores.
 public sealed record FeedMail(
     string MessageId,
     string Subject,
@@ -43,8 +43,8 @@ public sealed record FeedMail(
         return found;
     }
 
-    // A header as Python's compat32 parser returns it: the text after the colon, leading blanks
-    // and trailing line breaks removed, folding kept. First occurrence; null when absent.
+    // A header's raw text: after the colon, leading blanks and trailing line breaks removed, folding
+    // kept (the Message-ID dedupe key depends on it). First occurrence; null when absent.
     internal static string? RawHeader(MimeMessage message, string field) =>
         RawHeaders(message, field).Cast<string?>().FirstOrDefault();
 
