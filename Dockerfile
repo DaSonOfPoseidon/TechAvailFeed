@@ -1,4 +1,4 @@
-# The .NET services. One image per project: docker build -f Dockerfile.dotnet --build-arg PROJECT=TechAvail.Api
+# The .NET services. One image per project: docker build --build-arg PROJECT=TechAvail.Api
 ARG PROJECT=TechAvail.Api
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build

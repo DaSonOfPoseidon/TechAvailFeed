@@ -22,7 +22,6 @@ services:
   ingest:
     build:
       context: .
-      dockerfile: Dockerfile.dotnet
       args:
         PROJECT: TechAvail.Ingest
     labels:
@@ -55,7 +54,6 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dotnet
       args:
         PROJECT: TechAvail.Api
     # Dashboard backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.

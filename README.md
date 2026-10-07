@@ -101,7 +101,7 @@ src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
 src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
 src/TechAvail.Api/           the dashboard API (the live api service since 2026-10-07)
 src/TechAvail.Ingest/        the ingest worker (the live ingest service since 2026-10-06)
-Dockerfile.dotnet            one image per project, chosen with the PROJECT build arg
+Dockerfile                   one image per project, chosen with the PROJECT build arg
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
 tools/TechAvail.Parity/      compares .NET output with the Python golden files
 contract/golden/fixtures/    Python's output for the fake fixtures in tests/fixtures/
