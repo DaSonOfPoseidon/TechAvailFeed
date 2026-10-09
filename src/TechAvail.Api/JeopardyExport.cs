@@ -132,7 +132,7 @@ public static class JeopardyExport
                     ("Going long", "The tech's job is En Route or In Progress past its scheduled end, and their next job hasn't started."),
                     (
                         "Slot",
-                        "A booking window (weekday 8, 10, 1, 3, 5; Saturday 9, 11, 2, 4) that isn't over, holding more open jobs than techs assigned to them."
+                        "A booking window (weekday 8, 10, 1, 3, 5; Saturday 8, 10, 1, 3; before 10/17, 9, 11, 2, 4) that isn't over, holding more open jobs than techs assigned to them."
                     ),
                     ("Actions Taking", "Left blank for the dispatcher. The spare rows are for concerns the feed can't see."),
                 ]

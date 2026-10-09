@@ -6,7 +6,8 @@ public class AvailabilityTests
 {
     static readonly DateOnly Tuesday = new(2026, 10, 6);
     static readonly DateOnly Wednesday = new(2026, 10, 7);
-    static readonly DateOnly Saturday = new(2026, 10, 10);
+    static readonly DateOnly OldSaturday = new(2026, 10, 10);
+    static readonly DateOnly Saturday = new(2026, 10, 17);
     static readonly DateTime Early = new(2026, 10, 1, 7, 0, 0);
 
     static DateTime At(DateOnly day, string hhmm) => day.ToDateTime(TimeOnly.Parse(hhmm));
@@ -39,10 +40,17 @@ public class AvailabilityTests
     }
 
     [Fact]
-    public void Saturday_lunch_is_an_hour_later() =>
+    public void Saturday_lunch_matches_weekdays() =>
+        Assert.Equal(
+            [("08:00", "12:00"), ("13:00", "17:00")],
+            Windows(Availability.FreeSlots([B("shift", Saturday, "08:00", "17:00")], Early))
+        );
+
+    [Fact]
+    public void Saturdays_before_the_change_keep_the_later_lunch() =>
         Assert.Equal(
             [("08:00", "13:00"), ("14:00", "17:00")],
-            Windows(Availability.FreeSlots([B("shift", Saturday, "08:00", "17:00")], Early))
+            Windows(Availability.FreeSlots([B("shift", OldSaturday, "08:00", "17:00")], Early))
         );
 
     [Fact]

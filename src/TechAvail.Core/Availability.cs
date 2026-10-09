@@ -47,9 +47,16 @@ public static class Availability
     public const int MinMinutes = 60;
     public const int LeadMinutes = 30;
 
-    // The feed query's assumed lunch hour: 12:00-13:00, Saturdays 13:00-14:00.
+    // Saturdays from this date run the weekday schedule: lunch at 12:00 and the weekday booking windows
+    // (StatusUpdate). Earlier Saturdays keep the old one, so past days don't change.
+    public static readonly DateOnly NewSaturdaysFrom = new(2026, 10, 17);
+
+    public static bool OldSaturday(DateOnly workDate) =>
+        workDate.DayOfWeek == DayOfWeek.Saturday && workDate < NewSaturdaysFrom;
+
+    // The feed query's assumed lunch hour: 12:00-13:00, old Saturdays 13:00-14:00.
     static readonly TimeOnly LunchStart = new(12, 0);
-    static readonly TimeOnly SaturdayLunchStart = new(13, 0);
+    static readonly TimeOnly OldSaturdayLunchStart = new(13, 0);
     static readonly TimeSpan LunchLength = TimeSpan.FromHours(1);
 
     // A schedule comes as "shift" on the install calendar and "shift_tc" on the TC (trouble call)
@@ -120,9 +127,7 @@ public static class Availability
 
     public static (DateTime Start, DateTime End) Lunch(DateOnly workDate)
     {
-        var start = workDate.ToDateTime(
-            workDate.DayOfWeek == DayOfWeek.Saturday ? SaturdayLunchStart : LunchStart
-        );
+        var start = workDate.ToDateTime(OldSaturday(workDate) ? OldSaturdayLunchStart : LunchStart);
         return (start, start + LunchLength);
     }
 

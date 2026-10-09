@@ -42,7 +42,9 @@ public static class StatusUpdate
 
     // The canonical booking windows (MBSReporter's multiregion rules), as starts; each is 2 hours long.
     static readonly int[] WeekdaySlots = [8, 10, 13, 15, 17];
-    static readonly int[] SaturdaySlots = [9, 11, 14, 16];
+    // Saturdays use the weekday windows without 5pm; before Availability.NewSaturdaysFrom they were 9, 11, 2, 4.
+    static readonly int[] SaturdaySlots = [8, 10, 13, 15];
+    static readonly int[] OldSaturdaySlots = [9, 11, 14, 16];
     static readonly TimeSpan SlotLength = TimeSpan.FromHours(2);
 
     // The update for a requested time reads the first run in [at, at + Window), else the latest before.
@@ -148,7 +150,7 @@ public static class StatusUpdate
         int[] starts = day.DayOfWeek switch
         {
             DayOfWeek.Sunday => [],
-            DayOfWeek.Saturday => SaturdaySlots,
+            DayOfWeek.Saturday => Availability.OldSaturday(day) ? OldSaturdaySlots : SaturdaySlots,
             _ => WeekdaySlots,
         };
         var open = blocks

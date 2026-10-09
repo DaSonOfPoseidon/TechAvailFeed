@@ -147,6 +147,37 @@ public class StatusUpdateTests
         Assert.Equal("3PM slot has 1 job but no tech assigned", Assert.Single(none.Concerns).Reason);
     }
 
+    [Theory]
+    [InlineData("2026-10-17", "08:00", "13:00", "17:00", "8AM", "1PM")]
+    [InlineData("2026-10-10", "09:00", "14:00", "08:00", "9AM", "2PM")]
+    public void Saturday_slots_follow_the_schedule_of_their_date(
+        string date,
+        string first,
+        string second,
+        string outside,
+        string firstLabel,
+        string secondLabel
+    )
+    {
+        var saturday = DateOnly.Parse(date, CultureInfo.InvariantCulture);
+        Block OnSaturday(string reference, string start) =>
+            Job(reference, start, kind: "job_unassigned") with
+            {
+                WorkDate = saturday,
+                StartsAt = saturday.ToDateTime(TimeOnly.Parse(start, CultureInfo.InvariantCulture)),
+                EndsAt = saturday.ToDateTime(TimeOnly.Parse(start, CultureInfo.InvariantCulture)).AddHours(2),
+            };
+        var report = StatusUpdate.Build(
+            [OnSaturday("1", first), OnSaturday("2", second), OnSaturday("3", outside)],
+            saturday,
+            saturday.ToDateTime(new TimeOnly(7, 0))
+        );
+        Assert.Equal(
+            [$"{firstLabel} slot has 1 job but no tech assigned", $"{secondLabel} slot has 1 job but no tech assigned"],
+            report.Concerns.Select(c => c.Reason)
+        );
+    }
+
     [Fact]
     public void Three_concerns_turn_a_region_red_and_an_unknown_area_gets_its_own_row()
     {

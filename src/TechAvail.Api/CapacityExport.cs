@@ -12,7 +12,7 @@ public static class CapacityExport
     internal static readonly (string Name, object? Text)[] Definitions =
     [
         ("Shift h", "Scheduled shift hours."),
-        ("Available h", "Shift minus lunch (12-1, Sat 1-2) minus time off."),
+        ("Available h", "Shift minus lunch (12-1; Saturdays before 10/17, 1-2) minus time off."),
         (
             "Booked h",
             "Jobs and tickets inside available time. Canceled/unnecessary tasks and "
