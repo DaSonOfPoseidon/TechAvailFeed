@@ -338,6 +338,7 @@ public sealed partial class FeedStore
             command.Transaction = transaction;
             command.ExecuteNonQuery();
         }
+        NotifyChanged(connection, transaction);
         transaction.Commit();
     }
 

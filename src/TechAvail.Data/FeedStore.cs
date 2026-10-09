@@ -17,6 +17,16 @@ public sealed partial class FeedStore(string connectionString)
     public const string AtSnapshot =
         "first_snapshot_id <= @snapshot AND (closed_snapshot_id IS NULL OR closed_snapshot_id > @snapshot)";
 
+    // Announced (NOTIFY) when a snapshot or finalized day commits, so readers know their cache is stale.
+    public const string ChangedChannel = "feed_changed";
+
+    // Delivered only if the transaction commits.
+    static void NotifyChanged(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        using var command = new NpgsqlCommand($"NOTIFY {ChangedChannel}", connection, transaction);
+        command.ExecuteNonQuery();
+    }
+
     public NpgsqlConnection Open()
     {
         var connection = new NpgsqlConnection(connectionString);
@@ -82,6 +92,7 @@ public sealed partial class FeedStore(string connectionString)
             SaveBlocks(connection, transaction, snapshotId, feed.Blocks);
         else if (status == "ok")
             SaveSlots(connection, snapshotId, feed!.Slots);
+        NotifyChanged(connection, transaction);
         transaction.Commit();
         return snapshotId;
     }

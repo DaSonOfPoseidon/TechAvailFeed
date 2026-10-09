@@ -1,3 +1,4 @@
+using TechAvail.Core;
 using Dapper;
 using Npgsql;
 using TechAvail.Core.Parsing;
@@ -49,6 +50,38 @@ public class FeedStoreTests
         while (reader.Read())
             rows.Add(FeedStore.ReadKey(reader, 0));
         return rows;
+    }
+
+    // Every notification on FeedStore.ChangedChannel while act runs, once its transactions commit.
+    static List<string> Notified(TestDatabase db, Action act)
+    {
+        using var listener = db.Open();
+        var channels = new List<string>();
+        listener.Notification += (_, e) => channels.Add(e.Channel);
+        using (var listen = new NpgsqlCommand($"LISTEN {FeedStore.ChangedChannel}", listener))
+            listen.ExecuteNonQuery();
+        act();
+        while (listener.Wait(TimeSpan.FromMilliseconds(500))) { }
+        return channels;
+    }
+
+    [DbFact]
+    public void Every_saved_snapshot_and_finalized_day_is_announced()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        Assert.Equal(
+            [FeedStore.ChangedChannel, FeedStore.ChangedChannel, FeedStore.ChangedChannel],
+            Notified(
+                db,
+                () =>
+                {
+                    Save(store, "<1>", Blocks(Job("a")));
+                    Save(store, "<2>", null, error: "bad");
+                    store.SaveDay(new DayOutcome(new DateOnly(2026, 10, 6), "no_morning"));
+                }
+            )
+        );
     }
 
     [DbFact]
