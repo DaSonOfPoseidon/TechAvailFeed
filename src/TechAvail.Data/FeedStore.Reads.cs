@@ -167,11 +167,17 @@ public sealed partial class FeedStore : IFeedReads
             GpsPrecision = Get<string>(r, "gps_precision")!,
         };
 
-    public LatestSnapshot? Latest()
+    public LatestSnapshot? Latest() =>
+        Query($"SELECT * FROM snapshots {ServedSnapshot}", ReadSnapshot).FirstOrDefault() is { } snapshot ? WithRows(snapshot) : null;
+
+    // One snapshot by id, with its rows, whether or not it is the served one.
+    public LatestSnapshot? Snapshot(long id) =>
+        Query("SELECT * FROM snapshots WHERE id = @id", ReadSnapshot, ("id", id)).FirstOrDefault() is { } snapshot
+            ? WithRows(snapshot)
+            : null;
+
+    LatestSnapshot WithRows(SnapshotRow snapshot)
     {
-        var snapshot = Query($"SELECT * FROM snapshots {ServedSnapshot}", ReadSnapshot).FirstOrDefault();
-        if (snapshot is null)
-            return null;
         if (snapshot.Format == "blocks")
         {
             var blocks = Query(
