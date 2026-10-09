@@ -97,7 +97,11 @@ public class CacheTests
         Assert.Equal(second, reads.Latest()!.Snapshot.Id);
         Assert.Equal([first, second], reads.BlocksSnapshots().Select(s => s.Id));
 
-        factory.Clock.Advance(FeedChanges.RetryDelay);
-        await Until(() => Served(factory) == second);
+        // The retry timer may not exist yet when the listener is seen down, so keep the clock moving.
+        await Until(() =>
+        {
+            factory.Clock.Advance(FeedChanges.RetryDelay);
+            return Served(factory) == second;
+        });
     }
 }
