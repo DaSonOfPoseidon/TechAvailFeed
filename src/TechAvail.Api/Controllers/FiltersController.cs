@@ -4,7 +4,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class FiltersController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class FiltersController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     public sealed record Tech(string TechId, string TechName, string Region, string Calendar);
 

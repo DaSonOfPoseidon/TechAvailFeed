@@ -4,7 +4,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class DiagnosticsExportController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class DiagnosticsExportController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     // The data-quality checks (same filters as /diagnostics) as a workbook.
     [HttpGet("diagnostics.xlsx")]

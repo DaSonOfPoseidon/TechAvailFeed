@@ -37,6 +37,11 @@ I/O, not in SQL or in the API layer. That keeps them unit-testable without a dat
   With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally (`corpus/mail`, never committed).
 - **Freshness is part of every response.** Each API response includes the snapshot it was computed from and
   its age, and is flagged `stale` when deliveries stop.
+- **Cached reads, invalidated by the ingest.** A snapshot's rows never change once committed, so the API caches
+  them in memory by snapshot id (`CachedFeedReads`). The ingest sends `NOTIFY feed_changed` when a snapshot or
+  finalized day commits, and the API's listener (`FeedChanges`) switches to it. Warm requests make no database
+  queries. Responses themselves aren't cached, because several depend on the current time. `/health` always
+  asks Postgres. While the listener is down, reads go straight to Postgres until it reconnects.
 - **Location privacy.** Job coordinates are stored exactly but served rounded to about 110 m. The Excel exports
   never include them, and the feed carries no address text.
 - **Format evolution.** New columns are optional, so older exports still parse. The parser recognises the

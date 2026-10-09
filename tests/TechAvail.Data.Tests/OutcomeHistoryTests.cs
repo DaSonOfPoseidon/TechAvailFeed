@@ -43,7 +43,7 @@ public class OutcomeHistoryTests
         var history = new OutcomeHistory(store, Chicago, clock);
 
         // D+2 hasn't ended: nothing is written, the day is computed live.
-        Assert.Equal(0, history.Finalize());
+        Assert.Equal(0, history.Finalize(store.SaveDay));
         var live = history.History(days: 3);
         Assert.Equal([true, true, true], live.Days.Select(d => d.Provisional));
         var planDay = live.Days.Single(d => d.Date == Day);
@@ -52,8 +52,8 @@ public class OutcomeHistoryTests
 
         // A snapshot after D+2 makes the day final; it is written once.
         Save(store, Day.AddDays(3).ToDateTime(new TimeOnly(0, 15)), "C");
-        Assert.Equal(1, history.Finalize());
-        Assert.Equal(0, history.Finalize());
+        Assert.Equal(1, history.Finalize(store.SaveDay));
+        Assert.Equal(0, history.Finalize(store.SaveDay));
         Assert.Equal([Day], store.FinalizedDays());
         var (outcome, provisional) = history.Range(Day, Day).Single();
         Assert.False(provisional);

@@ -24,6 +24,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://0.0.0.0:{builder.Configuration["HTTP_PORT"] ?? "8000"}");
 builder.Services.AddSingleton(services => ApiSettings.From(services.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton(services => new FeedStore(services.GetRequiredService<ApiSettings>().ConnectionString));
+builder.Services.AddSingleton<FeedChanges>();
+builder.Services.AddHostedService(services => services.GetRequiredService<FeedChanges>());
+// Payloads are only serialised if a second-level cache (e.g. Redis) is added; a snapshot's rows are a few MB.
+builder.Services.AddHybridCache(options => options.MaximumPayloadBytes = 64 * 1024 * 1024);
+builder.Services.AddSingleton<IFeedReads, CachedFeedReads>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddCors();
 builder.Services
