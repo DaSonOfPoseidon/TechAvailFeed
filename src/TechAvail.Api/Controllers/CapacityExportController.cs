@@ -5,7 +5,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class CapacityExportController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class CapacityExportController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     static readonly string[] WorkKinds = ["job", "ticket", "time_off"];
 

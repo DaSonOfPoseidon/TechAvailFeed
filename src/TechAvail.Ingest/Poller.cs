@@ -55,7 +55,7 @@ public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings set
         }
         if (ingested)
         {
-            var written = new OutcomeHistory(store, settings.Tz, clock).Finalize();
+            var written = new OutcomeHistory(store, settings.Tz, clock).Finalize(store.SaveDay);
             if (written > 0)
                 log.LogInformation("finalized outcome history for {Count} days", written);
         }

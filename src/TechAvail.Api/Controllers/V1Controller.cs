@@ -9,9 +9,9 @@ namespace TechAvail.Api.Controllers;
 [ApiController]
 [ApiKey]
 [Route("api/v1")]
-public abstract class V1Controller(FeedStore store, ApiSettings settings, TimeProvider clock) : ControllerBase
+public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeProvider clock) : ControllerBase
 {
-    protected FeedStore Store { get; } = store;
+    protected IFeedReads Store { get; } = store;
     protected ApiSettings Settings { get; } = settings;
     protected TimeProvider Clock { get; } = clock;
 

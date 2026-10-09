@@ -24,6 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://0.0.0.0:{builder.Configuration["HTTP_PORT"] ?? "8000"}");
 builder.Services.AddSingleton(services => ApiSettings.From(services.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton(services => new FeedStore(services.GetRequiredService<ApiSettings>().ConnectionString));
+builder.Services.AddSingleton<IFeedReads>(services => services.GetRequiredService<FeedStore>());
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddCors();
 builder.Services

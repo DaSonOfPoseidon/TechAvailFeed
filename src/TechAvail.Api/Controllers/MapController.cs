@@ -6,7 +6,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class MapController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class MapController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     static readonly string[] MapKinds = ["job", "ticket", "job_unassigned", "ticket_unassigned"];
 

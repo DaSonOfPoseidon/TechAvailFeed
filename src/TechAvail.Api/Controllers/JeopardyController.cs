@@ -4,7 +4,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class JeopardyController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class JeopardyController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     // The VP's status update (10 AM, 1 PM, 3 PM, 5 PM). With at, the run for that time; else the day's latest.
     [HttpGet("jeopardy.xlsx")]

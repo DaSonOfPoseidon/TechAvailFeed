@@ -50,7 +50,7 @@ public sealed record LatencySummary(
 );
 
 // The read side of the store.
-public sealed partial class FeedStore
+public sealed partial class FeedStore : IFeedReads
 {
     // Every Block field, with NULLs from older snapshots read as the parser's defaults.
     const string BlockFields = """

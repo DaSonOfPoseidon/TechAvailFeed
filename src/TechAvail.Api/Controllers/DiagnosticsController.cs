@@ -5,7 +5,7 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-public sealed class DiagnosticsController(FeedStore store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
+public sealed class DiagnosticsController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
     public record Summary(string Id, string Group, string Title, string Severity, string Description, bool Available, int Count);
 
