@@ -6,7 +6,7 @@ expects the legacy **slots** (pre-computed gaps) format. `tests/fixtures/sample_
 
 ## Blocks format
 
-Required columns (`feed/parse.py` `BLOCK_COLUMNS`):
+Required columns (`FeedParser.BlockColumns` in `src/TechAvail.Core/Parsing/FeedParser.cs`):
 
 | Column | Meaning |
 |---|---|

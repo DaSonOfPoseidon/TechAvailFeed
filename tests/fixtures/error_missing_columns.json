@@ -1,0 +1,3 @@
+{
+  "error": "missing columns: tech_name, starts_at, ends_at, ref_id, status, region, skills"
+}

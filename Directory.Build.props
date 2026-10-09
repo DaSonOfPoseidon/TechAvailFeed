@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IsPackable>false</IsPackable>
+    <!-- Workstation GC: the web SDK's server GC keeps a heap per core (24 here), about 330 MiB after
+         load against 165 MiB. Concurrent bursts get 1.2-2x slower; single requests don't (README). -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The feed's 9999-12-31 sentinel is DateOnly.MaxValue, which Npgsql would otherwise store as
+         'infinity'. The tables hold the real date. -->
+    <RuntimeHostConfigurationOption Include="Npgsql.DisableDateTimeInfinityConversions" Value="true" />
+  </ItemGroup>
+</Project>

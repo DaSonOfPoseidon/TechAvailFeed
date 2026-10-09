@@ -20,7 +20,10 @@ services:
       retries: 5
 
   ingest:
-    build: .
+    build:
+      context: .
+      args:
+        PROJECT: TechAvail.Ingest
     labels:
       wud.watch: "false"
       # Feasibility harness: no phone alerts until it graduates to the real dashboard.
@@ -33,7 +36,7 @@ services:
     environment:
       # Override in .env to point at an external Postgres.
       DATABASE_URL: ${DATABASE_URL:-postgresql://techavail:${POSTGRES_PASSWORD}@postgres:5432/techavail}
-      # Raw copy of each processed mail for replay/parity tests (gitignored; Gmail keeps only today's).
+      # Raw copy of each processed mail for replays and the IMAP check (gitignored; Gmail keeps only today's).
       ARCHIVE_DIR: /app/corpus/mail
     volumes:
       - ./corpus/mail:/app/corpus/mail
@@ -41,17 +44,19 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # curl isn't in the image; use python's stdlib instead
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      # curl isn't in the aspnet image; the app checks itself.
+      test: ["CMD", "dotnet", "/app/TechAvail.Ingest.dll", "--healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
 
   api:
-    build: .
-    # Dashboard backend: calendar, KPIs and the Excel export. Read-only on the ingest's tables.
-    command: ["uvicorn", "--factory", "api.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    build:
+      context: .
+      args:
+        PROJECT: TechAvail.Api
+    # Dashboard backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.
     labels:
       wud.watch: "false"
       # Like the ingest: no phone alerts until the dashboard goes live. Then drop the ignore.
@@ -71,7 +76,8 @@ services:
       ingest:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      # curl isn't in the aspnet image; the app checks itself.
+      test: ["CMD", "dotnet", "/app/TechAvail.Api.dll", "--healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3

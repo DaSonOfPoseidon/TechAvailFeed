@@ -1,0 +1,6 @@
+.env
+.git/
+corpus/
+**/bin/
+**/obj/
+TestResults/
