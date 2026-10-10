@@ -40,7 +40,8 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<DayKpis> Days,
         ByKind Totals,
         List<RegionKpis> ByRegion,
-        List<TechKpis> ByTech
+        List<TechKpis> ByTech,
+        List<TechOption> Techs
     );
 
     // Completion, cancellation and reschedule rates per day, region and technician.
@@ -57,7 +58,8 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
             kpis.Days,
             kpis.Totals,
             kpis.ByRegion,
-            kpis.ByTech
+            kpis.ByTech,
+            kpis.Techs
         );
     }
 }

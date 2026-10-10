@@ -1,0 +1,45 @@
+.chart {
+  height: 300px;
+  width: 100%;
+}
+
+.chart.short {
+  height: 160px;
+}
+
+h2 {
+  margin-bottom: 8px;
+}
+
+.chart + h2 {
+  margin-top: 16px;
+}
+
+.second {
+  margin-top: 24px;
+}
+
+.outcome-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  .tech {
+    width: 240px;
+  }
+}
+
+.note {
+  margin: 8px 0 0;
+}
+
+.tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}

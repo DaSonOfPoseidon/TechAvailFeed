@@ -20,7 +20,11 @@ public static class CapacityExport
         ),
         ("Free h", "Open slots of at least 60 minutes; today's start no sooner than 30 minutes after the snapshot was read."),
         ("Utilization", "Booked h / available h."),
-        ("Unassigned h", "Scheduled jobs and tickets with no tech yet, in the region their address maps to."),
+        (
+            "Unassigned h",
+            "Scheduled jobs and tickets with no tech yet, in the region their address maps to. A skill filter keeps "
+                + "only work needing that skill."
+        ),
         ("Net h", "Free h minus unassigned h: capacity left once unassigned work is placed."),
         ("Techs off", "Techs with time off overlapping their shift, or a day off entirely."),
     ];

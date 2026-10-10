@@ -1,0 +1,151 @@
+.title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  h1 {
+    min-width: 9ch;
+    text-align: center;
+  }
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  color: var(--ta-ink-2);
+
+  strong {
+    font-family: var(--mat-sys-headline-small-font);
+    font-size: 1.4rem;
+    color: var(--ta-ink);
+    margin-right: 4px;
+  }
+}
+
+.timeline {
+  display: grid;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.axis,
+.tech {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(480px, 1fr) 80px;
+  gap: 12px;
+  align-items: center;
+}
+
+.name {
+  display: grid;
+  line-height: 1.2;
+
+  .muted {
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.track {
+  position: relative;
+  height: 28px;
+}
+
+.axis .track {
+  height: 20px;
+}
+
+.tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: var(--ta-muted);
+}
+
+.gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ta-grid);
+}
+
+.sum {
+  text-align: right;
+  color: var(--ta-ink-2);
+}
+
+.tech.off {
+  opacity: 0.6;
+}
+
+.bar {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px;
+
+  &.shift {
+    top: 2px;
+    bottom: 2px;
+    background: var(--ta-grid);
+  }
+
+  &.off {
+    top: 2px;
+    bottom: 2px;
+    background: repeating-linear-gradient(135deg, var(--ta-axis) 0 2px, transparent 2px 6px);
+  }
+
+  &.free {
+    top: 4px;
+    bottom: 4px;
+    border: 2px solid var(--ta-series-3);
+  }
+
+  &.job,
+  &.ticket {
+    top: 6px;
+    bottom: 6px;
+    // The 2px surface gap between neighbouring bars.
+    box-shadow: 0 0 0 1px var(--ta-surface);
+  }
+
+  &.job {
+    background: var(--ta-series-1);
+  }
+
+  &.ticket {
+    background: var(--ta-series-2);
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--ta-ring);
+  color: var(--ta-ink-2);
+
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bar {
+    position: static;
+    display: inline-block;
+    width: 20px;
+    height: 12px;
+  }
+}
+
+h2 {
+  margin-bottom: 8px;
+}

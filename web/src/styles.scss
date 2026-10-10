@@ -1,0 +1,159 @@
+@use '@angular/material' as mat;
+
+// Field-ops palette: the dataviz reference instance (validated categorical, sequential and status
+// steps), with light/dark picked per token by light-dark(). Charts read these through cssColor().
+:root {
+  color-scheme: light dark;
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: (
+        plain-family: 'Barlow, system-ui, sans-serif',
+        brand-family: "'Barlow Semi Condensed', Barlow, system-ui, sans-serif",
+      ),
+      density: -1,
+    )
+  );
+
+  --ta-page: light-dark(#f9f9f7, #0d0d0d);
+  --ta-surface: light-dark(#fcfcfb, #1a1a19);
+  --ta-ink: light-dark(#0b0b0b, #f0efec);
+  --ta-ink-2: light-dark(#52514e, #c3c2b7);
+  --ta-muted: #898781;
+  --ta-grid: light-dark(#e1e0d9, #2c2c2a);
+  --ta-axis: light-dark(#c3c2b7, #383835);
+  --ta-ring: light-dark(rgba(11, 11, 11, 0.1), rgba(255, 255, 255, 0.1));
+
+  // Categorical slots, in fixed order: 1 jobs/booked, 2 tickets/unassigned, 3 free, 4 the fourth line.
+  --ta-series-1: light-dark(#2a78d6, #3987e5);
+  --ta-series-2: light-dark(#eb6834, #d95926);
+  --ta-series-3: light-dark(#1baf7a, #199e70);
+  --ta-series-4: light-dark(#eda100, #c98500);
+
+  // Sequential (utilisation), light to dark in both modes.
+  --ta-seq-1: #cde2fb;
+  --ta-seq-2: #9ec5f4;
+  --ta-seq-3: #6da7ec;
+  --ta-seq-4: #2a78d6;
+  --ta-seq-5: #184f95;
+
+  // Status: always shown with an icon and a word.
+  --ta-good: #0ca30c;
+  --ta-warning: #fab219;
+  --ta-critical: #d03b3b;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ta-page);
+  color: var(--ta-ink);
+  font: var(--mat-sys-body-medium);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--mat-sys-headline-small-font);
+  font-weight: 600;
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 1.2rem;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--ta-ink-2);
+}
+
+// A page: title row, then content, left-aligned on the page plane.
+.page {
+  padding: 16px 24px 48px;
+  display: grid;
+  // One column no wider than the screen, so a wide table scrolls in its .table-scroll instead
+  // of widening the page.
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 1600px;
+
+  @media (max-width: 600px) {
+    padding: 12px 16px 32px;
+  }
+}
+
+.panel {
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-ring);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.empty {
+  padding: 32px 16px;
+  color: var(--ta-ink-2);
+}
+
+table.mat-mdc-table {
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.multiline .mdc-tooltip__surface {
+  white-space: pre-line;
+  text-align: left;
+  max-width: 320px;
+}
+
+// A light data table for the summary tables.
+table.plain {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: 6px 12px 6px 0;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    font-weight: 500;
+    color: var(--ta-ink-2);
+    border-bottom: 1px solid var(--ta-axis);
+  }
+
+  tbody tr + tr td {
+    border-top: 1px solid var(--ta-grid);
+  }
+
+  tfoot td {
+    font-weight: 600;
+    border-top: 1px solid var(--ta-axis);
+  }
+}

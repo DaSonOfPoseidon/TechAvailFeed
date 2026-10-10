@@ -24,7 +24,8 @@ public class SchemaTests
         using var db = new TestDatabase();
         Schema.Migrate(db.ConnectionString);
         using var connection = db.Open();
-        Assert.Equal(1, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM schemaversions"));
+        var scripts = typeof(Schema).Assembly.GetManifestResourceNames().Count(n => n.EndsWith(".sql", StringComparison.Ordinal));
+        Assert.Equal(scripts, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM schemaversions"));
     }
 
     [DbFact]

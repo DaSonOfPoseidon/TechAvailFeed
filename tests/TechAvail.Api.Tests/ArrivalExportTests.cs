@@ -174,6 +174,18 @@ public class ArrivalExportTests
     }
 
     [DbFact]
+    public async Task Regions_come_from_the_days_own_report()
+    {
+        using var db = Seed(2);
+        using var factory = new ApiFactory(db, new(2026, 10, 7, 15, 0, 0, TimeSpan.Zero));
+        var client = factory.CreateClient();
+        var body = System.Text.Json.Nodes.JsonNode.Parse(await client.GetStringAsync("/api/v1/arrivals/regions?date=2026-10-06"))!;
+        Assert.Equal("2026-10-06", (string)body["date"]!);
+        Assert.Equal(["North"], body["regions"]!.AsArray().Select(r => (string)r!));
+        Assert.Equal((HttpStatusCode)422, (await client.GetAsync("/api/v1/arrivals/regions?date=2026-10-08")).StatusCode);
+    }
+
+    [DbFact]
     public async Task Before_the_815_run_and_future_days_are_refused()
     {
         using var db = Seed(0);

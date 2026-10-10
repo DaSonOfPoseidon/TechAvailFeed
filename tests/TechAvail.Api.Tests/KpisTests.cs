@@ -86,4 +86,19 @@ public class KpisTests
         Assert.Equal(1, (int)Kpis([(day, false)], region: "South")["totals"]!["job"]!["planned"]!);
         Assert.Equal(1, (int)Kpis([(day, false)], tech: "a")["totals"]!["job"]!["outcome"]!["completed"]!);
     }
+
+    [Fact]
+    public void Techs_list_the_range_ignoring_the_tech_filter()
+    {
+        var day = new DayOutcome(
+            Day,
+            "ok",
+            Morning,
+            [Item("1", new() { ["d0"] = "completed" }), Item("2", new() { ["d0"] = "open" }, tech: "b", region: "South")]
+        );
+        var techs = Kpis([(day, false)], tech: "a")["techs"]!.AsArray();
+        Assert.Equal(["a", "b"], techs.Select(t => (string)t!["tech_id"]!));
+        Assert.Equal("B", (string)techs[1]!["tech_name"]!);
+        Assert.Equal(["b"], Kpis([(day, false)], region: "South", tech: "a")["techs"]!.AsArray().Select(t => (string)t!["tech_id"]!));
+    }
 }

@@ -25,7 +25,8 @@
       "address_issue": null,
       "latitude": null,
       "longitude": null,
-      "gps_precision": ""
+      "gps_precision": "",
+      "set_region": null
     },
     {
       "kind": "job",
@@ -48,7 +49,8 @@
       "address_issue": null,
       "latitude": 40.5,
       "longitude": -100.25,
-      "gps_precision": "PARCEL"
+      "gps_precision": "PARCEL",
+      "set_region": null
     },
     {
       "kind": "time_off",
@@ -71,7 +73,8 @@
       "address_issue": null,
       "latitude": null,
       "longitude": null,
-      "gps_precision": "ZIP9"
+      "gps_precision": "ZIP9",
+      "set_region": null
     }
   ]
 }

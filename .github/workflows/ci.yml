@@ -27,3 +27,20 @@ jobs:
       - run: dotnet format --verify-no-changes --no-restore
       # The real-mail corpus never leaves the dev machine, so it is never part of CI.
       - run: dotnet test --no-build
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm test -- --watch=false
+      - run: npm run build
