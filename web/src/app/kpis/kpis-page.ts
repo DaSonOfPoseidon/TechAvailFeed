@@ -2,7 +2,6 @@ import { httpResource } from '@angular/common/http';
 import { Component, computed, inject } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { params } from '../api/feed-api';
@@ -10,6 +9,7 @@ import { CapacityKpis, Filters, JobStats, KindStats, OutcomeKpis } from '../api/
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
 import { ChartOptions, EChart, chrome, cssColor } from '../shared/echart';
+import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness } from '../shared/freshness';
 import { dayLabel, hours, percent, regionName } from '../shared/time';
@@ -39,12 +39,12 @@ export function statsRow(name: string, stats: KindStats): StatsRow {
 @Component({
   selector: 'app-kpis-page',
   imports: [
+    DateField,
     EChart,
     ErrorPanel,
     FilterBar,
     MatButtonToggleModule,
     MatFormFieldModule,
-    MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
     StatsTable,

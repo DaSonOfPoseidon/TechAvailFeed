@@ -56,24 +56,16 @@
 
   <h1 class="second">What happened to planned work</h1>
   <div class="outcome-filters">
-    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>From</mat-label>
-      <input
-        matInput
-        type="date"
-        [value]="state.get('from') ?? ''"
-        (change)="state.set({ from: $any($event.target).value })"
-      />
-    </mat-form-field>
-    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>To</mat-label>
-      <input
-        matInput
-        type="date"
-        [value]="state.get('to') ?? ''"
-        (change)="state.set({ to: $any($event.target).value })"
-      />
-    </mat-form-field>
+    <app-date-field
+      label="From"
+      [value]="state.get('from')"
+      (valueChange)="state.set({ from: $event })"
+    />
+    <app-date-field
+      label="To"
+      [value]="state.get('to')"
+      (valueChange)="state.set({ to: $event })"
+    />
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tech">
       <mat-label>Technician</mat-label>
       <mat-select [value]="state.get('tech')" (valueChange)="state.set({ tech: $event })">

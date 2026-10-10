@@ -2,9 +2,9 @@ import { httpResource } from '@angular/common/http';
 import { Component, computed, inject, input } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Filters } from '../api/models';
+import { DateField } from '../shared/date-field';
 import { FilterState } from './filter-state';
 
 export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
@@ -12,7 +12,7 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
 // One row of filters above a view. Each view lists the fields its endpoint takes.
 @Component({
   selector: 'app-filter-bar',
-  imports: [MatButtonToggleModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [DateField, MatButtonToggleModule, MatFormFieldModule, MatSelectModule],
   template: `
     <div class="bar" role="search">
       @if (has('region')) {
@@ -38,15 +38,11 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
         </mat-form-field>
       }
       @if (has('start')) {
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="date">
-          <mat-label>From</mat-label>
-          <input
-            matInput
-            type="date"
-            [value]="state.start() ?? ''"
-            (change)="state.set({ start: $any($event.target).value })"
-          />
-        </mat-form-field>
+        <app-date-field
+          label="From"
+          [value]="state.start()"
+          (valueChange)="state.set({ start: $event })"
+        />
       }
       @if (has('days')) {
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="days">
@@ -81,9 +77,6 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
     }
     mat-form-field {
       width: 220px;
-    }
-    .date {
-      width: 160px;
     }
     .days {
       width: 96px;
