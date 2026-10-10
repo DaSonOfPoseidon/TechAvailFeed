@@ -7,6 +7,7 @@ import {
   inject,
   viewChild,
   DestroyRef,
+  untracked,
 } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
@@ -77,7 +78,9 @@ export class MapPage {
   constructor() {
     let map: L.Map | null = null;
     let layer: L.LayerGroup | null = null;
-    let fitted = false;
+    // The filters the view was last fitted to: a new date, region or kind refits, a fresher
+    // snapshot of the same filters keeps the user's pan and zoom.
+    let fittedFor: string | null = null;
     afterRenderEffect(() => {
       const points = this.result.value()?.points;
       if (!map) {
@@ -88,7 +91,8 @@ export class MapPage {
         }).addTo(map);
         layer = L.layerGroup().addTo(map);
       }
-      if (!points) return;
+      // While a request is in flight, value() can still hold the previous filters' points.
+      if (!points || this.result.isLoading()) return;
       layer!.clearLayers();
       const colors = { job: cssColor('--ta-series-1'), ticket: cssColor('--ta-series-2') };
       const surface = cssColor('--ta-surface');
@@ -103,11 +107,15 @@ export class MapPage {
           .bindPopup(popup(p))
           .addTo(layer!);
       }
-      if (points.length && !fitted) {
+      const filters = untracked(() =>
+        [this.state.start(), this.state.region(), this.kind(), this.completed()].join('|'),
+      );
+      if (!points.length) fittedFor = null;
+      else if (fittedFor !== filters) {
         map.fitBounds(L.latLngBounds(points.map((p) => [p.lat!, p.lon!] as L.LatLngTuple)), {
           padding: [24, 24],
         });
-        fitted = true;
+        fittedFor = filters;
       }
     });
     inject(DestroyRef).onDestroy(() => map?.remove());

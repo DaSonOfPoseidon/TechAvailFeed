@@ -6,25 +6,28 @@ import { ApiKeyDialog } from './api-key-dialog';
 
 const storageKey = 'techavail.apiKey';
 
-// The API key (when the API has API_KEY set), kept in this browser's localStorage.
+// The API key (when the API has API_KEY set), kept in this browser's localStorage, and in memory
+// for this page when storage is unavailable.
 @Injectable({ providedIn: 'root' })
 export class ApiKey {
   private readonly dialog = inject(MatDialog);
   private pending: Promise<string | null> | null = null;
+  private remembered = '';
 
   get value(): string {
     try {
-      return localStorage.getItem(storageKey) ?? '';
+      return localStorage.getItem(storageKey) ?? this.remembered;
     } catch {
-      return '';
+      return this.remembered;
     }
   }
 
   set value(key: string) {
+    this.remembered = key;
     try {
       localStorage.setItem(storageKey, key);
     } catch {
-      // Private mode: the key lasts until the page reloads.
+      // Private mode or blocked storage: the key lasts until the page reloads.
     }
   }
 

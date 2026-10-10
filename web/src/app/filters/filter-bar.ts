@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { Filters } from '../api/models';
 import { DateField } from '../shared/date-field';
+import { Freshness } from '../shared/freshness';
 import { FilterState } from './filter-state';
 
 export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
@@ -87,7 +88,12 @@ export class FilterBar {
   readonly fields = input.required<Field[]>();
   readonly dayOptions = input<number[]>([7, 14, 30, 45, 62]);
   protected readonly state = inject(FilterState);
-  protected readonly options = httpResource<Filters>(() => '/api/v1/filters');
+  private readonly freshness = inject(Freshness);
+  // Refetched with each new snapshot, so new regions, skills and techs appear.
+  protected readonly options = httpResource<Filters>(() => {
+    this.freshness.snapshotId();
+    return '/api/v1/filters';
+  });
 
   protected has(field: Field): boolean {
     return this.fields().includes(field);

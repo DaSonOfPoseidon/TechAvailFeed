@@ -14,7 +14,8 @@ export interface Window {
   to: number;
 }
 
-// Whole hours from the earliest shift start to the latest end, at least 8:00 to 18:00.
+// Whole hours from the earliest shift or work start to the latest end, at least 8:00 to 18:00,
+// so work booked outside every shift still shows.
 export function windowFor(techs: TechDetail[], date: string): Window {
   let from = 8 * 60;
   let to = 18 * 60;
@@ -22,6 +23,10 @@ export function windowFor(techs: TechDetail[], date: string): Window {
     for (const s of tech.shifts) {
       from = Math.min(from, clamp(s.start, date));
       to = Math.max(to, clamp(s.end, date));
+    }
+    for (const w of tech.work) {
+      from = Math.min(from, clamp(w.starts_at, date));
+      to = Math.max(to, clamp(w.ends_at, date));
     }
   }
   return { from: Math.floor(from / 60) * 60, to: Math.ceil(to / 60) * 60 };

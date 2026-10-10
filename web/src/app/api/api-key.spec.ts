@@ -1,6 +1,7 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { ApiKey, apiKeyInterceptor } from './api-key';
 
@@ -44,5 +45,22 @@ describe('apiKeyInterceptor', () => {
     http.get('/health').subscribe();
     expect(backend.expectOne('/api/v1/calendar').request.headers.get('X-API-Key')).toBe('saved');
     expect(backend.expectOne('/health').request.headers.has('X-API-Key')).toBe(false);
+  });
+});
+
+describe('ApiKey', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('keeps the key in memory when storage is blocked', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    TestBed.configureTestingModule({ providers: [{ provide: MatDialog, useValue: {} }] });
+    const key = TestBed.inject(ApiKey);
+    key.value = 'secret';
+    expect(key.value).toBe('secret');
   });
 });

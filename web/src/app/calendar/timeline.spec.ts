@@ -38,6 +38,18 @@ describe('timeline', () => {
     expect(windowFor([tech], '2026-10-10')).toEqual({ from: 7 * 60, to: 18 * 60 });
   });
 
+  it('widens to work outside every shift', () => {
+    const late = {
+      ...tech.work[0],
+      starts_at: '2026-10-10T18:30:00',
+      ends_at: '2026-10-10T20:15:00',
+    };
+    expect(windowFor([{ ...tech, work: [late] }], '2026-10-10')).toEqual({
+      from: 7 * 60,
+      to: 21 * 60,
+    });
+  });
+
   it('places bars in percent of the window, clipping time off that started the day before', () => {
     const found = bars(tech, '2026-10-10', { from: 7 * 60, to: 17 * 60 });
     expect(found.map((b) => [b.kind, b.left, b.width])).toEqual([

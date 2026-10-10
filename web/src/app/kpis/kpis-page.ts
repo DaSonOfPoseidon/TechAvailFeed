@@ -13,7 +13,7 @@ import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness } from '../shared/freshness';
 import { dayLabel, hours, percent, regionName } from '../shared/time';
-import { StatsTable, StatsRow } from './stats-table';
+import { StatsTable, StatsRow, techLabels } from './stats-table';
 
 // The outcome lines, in the categorical order (slot 1 first).
 const outcomeLines: { name: string; rate: (s: KindStats) => number | null | undefined }[] = [
@@ -23,8 +23,9 @@ const outcomeLines: { name: string; rate: (s: KindStats) => number | null | unde
   { name: 'Pulled on the day', rate: (s) => (s as JobStats).pulled_d0_rate },
 ];
 
-export function statsRow(name: string, stats: KindStats): StatsRow {
+export function statsRow(id: string, name: string, stats: KindStats): StatsRow {
   return {
+    id,
     name,
     planned: stats.planned,
     completed: stats.outcome_rate['completed'] ?? null,
@@ -55,7 +56,10 @@ export function statsRow(name: string, stats: KindStats): StatsRow {
 export class KpisPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
-  protected readonly filters = httpResource<Filters>(() => '/api/v1/filters');
+  protected readonly filters = httpResource<Filters>(() => {
+    this.freshness.snapshotId();
+    return '/api/v1/filters';
+  });
   protected readonly capacity = httpResource<CapacityKpis>(() => {
     this.freshness.snapshotId();
     return { url: '/api/v1/kpis/capacity', params: params(this.state.capacity()) };
@@ -190,15 +194,17 @@ export class KpisPage {
 
   protected readonly regionRows = computed(() =>
     (this.outcomes.value()?.by_region ?? []).map((r) =>
-      statsRow(regionName(r.region), r[this.kind()]),
+      statsRow(r.region, regionName(r.region), r[this.kind()]),
     ),
   );
-  protected readonly techRows = computed(() =>
-    (this.outcomes.value()?.by_tech ?? []).map((t) => statsRow(t.tech_name, t[this.kind()])),
-  );
+  protected readonly techRows = computed(() => {
+    const techs = this.outcomes.value()?.by_tech ?? [];
+    const labels = techLabels(techs);
+    return techs.map((t) => statsRow(t.tech_id, labels.get(t.tech_id)!, t[this.kind()]));
+  });
   protected readonly totals = computed(() => {
     const totals = this.outcomes.value()?.totals;
-    return totals ? statsRow('All', totals[this.kind()]) : null;
+    return totals ? statsRow('all', 'All', totals[this.kind()]) : null;
   });
   protected readonly percent = percent;
   protected readonly hours = hours;

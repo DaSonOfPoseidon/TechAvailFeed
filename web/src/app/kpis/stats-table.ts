@@ -2,6 +2,7 @@ import { Component, computed, input, signal } from '@angular/core';
 import { percent } from '../shared/time';
 
 export interface StatsRow {
+  id: string; // stable row key: the region, or the tech's id
   name: string;
   planned: number;
   completed: number | null;
@@ -11,7 +12,19 @@ export interface StatsRow {
   pulled: number | null;
 }
 
-type Column = keyof StatsRow;
+type Column = Exclude<keyof StatsRow, 'id'>;
+
+// Display names for technicians, with the id added where two share a name.
+export function techLabels(techs: { tech_id: string; tech_name: string }[]): Map<string, string> {
+  const counts = new Map<string, number>();
+  for (const t of techs) counts.set(t.tech_name, (counts.get(t.tech_name) ?? 0) + 1);
+  return new Map(
+    techs.map((t) => [
+      t.tech_id,
+      counts.get(t.tech_name)! > 1 ? `${t.tech_name} (${t.tech_id})` : t.tech_name,
+    ]),
+  );
+}
 
 // Outcome rates per region or technician; click a heading to sort by it.
 @Component({
@@ -34,7 +47,7 @@ type Column = keyof StatsRow;
         </tr>
       </thead>
       <tbody>
-        @for (row of sorted(); track row.name) {
+        @for (row of sorted(); track row.id) {
           <tr>
             @for (c of columns(); track c.key) {
               <td>
