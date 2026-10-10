@@ -11,7 +11,7 @@ import { FilterState } from '../filters/filter-state';
 import { ChartOptions, EChart, chrome, cssColor } from '../shared/echart';
 import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
-import { Freshness } from '../shared/freshness';
+import { Freshness, refreshEvery } from '../shared/freshness';
 import { dayLabel, hours, percent, regionName } from '../shared/time';
 import { StatsTable, StatsRow, techLabels } from './stats-table';
 
@@ -57,16 +57,16 @@ export class KpisPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly filters = httpResource<Filters>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return '/api/v1/filters';
   });
   private readonly techOptions = lastValue(this.filters);
   protected readonly capacity = httpResource<CapacityKpis>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return { url: '/api/v1/kpis/capacity', params: params(this.state.capacity()) };
   });
   protected readonly outcomes = httpResource<OutcomeKpis>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return {
       url: '/api/v1/kpis/outcomes',
       params: params({
@@ -77,6 +77,7 @@ export class KpisPage {
       }),
     };
   });
+  private readonly refreshing = refreshEvery(this.capacity, this.outcomes);
   protected readonly kind = computed(() =>
     this.state.get('kind') === 'ticket' ? 'ticket' : 'job',
   );

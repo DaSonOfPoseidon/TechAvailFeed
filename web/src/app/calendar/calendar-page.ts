@@ -8,7 +8,7 @@ import { params } from '../api/feed-api';
 import { CalendarRange, Capacity } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState, noRegion } from '../filters/filter-state';
-import { Freshness } from '../shared/freshness';
+import { Freshness, refreshEvery } from '../shared/freshness';
 import { ErrorPanel } from '../shared/error-panel';
 import { dayLabel, hours, isWeekend, percent, regionName, weekday } from '../shared/time';
 import { utilizationStep, utilizationSteps } from './utilization';
@@ -44,9 +44,10 @@ export class CalendarPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly range = httpResource<CalendarRange>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return { url: '/api/v1/calendar', params: params(this.state.capacity()) };
   });
+  private readonly refreshing = refreshEvery(this.range);
   protected readonly rows = computed(() => {
     const range = this.range.value();
     return range ? rows(range) : [];

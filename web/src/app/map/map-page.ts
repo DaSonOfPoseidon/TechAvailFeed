@@ -20,7 +20,7 @@ import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
 import { cssColor, darkMode } from '../shared/echart';
 import { ErrorPanel } from '../shared/error-panel';
-import { Freshness } from '../shared/freshness';
+import { Freshness, refreshEvery } from '../shared/freshness';
 import { hhmm } from '../shared/time';
 
 function escape(text: string): string {
@@ -62,7 +62,7 @@ export class MapPage {
   // Completed work is shown unless the query string says completed=hide.
   protected readonly completed = computed(() => this.state.get('completed') !== 'hide');
   protected readonly result = httpResource<MapResponse>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return {
       url: '/api/v1/map',
       params: params({
@@ -73,6 +73,7 @@ export class MapPage {
       }),
     };
   });
+  private readonly refreshing = refreshEvery(this.result);
   // The loaded response; undefined while loading or after an error (value() throws then).
   private readonly data = computed(() =>
     this.result.hasValue() ? this.result.value() : undefined,

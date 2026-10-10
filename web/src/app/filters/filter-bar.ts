@@ -96,7 +96,7 @@ export class FilterBar {
   private readonly freshness = inject(Freshness);
   // Refetched with each new snapshot, so new regions, skills and techs appear.
   protected readonly options = httpResource<Filters>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return '/api/v1/filters';
   });
   protected readonly optionList = lastValue(this.options);

@@ -8,7 +8,7 @@ import { params } from '../api/feed-api';
 import { DiagnosticCheck, DiagnosticsResponse } from '../api/models';
 import { FilterState } from '../filters/filter-state';
 import { ErrorPanel } from '../shared/error-panel';
-import { Freshness } from '../shared/freshness';
+import { Freshness, refreshEvery } from '../shared/freshness';
 
 export const groups: { id: string; label: string }[] = [
   { id: 'tech_setup', label: 'Tech setup' },
@@ -54,9 +54,10 @@ export class DiagnosticsPage {
   protected readonly groups = groups;
   protected readonly group = computed(() => this.state.get('group'));
   protected readonly result = httpResource<DiagnosticsResponse>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     return { url: '/api/v1/diagnostics', params: params({ group: this.group() }) };
   });
+  private readonly refreshing = refreshEvery(this.result);
   protected readonly checks = computed(() =>
     [...(this.result.value()?.checks ?? [])].sort(
       (a, b) =>

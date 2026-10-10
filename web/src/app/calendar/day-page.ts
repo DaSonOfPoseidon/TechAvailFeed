@@ -11,7 +11,7 @@ import { CalendarDay, TechDetail } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
 import { ErrorPanel } from '../shared/error-panel';
-import { Freshness } from '../shared/freshness';
+import { Freshness, refreshEvery } from '../shared/freshness';
 import { addDays, dayLabel, hhmm, hours, percent, regionName } from '../shared/time';
 import { bars, windowFor } from './timeline';
 
@@ -36,10 +36,11 @@ export class DayPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly day = httpResource<CalendarDay>(() => {
-    this.freshness.reload();
+    this.freshness.snapshotId();
     const { region, skill, calendar } = this.state.capacity();
     return { url: `/api/v1/calendar/${this.date()}`, params: params({ region, skill, calendar }) };
   });
+  private readonly refreshing = refreshEvery(this.day);
 
   // Working techs first (by region, then name); those off all day at the end.
   protected readonly techs = computed(() => {

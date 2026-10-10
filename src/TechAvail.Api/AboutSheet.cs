@@ -51,7 +51,7 @@ public sealed class AboutSheet
     public AboutSheet Filters(IEnumerable<KeyValuePair<string, object?>> filters)
     {
         foreach (var (name, value) in filters)
-            Add($"Filter: {name}", value ?? "(all)");
+            Add($"Filter: {name}", value switch { null => "(all)", "" => "(no region)", _ => value });
         return this;
     }
 
