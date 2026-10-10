@@ -1,0 +1,148 @@
+<section class="page">
+  <div class="title">
+    <a
+      mat-icon-button
+      [routerLink]="['/calendar', previous()]"
+      queryParamsHandling="merge"
+      aria-label="Previous day"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </a>
+    <h1>{{ dayLabel(date()) }}</h1>
+    <a
+      mat-icon-button
+      [routerLink]="['/calendar', next()]"
+      queryParamsHandling="merge"
+      aria-label="Next day"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </a>
+    <a mat-button routerLink="/calendar" queryParamsHandling="merge">Back to the calendar</a>
+  </div>
+  <app-filter-bar [fields]="['region', 'skill', 'calendar']" />
+
+  @if (day.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (day.error()) {
+    <app-error-panel [error]="day.error()" (retry)="day.reload()" />
+  } @else if (day.value(); as data) {
+    <div class="totals">
+      <div>
+        <strong class="num">{{ hours(data.totals.free_h) }}</strong> free
+      </div>
+      <div>
+        <strong class="num">{{ hours(data.totals.booked_h) }}</strong> booked of
+        {{ hours(data.totals.available_h) }}
+      </div>
+      <div>
+        <strong class="num">{{ percent(data.totals.utilization) }}</strong> utilised
+      </div>
+      <div>
+        <strong class="num">{{ data.totals.techs_on }}</strong> techs on,
+        {{ data.totals.techs_off }} off
+      </div>
+      <div>
+        <strong class="num">{{
+          data.totals.unassigned_jobs + data.totals.unassigned_tickets
+        }}</strong>
+        unassigned ({{ hours(data.totals.unassigned_h) }})
+      </div>
+    </div>
+
+    <div class="panel timeline">
+      <div class="axis" aria-hidden="true">
+        <span class="name"></span>
+        <div class="track">
+          @for (tick of ticks(); track tick.label) {
+            <span class="tick num" [style.left.%]="tick.left">{{ tick.label }}</span>
+          }
+        </div>
+        <span class="sum"></span>
+      </div>
+      @for (tech of techs(); track tech.tech_id) {
+        <div class="tech" [class.off]="tech.on_time_off">
+          <span class="name">
+            <span>{{ tech.tech_name }}</span>
+            <span class="muted">{{ regionName(tech.region) }}</span>
+          </span>
+          <div class="track">
+            @for (tick of ticks(); track tick.label) {
+              <span class="gridline" [style.left.%]="tick.left"></span>
+            }
+            @for (b of bars(tech); track $index) {
+              <span
+                [class]="'bar ' + b.kind"
+                [style.left.%]="b.left"
+                [style.width.%]="b.width"
+                [matTooltip]="b.label"
+              ></span>
+            }
+          </div>
+          <span class="sum num">
+            @if (tech.on_time_off) {
+              Off
+            } @else {
+              {{ hours(tech.free_h) }} free
+            }
+          </span>
+        </div>
+      } @empty {
+        <p class="empty">No technicians match these filters on this day.</p>
+      }
+      <div class="legend">
+        <span class="key"><i class="bar shift"></i>Shift</span>
+        <span class="key"><i class="bar job"></i>Job</span>
+        <span class="key"><i class="bar ticket"></i>Ticket</span>
+        <span class="key"><i class="bar free"></i>Free slot</span>
+        <span class="key"><i class="bar off"></i>Time off</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Unassigned work</h2>
+      @if (data.unassigned.length) {
+        <div class="table-scroll">
+          <table mat-table [dataSource]="data.unassigned">
+            <ng-container matColumnDef="kind">
+              <th mat-header-cell *matHeaderCellDef>Kind</th>
+              <td mat-cell *matCellDef="let w">
+                {{ w.kind.startsWith('ticket') ? 'Ticket' : 'Job' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="ref_id">
+              <th mat-header-cell *matHeaderCellDef>Ref</th>
+              <td mat-cell *matCellDef="let w">{{ w.ref_id }}</td>
+            </ng-container>
+            <ng-container matColumnDef="time">
+              <th mat-header-cell *matHeaderCellDef>Time</th>
+              <td mat-cell *matCellDef="let w">{{ hhmm(w.starts_at) }}–{{ hhmm(w.ends_at) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let w">{{ w.status }}</td>
+            </ng-container>
+            <ng-container matColumnDef="skills">
+              <th mat-header-cell *matHeaderCellDef>Skill</th>
+              <td mat-cell *matCellDef="let w">{{ w.skills || '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="region">
+              <th mat-header-cell *matHeaderCellDef>Region</th>
+              <td mat-cell *matCellDef="let w">{{ w.region || '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="address_issue">
+              <th mat-header-cell *matHeaderCellDef>Address</th>
+              <td mat-cell *matCellDef="let w">
+                {{ w.address_issue === null ? 'Not checked' : w.address_issue || 'OK' }}
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="unassignedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: unassignedColumns"></tr>
+          </table>
+        </div>
+      } @else {
+        <p class="empty">Everything on this day has a technician.</p>
+      }
+    </div>
+  }
+</section>

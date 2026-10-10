@@ -40,6 +40,10 @@ public sealed record Block
     public double? Latitude { get; init; }
     public double? Longitude { get; init; }
     public string GpsPrecision { get; init; } = "";
+
+    // The region set on the job or ticket itself in MBS, which can differ from Region (its
+    // address's). null when the export has no SET_REGION column.
+    public string? SetRegion { get; init; }
 }
 
 public sealed class ParsedFeed

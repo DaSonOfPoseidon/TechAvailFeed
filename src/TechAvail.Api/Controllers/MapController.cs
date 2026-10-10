@@ -29,7 +29,7 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
         string? AddressIssue
     );
 
-    public sealed record MapFilters(string? Region, string? Kind);
+    public sealed record MapFilters(string? Region, string? Kind, bool Completed);
 
     public sealed record MapResponse(
         SnapshotInfo? Snapshot,
@@ -41,8 +41,8 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
         List<Point> Unmapped
     );
 
-    // Live jobs and tickets in [start, end], one point per job (a two-tech job lists both techs).
-    // Work takes its address's region; without one, the tech's shift region that day. Points
+    // Jobs and tickets in [start, end], one point per job (a two-tech job lists both techs).
+    // Canceled work is left out, and completed work too unless `completed`. Work takes its address's region; without one, the tech's shift region that day. Points
     // without coordinates are listed as unmapped, without the lat/lon keys.
     internal static (List<Point> Points, List<Point> Unmapped) Points(
         List<Block> blocks,
@@ -50,6 +50,7 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
         DateOnly end,
         string? region,
         string? kind,
+        bool completed,
         bool exact
     )
     {
@@ -65,7 +66,8 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
             if (!MapKinds.Contains(b.Kind) || b.WorkDate < start || b.WorkDate > end)
                 continue;
             if (
-                (Availability.NotBusy.TryGetValue(baseKind, out var statuses) && statuses.Contains(b.Status))
+                Outcomes.CanceledStatuses[baseKind].Contains(b.Status)
+                || (!completed && Outcomes.CompletedStatuses[baseKind].Contains(b.Status))
                 || (kind is not null && baseKind != kind)
             )
                 continue;
@@ -100,13 +102,13 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
 
     // Jobs as map points with rounded coordinates.
     [HttpGet("map")]
-    public MapResponse Get(DateOnly? start, string? region, string? kind, int days = 1)
+    public MapResponse Get(DateOnly? start, string? region, string? kind, int days = 1, bool completed = true)
     {
         CheckDays(days);
         Check(kind is null or "job" or "ticket", "kind must be job or ticket");
         var (blocks, snapshot) = Latest();
         var (from, to) = Window(start, days);
-        var (points, unmapped) = Points(blocks, from, to, region, kind, Settings.ExactCoords);
-        return new MapResponse(Info(snapshot), new MapFilters(region, kind), from, to, Settings.ExactCoords, points, unmapped);
+        var (points, unmapped) = Points(blocks, from, to, region, kind, completed, Settings.ExactCoords);
+        return new MapResponse(Info(snapshot), new MapFilters(region, kind, completed), from, to, Settings.ExactCoords, points, unmapped);
     }
 }

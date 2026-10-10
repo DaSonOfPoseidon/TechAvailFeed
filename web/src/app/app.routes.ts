@@ -1,0 +1,31 @@
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'calendar' },
+  {
+    path: 'calendar',
+    title: 'Capacity',
+    loadComponent: () => import('./calendar/calendar-page').then((m) => m.CalendarPage),
+  },
+  {
+    path: 'calendar/:date',
+    title: 'Day',
+    loadComponent: () => import('./calendar/day-page').then((m) => m.DayPage),
+  },
+  {
+    path: 'kpis',
+    title: 'Trends',
+    loadComponent: () => import('./kpis/kpis-page').then((m) => m.KpisPage),
+  },
+  {
+    path: 'diagnostics',
+    title: 'Data quality',
+    loadComponent: () => import('./diagnostics/diagnostics-page').then((m) => m.DiagnosticsPage),
+  },
+  {
+    path: 'map',
+    title: 'Map',
+    loadComponent: () => import('./map/map-page').then((m) => m.MapPage),
+  },
+  { path: '**', redirectTo: 'calendar' },
+];

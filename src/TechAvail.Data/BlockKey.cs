@@ -26,7 +26,8 @@ public sealed record BlockKey(
     string? AddressIssue,
     double? Latitude,
     double? Longitude,
-    string? GpsPrecision
+    string? GpsPrecision,
+    string? SetRegion
 )
 {
     public static BlockKey From(Block b) =>
@@ -51,7 +52,8 @@ public sealed record BlockKey(
             b.AddressIssue,
             b.Latitude,
             b.Longitude,
-            b.GpsPrecision
+            b.GpsPrecision,
+            b.SetRegion
         );
 }
 

@@ -1,0 +1,168 @@
+.grid-panel {
+  padding: 0;
+}
+
+.grid-scroll {
+  overflow-x: auto;
+}
+
+.grid {
+  border-collapse: separate;
+  border-spacing: 2px;
+  padding: 8px;
+
+  th,
+  td {
+    padding: 0;
+    text-align: center;
+  }
+
+  thead th {
+    font-weight: 500;
+    color: var(--ta-ink-2);
+    min-width: 40px;
+
+    a {
+      display: grid;
+      padding: 4px 0;
+      color: inherit;
+      text-decoration: none;
+      border-radius: 4px;
+
+      &:hover {
+        background: var(--ta-grid);
+      }
+    }
+
+    &.weekend {
+      color: var(--ta-muted);
+    }
+  }
+
+  .dow {
+    font-size: 0.75rem;
+  }
+
+  .dom {
+    font-family: var(--mat-sys-headline-small-font);
+    font-size: 1rem;
+    color: var(--ta-ink);
+  }
+
+  .region {
+    text-align: left;
+    padding-right: 12px;
+    white-space: nowrap;
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    background: var(--ta-surface);
+    z-index: 1;
+  }
+
+  td {
+    height: 40px;
+    border-radius: 4px;
+    position: relative;
+
+    a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: inherit;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    a:hover {
+      outline: 2px solid var(--ta-ink);
+      outline-offset: -2px;
+    }
+  }
+
+  .totals th,
+  .totals td {
+    font-weight: 600;
+  }
+
+  .totals th {
+    border-top: 1px solid var(--ta-axis);
+  }
+}
+
+// The sequential steps; the two darkest carry light text.
+[data-step='0'] {
+  background: var(--ta-grid);
+  color: var(--ta-muted);
+}
+[data-step='1'] {
+  background: var(--ta-seq-1);
+  color: #0b0b0b;
+}
+[data-step='2'] {
+  background: var(--ta-seq-2);
+  color: #0b0b0b;
+}
+[data-step='3'] {
+  background: var(--ta-seq-3);
+  color: #0b0b0b;
+}
+[data-step='4'] {
+  background: var(--ta-seq-4);
+  color: #fff;
+}
+[data-step='5'] {
+  background: var(--ta-seq-5);
+  color: #fff;
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  background: var(--ta-series-2);
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ta-ring);
+  color: var(--ta-ink-2);
+
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  i {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+  }
+
+  .badge {
+    position: static;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

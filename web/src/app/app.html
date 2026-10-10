@@ -1,0 +1,16 @@
+<header class="top">
+  <a class="brand" routerLink="/calendar">Tech availability</a>
+  <nav aria-label="Views">
+    @for (link of links; track link.path) {
+      <a [routerLink]="link.path" routerLinkActive="active" queryParamsHandling="merge">{{
+        link.label
+      }}</a>
+    }
+  </nav>
+  <span class="spacer"></span>
+  <app-freshness-chip />
+  <app-export-menu />
+</header>
+<main>
+  <router-outlet />
+</main>

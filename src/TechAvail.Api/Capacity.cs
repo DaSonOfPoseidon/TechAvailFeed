@@ -129,14 +129,16 @@ public static class CapacityRollup
     public static List<TechDay> FilterDays(IEnumerable<TechDay> days, string? region, string? skill) =>
         [.. days.Where(d => (region is null || d.Region == region) && (skill is null || HasSkill(d.Skills, skill)))];
 
-    // Live jobs and tickets with no tech yet, by the region their address maps to. They carry no
-    // skill, so a skill filter doesn't narrow them. TC-department work is the TC calendar's
-    // demand; everything else is install's.
+    // Live jobs and tickets with no tech yet, by the region their address maps to. A skill filter
+    // keeps only work needing that skill; work with no skill yet shows unfiltered, and in the
+    // job_no_skill diagnostic. TC-department work is the TC calendar's demand; everything else is
+    // install's.
     public static List<Block> UnassignedWork(
         IEnumerable<Block> blocks,
         DateOnly start,
         DateOnly end,
         string? region = null,
+        string? skill = null,
         string calendar = "install"
     )
     {
@@ -151,6 +153,8 @@ public static class CapacityRollup
             if (Availability.NotBusy.TryGetValue(kind, out var statuses) && statuses.Contains(block.Status))
                 continue;
             if (region is not null && block.Region != region)
+                continue;
+            if (skill is not null && !HasSkill(block.Skills, skill))
                 continue;
             found.Add(block);
         }

@@ -61,7 +61,7 @@ public class DiagnosticsTests
     [Fact]
     public void Every_check_has_a_known_group_and_a_clean_feed_has_no_rows()
     {
-        var found = Diagnostics.Diagnose([B("shift"), B("job", start: "09:00", end: "10:00", reference: "1")], Today);
+        var found = Diagnostics.Diagnose([B("shift"), B("job", start: "09:00", end: "10:00", reference: "1", skills: "INS")], Today);
         Assert.All(found, c => Assert.Contains(c.Group, Diagnostics.Groups));
         Assert.DoesNotContain(found, c => c.Rows.Count > 0);
     }
@@ -175,6 +175,54 @@ public class DiagnosticsTests
         )["work_address_issue"];
         Assert.True(check.Available);
         Assert.Equal([("3", "no_address"), ("1", "no_gps")], check.Rows.Select(r => ((string)r["ref_id"]!, (string)r["issue"]!)));
+    }
+
+    [Fact]
+    public void Live_jobs_with_no_skill()
+    {
+        var check = Checks(
+            B("shift"),
+            B("job", start: "09:00", end: "10:00", reference: "1", skills: "VIP"),
+            B("job", start: "10:00", end: "11:00", reference: "2"),
+            B("job_unassigned", tech: "", reference: "3", region: "N"),
+            B("ticket", start: "11:00", end: "12:00", reference: "4"),
+            B("job", Yesterday, reference: "5"),
+            B("job", start: "12:00", end: "13:00", reference: "6", status: "X")
+        )["job_no_skill"];
+        Assert.True(check.Available);
+        Assert.Equal(["3", "2"], check.Rows.Select(r => (string)r["ref_id"]!));
+    }
+
+    [Fact]
+    public void Set_regions_are_unavailable_until_the_feed_sends_them() =>
+        Assert.False(Checks(B("shift"), B("job", reference: "1", region: "North"))["job_region_mismatch"].Available);
+
+    [Fact]
+    public void Set_regions_are_available_from_any_row_even_with_no_jobs()
+    {
+        var check = Checks(B("shift") with { SetRegion = "" }, B("ticket", reference: "1", region: "North") with { SetRegion = "South" })[
+            "job_region_mismatch"
+        ];
+        Assert.True(check.Available);
+        Assert.Empty(check.Rows);
+    }
+
+    [Fact]
+    public void Jobs_set_in_another_region_than_their_address()
+    {
+        var check = Checks(
+            B("shift"),
+            B("job", start: "09:00", end: "10:00", reference: "1", region: "North") with { SetRegion = "South" },
+            B("job", start: "10:00", end: "11:00", reference: "2", region: "North") with { SetRegion = "North" },
+            B("job", start: "11:00", end: "12:00", reference: "3") with { SetRegion = "South" },
+            B("ticket", start: "12:00", end: "13:00", reference: "4", region: "North") with { SetRegion = "South" },
+            B("job_unassigned", tech: "", reference: "5", region: "North") with { SetRegion = "north" },
+            B("job_unassigned", tech: "", reference: "6", region: "North") with { SetRegion = "" },
+            B("job", Yesterday, reference: "7", region: "North") with { SetRegion = "South" }
+        )["job_region_mismatch"];
+        Assert.True(check.Available);
+        var row = Assert.Single(check.Rows);
+        Assert.Equal(("1", "North", "South"), ((string)row["ref_id"]!, (string)row["region"]!, (string)row["set_region"]!));
     }
 
     [Fact]

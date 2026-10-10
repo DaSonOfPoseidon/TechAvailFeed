@@ -1,0 +1,86 @@
+<section class="page">
+  <h1>Data quality</h1>
+  <mat-button-toggle-group
+    hideSingleSelectionIndicator
+    aria-label="Group"
+    [value]="group() ?? ''"
+    (change)="state.set({ group: $event.value || null })"
+  >
+    <mat-button-toggle value="">All checks</mat-button-toggle>
+    @for (g of groups; track g.id) {
+      <mat-button-toggle [value]="g.id">{{ g.label }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+
+  @if (result.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (result.error()) {
+    <app-error-panel [error]="result.error()" (retry)="result.reload()" />
+  } @else if (result.value()) {
+    <p class="muted summary">
+      {{
+        findings() === 0
+          ? 'No findings in the current snapshot.'
+          : findings() + ' findings in the current snapshot.'
+      }}
+    </p>
+    <mat-accordion multi>
+      @for (check of checks(); track check.id) {
+        <mat-expansion-panel
+          [disabled]="!check.available || check.count === 0"
+          [class.unavailable]="!check.available"
+        >
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              @if (!check.available) {
+                <mat-icon class="na" aria-hidden="true">block</mat-icon>
+              } @else if (check.count === 0) {
+                <mat-icon class="good" aria-hidden="true">check_circle</mat-icon>
+              } @else if (check.severity === 'warning') {
+                <mat-icon class="warning" aria-hidden="true">warning</mat-icon>
+              } @else {
+                <mat-icon class="info" aria-hidden="true">info</mat-icon>
+              }
+              <span class="title">{{ check.title }}</span>
+            </mat-panel-title>
+            <mat-panel-description>
+              <span class="count num">
+                @if (!check.available) {
+                  Not in this feed
+                } @else if (check.count === 0) {
+                  None
+                } @else {
+                  {{ check.count }} {{ check.severity === 'warning' ? 'to fix' : 'to review' }}
+                }
+              </span>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+          <ng-template matExpansionPanelContent>
+            <p class="muted">{{ check.description }}</p>
+            <div class="table-scroll">
+              <table class="plain num">
+                <thead>
+                  <tr>
+                    @for (key of columns(check); track key) {
+                      <th>{{ heading(key) }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of check.rows; track $index) {
+                    <tr>
+                      @for (key of columns(check); track key) {
+                        <td>{{ cell(row[key]) }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </ng-template>
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
+  }
+</section>

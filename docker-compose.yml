@@ -22,6 +22,7 @@ services:
   ingest:
     build:
       context: .
+      target: runtime
       args:
         PROJECT: TechAvail.Ingest
     labels:
@@ -54,9 +55,10 @@ services:
   api:
     build:
       context: .
+      target: api
       args:
         PROJECT: TechAvail.Api
-    # Dashboard backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.
+    # The dashboard and its backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.
     labels:
       wud.watch: "false"
       # Like the ingest: no phone alerts until the dashboard goes live. Then drop the ignore.

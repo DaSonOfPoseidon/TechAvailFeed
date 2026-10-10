@@ -106,6 +106,15 @@ public class ApiTests
         Assert.Equal(["North", "South"], body["regions"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["INS", "RECO"], body["skills"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["a", "b"], Strings(body["techs"], "tech_id"));
+        Assert.Equal(TechAvail.Core.StatusUpdate.RegionNames, body["vp_regions"]!.AsArray().Select(n => n!.GetValue<string>()));
+    }
+
+    [DbFact]
+    public async Task Filters_offer_skills_only_unassigned_work_needs()
+    {
+        using var api = new Api([.. Blocks, B("job_unassigned", "09:00", "11:00", "", "North", "VIP", "u2")]);
+        var body = await api.Get("/api/v1/filters");
+        Assert.Equal(["INS", "RECO", "VIP"], body["skills"]!.AsArray().Select(n => n!.GetValue<string>()));
     }
 
     [DbFact]
@@ -140,6 +149,26 @@ public class ApiTests
         Assert.Equal("2026-10-06T10:00:00", tech["free"]![0]!["open_from"]!.GetValue<string>());
         Assert.Equal(["u1"], Strings(body["unassigned"], "ref_id"));
         Assert.Equal(1, body["totals"]!["techs_on"]!.GetValue<int>());
+    }
+
+    [DbFact]
+    public async Task Skill_filter_keeps_only_unassigned_work_needing_that_skill()
+    {
+        using var api = new Api(
+            [
+                B("shift", "08:00", "17:00", "a", "North", "VIP, GP"),
+                B("job_unassigned", "09:00", "11:00", "", "North", "VIP", "u1"),
+                B("job_unassigned", "09:00", "11:00", "", "North", "MDU, VIP", "u2"),
+                B("job_unassigned", "09:00", "11:00", "", "North", "MDU", "u3"),
+                B("job_unassigned", "09:00", "11:00", "", "North", reference: "u4"),
+            ]
+        );
+        var vip = await api.Get("/api/v1/calendar/2026-10-06?skill=vip");
+        Assert.Equal(["u1", "u2"], Strings(vip["unassigned"], "ref_id"));
+        Assert.Equal(["VIP", "MDU, VIP", "MDU", ""], Strings((await api.Get("/api/v1/calendar/2026-10-06"))["unassigned"], "skills"));
+        var days = await api.Get("/api/v1/calendar?days=1&skill=MDU");
+        Assert.Equal(2, days["days"]![0]!["totals"]!["unassigned_jobs"]!.GetValue<int>());
+        Assert.Equal(4, (await api.Get("/api/v1/calendar?days=1"))["days"]![0]!["totals"]!["unassigned_jobs"]!.GetValue<int>());
     }
 
     [DbFact]
@@ -204,6 +233,25 @@ public class ApiTests
         Assert.Empty((await api.Get("/api/v1/map?region=South"))["points"]!.AsArray());
         Assert.Empty((await api.Get("/api/v1/map?kind=ticket"))["unmapped"]!.AsArray());
         Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/map?kind=bogus"));
+    }
+
+    [DbFact]
+    public async Task Map_shows_completed_work_unless_hidden()
+    {
+        using var api = new Api(
+            [
+                Located(B("job", "08:00", "09:00", reference: "j1", status: "C"), 40, -100),
+                Located(B("ticket", "09:00", "10:00", reference: "t1", status: "C"), 40, -100),
+                Located(B("ticket", "10:00", "11:00", reference: "t2", status: "R"), 40, -100),
+                Located(B("ticket", "11:00", "12:00", reference: "t3", status: "O"), 40, -100),
+                Located(B("ticket", "12:00", "13:00", reference: "t4", status: "D"), 40, -100),
+                Located(B("job", "13:00", "14:00", reference: "j2", status: "X"), 40, -100),
+            ]
+        );
+        Assert.Equal(["j1", "t1", "t2", "t3"], Strings((await api.Get("/api/v1/map"))["points"], "ref_id"));
+        var open = await api.Get("/api/v1/map?completed=false");
+        Assert.Equal(["t3"], Strings(open["points"], "ref_id"));
+        Assert.False(open["filters"]!["completed"]!.GetValue<bool>());
     }
 
     [DbFact]
