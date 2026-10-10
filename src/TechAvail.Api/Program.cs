@@ -3,8 +3,8 @@ using TechAvail.Api;
 using TechAvail.Api.Controllers;
 using TechAvail.Data;
 
-// Dashboard API: JSON for the calendar and KPI charts, and the Excel exports. Read-only; the
-// ingest service writes everything.
+// Dashboard API: JSON for the calendar and KPI charts, the Excel exports and the dashboard itself.
+// Read-only; the ingest service writes everything.
 if (args.Contains("--healthcheck"))
 {
     // For the container healthcheck: the aspnet image has no curl.
@@ -51,7 +51,12 @@ if (settings.CorsOrigins.Length > 0)
         cors.WithOrigins(settings.CorsOrigins).WithMethods("GET").WithHeaders("X-API-Key").WithExposedHeaders("Content-Disposition")
     );
 app.MapOpenApi("/openapi.json");
+// The dashboard (web/, built into wwwroot by the Dockerfile). Its files need no key; the data does.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
+// Client-side routes get the app; unknown API paths and missing files stay 404s.
+app.MapFallbackToFile("{**path:nonfile:regex(^(?!api/|openapi\\.json$|health$))}", "index.html");
 await app.RunAsync();
 return 0;
 
