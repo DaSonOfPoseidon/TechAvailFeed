@@ -130,9 +130,9 @@ public static class CapacityRollup
         [.. days.Where(d => (region is null || d.Region == region) && (skill is null || HasSkill(d.Skills, skill)))];
 
     // Live jobs and tickets with no tech yet, by the region their address maps to. A skill filter
-    // keeps work needing that skill, and work with no skill yet (MBS's hourly rules haven't set
-    // one), which any tech might take. TC-department work is the TC calendar's demand; everything
-    // else is install's.
+    // keeps only work needing that skill; work with no skill yet shows unfiltered, and in the
+    // job_no_skill diagnostic. TC-department work is the TC calendar's demand; everything else is
+    // install's.
     public static List<Block> UnassignedWork(
         IEnumerable<Block> blocks,
         DateOnly start,
@@ -154,7 +154,7 @@ public static class CapacityRollup
                 continue;
             if (region is not null && block.Region != region)
                 continue;
-            if (skill is not null && block.Skills.Length > 0 && !HasSkill(block.Skills, skill))
+            if (skill is not null && !HasSkill(block.Skills, skill))
                 continue;
             found.Add(block);
         }

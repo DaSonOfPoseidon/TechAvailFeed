@@ -400,6 +400,52 @@ public static class Diagnostics
         ];
     }
 
+    static readonly string[] JobKinds = ["job", "job_unassigned"];
+
+    static Check NoSkill(List<Block> blocks, DateOnly today)
+    {
+        var work = blocks.Where(b => Assigned.Contains(b.Kind) || UnassignedKinds.Contains(b.Kind)).ToList();
+        // Older exports carry skills on shifts only.
+        var available = work.Any(b => b.Skills.Length > 0);
+        var bare = work.Where(b => JobKinds.Contains(b.Kind) && b.WorkDate >= today && IsLive(b) && b.Skills.Length == 0);
+        return new Check(
+            "job_no_skill",
+            "scheduling",
+            "Jobs with no skill",
+            "warning",
+            "Live jobs, today on, with no skill set, so a skill filter can't place them. MBS's hourly rule "
+                + "skills installs, so a new job can show here for up to an hour."
+        )
+        {
+            Available = available,
+            Rows = available ? [.. ByTime(bare).Select(b => WorkRow(b, ("task_type", b.TaskType)))] : [],
+        };
+    }
+
+    // Region is the address's region (blank when unmapped, which work_address_issue reports).
+    static Check RegionMismatch(List<Block> blocks, DateOnly today)
+    {
+        var jobs = blocks.Where(b => JobKinds.Contains(b.Kind)).ToList();
+        var wrong = jobs.Where(b =>
+            b.WorkDate >= today
+            && IsLive(b)
+            && b.Region.Length > 0
+            && !string.IsNullOrEmpty(b.SetRegion)
+            && !string.Equals(b.Region, b.SetRegion, StringComparison.OrdinalIgnoreCase)
+        );
+        return new Check(
+            "job_region_mismatch",
+            "address",
+            "Jobs set in another region",
+            "warning",
+            "Live jobs, today on, whose region in MBS differs from the region their service address maps to."
+        )
+        {
+            Available = jobs.Any(b => b.SetRegion is not null),
+            Rows = [.. ByTime(wrong).Select(b => WorkRow(b, ("set_region", b.SetRegion)))],
+        };
+    }
+
     static Check Address(List<Block> blocks, DateOnly today)
     {
         var work = blocks.Where(b => Assigned.Contains(b.Kind) || UnassignedKinds.Contains(b.Kind)).ToList();
@@ -444,6 +490,14 @@ public static class Diagnostics
                 b.Kind == "job" && b.Region.Length == 0 ? b with { Region = regions.GetValueOrDefault((b.TechId, b.WorkDate), "") } : b
             )
             .ToList();
-        return [.. TechSetup(shifts), .. Scheduling(resolved, today), .. Stale(resolved, today), Address(resolved, today)];
+        return
+        [
+            .. TechSetup(shifts),
+            .. Scheduling(resolved, today),
+            NoSkill(resolved, today),
+            .. Stale(resolved, today),
+            Address(resolved, today),
+            RegionMismatch([.. blocks], today),
+        ];
     }
 }

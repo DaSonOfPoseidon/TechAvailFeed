@@ -222,6 +222,14 @@ public class FeedParserTests
     }
 
     [Fact]
+    public void Set_region_is_read_and_unknown_when_absent()
+    {
+        var header = BlockHeader.Replace("SKILLS\n", "SKILLS,SET_REGION\n");
+        Assert.Equal("South", Parse(header + Job("\"\",\"\",\" South \"\n")).Blocks[0].SetRegion);
+        Assert.Null(Parse(BlockHeader + JobRow).Blocks[0].SetRegion);
+    }
+
+    [Fact]
     public void Retired_gps_confidence_column_is_ignored()
     {
         var header = AddressHeader.Replace("GPS_PRECISION", "GPS_CONFIDENCE");

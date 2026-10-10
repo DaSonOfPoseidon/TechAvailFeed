@@ -55,6 +55,7 @@ public static partial class FeedParser
         "latitude",
         "longitude",
         "gps_precision",
+        "set_region",
     ];
 
     public static readonly string[] BlockKinds =
@@ -238,6 +239,7 @@ public static partial class FeedParser
             Latitude = ParseCoordinate(Get("latitude"), "latitude", lineNumber),
             Longitude = ParseCoordinate(Get("longitude"), "longitude", lineNumber),
             GpsPrecision = Get("gps_precision").Trim().ToUpperInvariant(),
+            SetRegion = values.TryGetValue("set_region", out var setRegion) ? setRegion.Trim() : null,
         };
     }
 }

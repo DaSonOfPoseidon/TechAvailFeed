@@ -144,7 +144,7 @@ public class ApiTests
     }
 
     [DbFact]
-    public async Task Skill_filter_narrows_unassigned_work_with_a_known_skill()
+    public async Task Skill_filter_keeps_only_unassigned_work_needing_that_skill()
     {
         using var api = new Api(
             [
@@ -156,10 +156,11 @@ public class ApiTests
             ]
         );
         var vip = await api.Get("/api/v1/calendar/2026-10-06?skill=vip");
-        Assert.Equal(["u1", "u2", "u4"], Strings(vip["unassigned"], "ref_id"));
+        Assert.Equal(["u1", "u2"], Strings(vip["unassigned"], "ref_id"));
         Assert.Equal(["VIP", "MDU, VIP", "MDU", ""], Strings((await api.Get("/api/v1/calendar/2026-10-06"))["unassigned"], "skills"));
         var days = await api.Get("/api/v1/calendar?days=1&skill=MDU");
-        Assert.Equal(3, days["days"]![0]!["totals"]!["unassigned_jobs"]!.GetValue<int>());
+        Assert.Equal(2, days["days"]![0]!["totals"]!["unassigned_jobs"]!.GetValue<int>());
+        Assert.Equal(4, (await api.Get("/api/v1/calendar?days=1"))["days"]![0]!["totals"]!["unassigned_jobs"]!.GetValue<int>());
     }
 
     [DbFact]

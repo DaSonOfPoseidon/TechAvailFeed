@@ -77,7 +77,7 @@ header. Errors are `{"detail": "..."}`, with 422 for bad query values.
 | `GET /api/v1/calendar/{date}` | One day per technician: shifts, time off, booked work, free slots |
 | `GET /api/v1/kpis/capacity` | Daily capacity series plus totals per region |
 | `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day, region and technician |
-| `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps |
+| `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps, jobs with no skill or set in a region other than their address's |
 | `GET /api/v1/map` | Jobs and tickets as map points with rounded coordinates. Canceled work is left out; `completed=false` also hides completed work |
 | `GET /api/v1/capacity.xlsx` | The calendar as a workbook (same filters as `/calendar`): capacity per day and region, tech days, free slots, the schedule behind them and unassigned work |
 | `GET /api/v1/outcomes.xlsx` | The outcome history as a workbook (same filters as `/kpis/outcomes`): outcomes per day, and per planned job |

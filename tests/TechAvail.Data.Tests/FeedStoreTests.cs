@@ -181,4 +181,17 @@ public class FeedStoreTests
         Assert.Equal([second], connection.Query<long>("SELECT first_snapshot_id FROM current_blocks"));
         Assert.Equal([second], connection.Query<long>("SELECT closed_snapshot_id FROM blocks WHERE first_snapshot_id = @first", new { first }));
     }
+
+    [DbFact]
+    public void Set_region_round_trips_and_an_export_without_it_keeps_rows_open()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var first = Save(store, "<1>", Blocks(Job("a")));
+        Save(store, "<2>", Blocks(Job("a")));
+        using var connection = db.Open();
+        Assert.Equal([first], connection.Query<long>("SELECT first_snapshot_id FROM current_blocks"));
+        Save(store, "<3>", Blocks(Job("a") with { SetRegion = "South" }));
+        Assert.Equal("South", Assert.Single(store.Latest()!.Blocks!).SetRegion);
+    }
 }

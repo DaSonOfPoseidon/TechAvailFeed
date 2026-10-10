@@ -23,7 +23,7 @@ public static class CapacityExport
         (
             "Unassigned h",
             "Scheduled jobs and tickets with no tech yet, in the region their address maps to. A skill filter keeps "
-                + "work needing that skill, and work with no skill set yet."
+                + "only work needing that skill."
         ),
         ("Net h", "Free h minus unassigned h: capacity left once unassigned work is placed."),
         ("Techs off", "Techs with time off overlapping their shift, or a day off entirely."),

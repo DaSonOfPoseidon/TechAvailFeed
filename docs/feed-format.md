@@ -22,7 +22,8 @@ Required columns (`FeedParser.BlockColumns` in `src/TechAvail.Core/Parsing/FeedP
 
 Optional columns (`OPTIONAL_BLOCK_COLUMNS`), read as blank when absent so older exports still parse:
 `department`, `task_type`, `modified_at`, `modified_by`, `enroute_at`, `inprogress_at`, `Pre-Reqs Status`,
-`address_issue`, `latitude`, `longitude`, `gps_precision`.
+`address_issue`, `latitude`, `longitude`, `gps_precision`, `set_region` (the region set on the job or ticket itself in MBS,
+by name; `region` is its address's).
 
 The feed never carries address text or customer names: only an `address_issue` flag and coordinates, which
 are rounded before being served (see the README's **Coordinates** section).

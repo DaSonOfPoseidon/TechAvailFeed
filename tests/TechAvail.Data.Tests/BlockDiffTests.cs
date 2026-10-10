@@ -24,7 +24,8 @@ public class BlockDiffTests
             null,
             null,
             null,
-            ""
+            "",
+            null
         );
 
     static (List<BlockKey>, List<long>) Diff((long, BlockKey)[] current, params BlockKey[] next) =>
