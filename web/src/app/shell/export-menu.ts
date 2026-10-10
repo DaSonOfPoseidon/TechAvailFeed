@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -80,7 +80,12 @@ export class ReportDialog {
   protected readonly runs = ['10:00', '13:00', '15:00', '17:00'];
   protected readonly date = signal<string | null>(today());
   protected readonly at = signal<string | null>(null);
-  protected readonly region = signal<string | null>(null);
+  // An arrival report's regions depend on its day, so a new date clears the choice rather than
+  // keep a region that day may not have.
+  protected readonly region = linkedSignal<string | null>(() => {
+    if (this.report === 'arrivals') this.date();
+    return null;
+  });
 
   // An arrival report's regions come from its own day, which can predate the latest snapshot.
   private readonly arrivalRegions = httpResource<{ regions: string[] }>(() =>
