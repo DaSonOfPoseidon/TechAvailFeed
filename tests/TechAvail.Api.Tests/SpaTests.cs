@@ -19,6 +19,8 @@ public class SpaTests
             var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+            // Revalidated, so a deploy's renamed bundles are picked up on the next load.
+            Assert.True(response.Headers.CacheControl?.NoCache);
             Assert.Contains("<title>Tech Availability</title>", await response.Content.ReadAsStringAsync());
         }
     }

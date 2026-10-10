@@ -52,11 +52,21 @@ if (settings.CorsOrigins.Length > 0)
     );
 app.MapOpenApi("/openapi.json");
 // The dashboard (web/, built into wwwroot by the Dockerfile). Its files need no key; the data does.
+// index.html names the build's hashed bundles, so browsers must revalidate it: a cached copy
+// would point a tab at bundles the last deploy removed.
+var dashboardFiles = new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (context.File.Name.EndsWith(".html", StringComparison.Ordinal))
+            context.Context.Response.Headers.CacheControl = "no-cache";
+    },
+};
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(dashboardFiles);
 app.MapControllers();
 // Client-side routes get the app; unknown API paths and missing files stay 404s.
-app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)|openapi\\.json$|health$))}", "index.html");
+app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)|openapi\\.json$|health$))}", "index.html", dashboardFiles);
 await app.RunAsync();
 return 0;
 
