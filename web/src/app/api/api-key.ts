@@ -12,9 +12,10 @@ const storageKey = 'techavail.apiKey';
 export class ApiKey {
   private readonly dialog = inject(MatDialog);
   private pending: Promise<string | null> | null = null;
+  // The key set on this page when saving it failed; otherwise storage is the truth, so a key
+  // entered in another tab is picked up.
   private remembered: string | null = null;
 
-  // The key set on this page wins, in case saving it failed.
   get value(): string {
     if (this.remembered !== null) return this.remembered;
     try {
@@ -25,11 +26,12 @@ export class ApiKey {
   }
 
   set value(key: string) {
-    this.remembered = key;
     try {
       localStorage.setItem(storageKey, key);
+      this.remembered = null;
     } catch {
-      // Private mode or blocked storage: the key lasts until the page reloads.
+      // Private mode, blocked storage or a full quota: the key lasts until the page reloads.
+      this.remembered = key;
     }
   }
 

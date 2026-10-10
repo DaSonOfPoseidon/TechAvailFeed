@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import * as L from 'leaflet';
-import { params } from '../api/feed-api';
+import { lastValue, params } from '../api/feed-api';
 import { MapPoint, MapResponse } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
@@ -74,9 +74,13 @@ export class MapPage {
     };
   });
   // The loaded response; undefined while loading or after an error (value() throws then).
-  protected readonly data = computed(() =>
+  private readonly data = computed(() =>
     this.result.hasValue() ? this.result.value() : undefined,
   );
+  // What the legend and unmapped list show: the last response while the next loads, so they
+  // match the markers still drawn, and nothing after an error, when the markers are cleared.
+  private readonly last = lastValue(this.result);
+  protected readonly shown = computed(() => (this.result.error() ? undefined : this.last()));
   protected readonly hhmm = hhmm;
 
   constructor() {

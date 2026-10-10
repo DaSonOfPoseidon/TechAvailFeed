@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { FeedApi, Query, errorDetail } from '../api/feed-api';
+import { FeedApi, Query, errorDetail, lastValue } from '../api/feed-api';
 import { Filters } from '../api/models';
 import { FilterState } from '../filters/filter-state';
 import { today } from '../shared/time';
@@ -73,6 +73,7 @@ type Report = 'arrivals' | 'jeopardy';
 export class ReportDialog {
   protected readonly report: Report = inject(MAT_DIALOG_DATA);
   private readonly filters = httpResource<Filters>(() => '/api/v1/filters');
+  private readonly filterList = lastValue(this.filters);
   protected readonly maxDate = today();
   protected readonly runs = ['10:00', '13:00', '15:00', '17:00'];
   protected readonly date = signal(today());
@@ -80,7 +81,7 @@ export class ReportDialog {
   protected readonly region = signal<string | null>(null);
 
   protected regions(): string[] {
-    const filters = this.filters.hasValue() ? this.filters.value() : undefined;
+    const filters = this.filterList();
     return (this.report === 'jeopardy' ? filters?.vp_regions : filters?.regions) ?? [];
   }
 

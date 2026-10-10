@@ -63,4 +63,13 @@ describe('ApiKey', () => {
     key.value = 'secret';
     expect(key.value).toBe('secret');
   });
+
+  it("reads storage when it works, so another tab's key is picked up", () => {
+    TestBed.configureTestingModule({ providers: [{ provide: MatDialog, useValue: {} }] });
+    const key = TestBed.inject(ApiKey);
+    key.value = 'first';
+    localStorage.setItem('techavail.apiKey', 'second');
+    expect(key.value).toBe('second');
+    localStorage.removeItem('techavail.apiKey');
+  });
 });

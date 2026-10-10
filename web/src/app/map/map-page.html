@@ -30,9 +30,11 @@
         <span class="key"><i class="dot job"></i>Job</span>
         <span class="key"><i class="dot ticket"></i>Ticket</span>
         <span class="key"><i class="dot ring"></i>Unassigned</span>
-        @if (data(); as data) {
-          <span class="muted num">{{ data.points.length }} on the map, {{ data.start }}</span>
-          @if (data.exact) {
+        @if (shown(); as response) {
+          <span class="muted num"
+            >{{ response.points.length }} on the map, {{ response.start }}</span
+          >
+          @if (response.exact) {
             <span class="exact"
               ><mat-icon aria-hidden="true">warning</mat-icon>Exact home locations shown</span
             >
@@ -42,7 +44,7 @@
         }
       </div>
     </div>
-    @if (data()?.unmapped; as unmapped) {
+    @if (shown()?.unmapped; as unmapped) {
       <aside class="panel unmapped">
         <h2>Not on the map</h2>
         @for (p of unmapped; track p.kind + p.ref_id) {

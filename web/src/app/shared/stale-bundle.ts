@@ -7,15 +7,20 @@ export function isStaleBundle(error: unknown): boolean {
   return /dynamically imported module|Importing a module script failed/i.test(message);
 }
 
-// Loads the page fresh instead, once per URL so a real 404 can't loop.
+// How soon after a reload the same URL failing again counts as a loop (a bundle that is really
+// missing), not another deploy.
+const loopWindowMs = 30_000;
+
+// Loads the page fresh instead, unless this URL was just reloaded for the same reason.
 export function reloadOnStaleBundle(event: NavigationError): void {
   if (!isStaleBundle(event.error)) return;
   const marker = `techavail.reloaded:${event.url}`;
   try {
-    if (sessionStorage.getItem(marker)) return;
-    sessionStorage.setItem(marker, '1');
+    if (Date.now() - Number(sessionStorage.getItem(marker) ?? 0) < loopWindowMs) return;
+    sessionStorage.setItem(marker, String(Date.now()));
   } catch {
     // No session storage: reload anyway; a loop needs the bundle to be missing after a reload too.
   }
-  location.assign(event.url);
+  // The router's URL is relative to the app's base href.
+  location.assign(new URL(event.url.replace(/^\//, ''), document.baseURI).href);
 }
