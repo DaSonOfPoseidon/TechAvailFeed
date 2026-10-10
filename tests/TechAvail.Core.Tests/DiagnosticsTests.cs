@@ -61,7 +61,7 @@ public class DiagnosticsTests
     [Fact]
     public void Every_check_has_a_known_group_and_a_clean_feed_has_no_rows()
     {
-        var found = Diagnostics.Diagnose([B("shift"), B("job", start: "09:00", end: "10:00", reference: "1")], Today);
+        var found = Diagnostics.Diagnose([B("shift"), B("job", start: "09:00", end: "10:00", reference: "1", skills: "INS")], Today);
         Assert.All(found, c => Assert.Contains(c.Group, Diagnostics.Groups));
         Assert.DoesNotContain(found, c => c.Rows.Count > 0);
     }
@@ -176,10 +176,6 @@ public class DiagnosticsTests
         Assert.True(check.Available);
         Assert.Equal([("3", "no_address"), ("1", "no_gps")], check.Rows.Select(r => ((string)r["ref_id"]!, (string)r["issue"]!)));
     }
-
-    [Fact]
-    public void Job_skills_are_unavailable_until_the_feed_sends_them() =>
-        Assert.False(Checks(B("shift"), B("job", reference: "1"))["job_no_skill"].Available);
 
     [Fact]
     public void Live_jobs_with_no_skill()

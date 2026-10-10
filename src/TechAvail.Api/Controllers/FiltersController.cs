@@ -11,7 +11,8 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
     // VpRegions are the jeopardy update's regions (StatusUpdate), not the feed's.
     public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Skills, List<Tech> Techs, string[] VpRegions);
 
-    // Regions, skills, technicians and VP regions for filter dropdowns.
+    // Regions, skills, technicians and VP regions for filter dropdowns. Skills are the techs' plus
+    // those unassigned work needs, so demand no rostered tech covers can still be filtered to.
     [HttpGet("filters")]
     public FiltersResponse Get()
     {
@@ -29,8 +30,10 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
                 if (!kinds.TryGetValue(b.TechId, out var set))
                     kinds[b.TechId] = set = [];
                 set.Add(b.Kind);
-                skills.UnionWith(b.Skills.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0));
+                skills.UnionWith(SkillCodes(b.Skills));
             }
+            else if (b.Kind.EndsWith("_unassigned", StringComparison.Ordinal))
+                skills.UnionWith(SkillCodes(b.Skills));
             if (b.Region.Length > 0)
                 regions.Add(b.Region);
         }
@@ -47,4 +50,6 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
             StatusUpdate.RegionNames
         );
     }
+
+    static IEnumerable<string> SkillCodes(string skills) => skills.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0);
 }

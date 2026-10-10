@@ -33,6 +33,7 @@ public class SpaTests
         Assert.Equal(HttpStatusCode.NotFound, api.StatusCode);
         Assert.NotEqual("text/html", api.Content.Headers.ContentType?.MediaType);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/main-MISSING.js")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api")).StatusCode);
         Assert.Equal("application/json", (await client.GetAsync("/health")).Content.Headers.ContentType?.MediaType);
         Assert.NotNull(JsonNode.Parse(await client.GetStringAsync("/openapi.json"))!["paths"]);
     }

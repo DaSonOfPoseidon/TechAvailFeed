@@ -56,7 +56,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapControllers();
 // Client-side routes get the app; unknown API paths and missing files stay 404s.
-app.MapFallbackToFile("{**path:nonfile:regex(^(?!api/|openapi\\.json$|health$))}", "index.html");
+app.MapFallbackToFile("{**path:nonfile:regex(^(?!api(/|$)|openapi\\.json$|health$))}", "index.html");
 await app.RunAsync();
 return 0;
 

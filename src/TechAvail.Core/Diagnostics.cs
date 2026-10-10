@@ -404,10 +404,7 @@ public static class Diagnostics
 
     static Check NoSkill(List<Block> blocks, DateOnly today)
     {
-        var work = blocks.Where(b => Assigned.Contains(b.Kind) || UnassignedKinds.Contains(b.Kind)).ToList();
-        // Older exports carry skills on shifts only.
-        var available = work.Any(b => b.Skills.Length > 0);
-        var bare = work.Where(b => JobKinds.Contains(b.Kind) && b.WorkDate >= today && IsLive(b) && b.Skills.Length == 0);
+        var bare = blocks.Where(b => JobKinds.Contains(b.Kind) && b.WorkDate >= today && IsLive(b) && b.Skills.Length == 0);
         return new Check(
             "job_no_skill",
             "scheduling",
@@ -417,8 +414,7 @@ public static class Diagnostics
                 + "skills installs, so a new job can show here for up to an hour."
         )
         {
-            Available = available,
-            Rows = available ? [.. ByTime(bare).Select(b => WorkRow(b, ("task_type", b.TaskType)))] : [],
+            Rows = [.. ByTime(bare).Select(b => WorkRow(b, ("task_type", b.TaskType)))],
         };
     }
 

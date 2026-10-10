@@ -110,6 +110,14 @@ public class ApiTests
     }
 
     [DbFact]
+    public async Task Filters_offer_skills_only_unassigned_work_needs()
+    {
+        using var api = new Api([.. Blocks, B("job_unassigned", "09:00", "11:00", "", "North", "VIP", "u2")]);
+        var body = await api.Get("/api/v1/filters");
+        Assert.Equal(["INS", "RECO", "VIP"], body["skills"]!.AsArray().Select(n => n!.GetValue<string>()));
+    }
+
+    [DbFact]
     public async Task Calendar_starts_today_in_local_time()
     {
         using var api = new Api(Blocks);
