@@ -66,6 +66,7 @@ export interface WorkRow {
   ref_id: string;
   status: string;
   task_type: string;
+  skills: string;
   region: string;
   starts_at: string;
   ends_at: string;

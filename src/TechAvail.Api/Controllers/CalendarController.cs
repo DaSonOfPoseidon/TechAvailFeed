@@ -16,13 +16,14 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
         string RefId,
         string Status,
         string TaskType,
+        string Skills,
         string Region,
         DateTime StartsAt,
         DateTime EndsAt,
         string? AddressIssue
     )
     {
-        public static WorkRow From(Block b) => new(b.Kind, b.RefId, b.Status, b.TaskType, b.Region, b.StartsAt, b.EndsAt, b.AddressIssue);
+        public static WorkRow From(Block b) => new(b.Kind, b.RefId, b.Status, b.TaskType, b.Skills, b.Region, b.StartsAt, b.EndsAt, b.AddressIssue);
     }
 
     public sealed record Free(DateTime OpenFrom, DateTime OpenUntil, int OpenMinutes);
@@ -93,7 +94,7 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
     {
         var found = Availability.TechDays(blocks, LocalNow(), start, end, calendar);
         var days = CapacityRollup.FilterDays(found, region, skill);
-        var demand = CapacityRollup.UnassignedWork(blocks, start, end, region, calendar);
+        var demand = CapacityRollup.UnassignedWork(blocks, start, end, region, skill, calendar);
         return (days, demand, CapacityRollup.Entries(days, demand, start, end));
     }
 

@@ -106,7 +106,9 @@
           <table mat-table [dataSource]="data.unassigned">
             <ng-container matColumnDef="kind">
               <th mat-header-cell *matHeaderCellDef>Kind</th>
-              <td mat-cell *matCellDef="let w">{{ w.kind === 'ticket' ? 'Ticket' : 'Job' }}</td>
+              <td mat-cell *matCellDef="let w">
+                {{ w.kind.startsWith('ticket') ? 'Ticket' : 'Job' }}
+              </td>
             </ng-container>
             <ng-container matColumnDef="ref_id">
               <th mat-header-cell *matHeaderCellDef>Ref</th>
@@ -119,6 +121,10 @@
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>Status</th>
               <td mat-cell *matCellDef="let w">{{ w.status }}</td>
+            </ng-container>
+            <ng-container matColumnDef="skills">
+              <th mat-header-cell *matHeaderCellDef>Skill</th>
+              <td mat-cell *matCellDef="let w">{{ w.skills || '—' }}</td>
             </ng-container>
             <ng-container matColumnDef="region">
               <th mat-header-cell *matHeaderCellDef>Region</th>

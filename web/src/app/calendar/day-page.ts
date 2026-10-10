@@ -69,6 +69,7 @@ export class DayPage {
     'ref_id',
     'time',
     'status',
+    'skills',
     'region',
     'address_issue',
   ];

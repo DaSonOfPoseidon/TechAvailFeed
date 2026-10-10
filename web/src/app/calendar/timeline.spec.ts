@@ -23,6 +23,7 @@ const tech: TechDetail = {
       ref_id: 'j1',
       status: 'A',
       task_type: '3',
+      skills: 'VIP',
       region: 'North',
       starts_at: '2026-10-10T10:00:00',
       ends_at: '2026-10-10T12:00:00',

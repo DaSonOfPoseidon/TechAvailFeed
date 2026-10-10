@@ -18,7 +18,7 @@ Required columns (`FeedParser.BlockColumns` in `src/TechAvail.Core/Parsing/FeedP
 | `ref_id` | Job or ticket ID |
 | `status` | Task/ticket status code |
 | `region` | Shift: the tech's region. Work: the region the service address geocodes to |
-| `skills` | Comma-separated skill codes (shifts) |
+| `skills` | Comma-separated skill codes: a shift's tech's skills, or a job's/ticket's own (`tm_task_skill`/`tr_ticket_skill`; blank until MBS's hourly rules set one) |
 
 Optional columns (`OPTIONAL_BLOCK_COLUMNS`), read as blank when absent so older exports still parse:
 `department`, `task_type`, `modified_at`, `modified_by`, `enroute_at`, `inprogress_at`, `Pre-Reqs Status`,
