@@ -106,6 +106,7 @@ public class ApiTests
         Assert.Equal(["North", "South"], body["regions"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["INS", "RECO"], body["skills"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["a", "b"], Strings(body["techs"], "tech_id"));
+        Assert.Equal(TechAvail.Core.StatusUpdate.RegionNames, body["vp_regions"]!.AsArray().Select(n => n!.GetValue<string>()));
     }
 
     [DbFact]

@@ -55,7 +55,7 @@ header. Errors are `{"detail": "..."}`, with 422 for bad query values.
 | Endpoint | Returns |
 |---|---|
 | `GET /health` | Service status and snapshot age (no auth) |
-| `GET /api/v1/filters` | Regions, skills and technicians for filter dropdowns |
+| `GET /api/v1/filters` | Regions, skills, technicians and the VP regions (for `jeopardy.xlsx`) for filter dropdowns |
 | `GET /api/v1/calendar` | Capacity per day and region: available, booked, free and unassigned hours, utilisation |
 | `GET /api/v1/calendar/{date}` | One day per technician: shifts, time off, booked work, free slots |
 | `GET /api/v1/kpis/capacity` | Daily capacity series plus totals per region |

@@ -8,9 +8,10 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
 {
     public sealed record Tech(string TechId, string TechName, string Region, string Calendar);
 
-    public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Skills, List<Tech> Techs);
+    // VpRegions are the jeopardy update's regions (StatusUpdate), not the feed's.
+    public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Skills, List<Tech> Techs, string[] VpRegions);
 
-    // Regions, skills and technicians for filter dropdowns.
+    // Regions, skills, technicians and VP regions for filter dropdowns.
     [HttpGet("filters")]
     public FiltersResponse Get()
     {
@@ -42,7 +43,8 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
                     .Select(t => new Tech(t.Key, t.Value.Name, t.Value.Region, Diagnostics.CalendarOf(kinds[t.Key])))
                     .OrderBy(t => t.TechName, StringComparer.Ordinal)
                     .ThenBy(t => t.TechId, StringComparer.Ordinal),
-            ]
+            ],
+            StatusUpdate.RegionNames
         );
     }
 }
