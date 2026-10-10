@@ -37,4 +37,16 @@ describe('reloadOnStaleBundle', () => {
     reloadOnStaleBundle(event);
     expect(assign).toHaveBeenCalledTimes(2);
   });
+
+  it('does not reload when it cannot record the reload', () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign });
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    reloadOnStaleBundle(
+      new NavigationError(1, '/kpis', new TypeError('Failed to fetch dynamically imported module')),
+    );
+    expect(assign).not.toHaveBeenCalled();
+  });
 });

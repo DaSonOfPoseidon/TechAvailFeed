@@ -198,6 +198,16 @@ public class DiagnosticsTests
         Assert.False(Checks(B("shift"), B("job", reference: "1", region: "North"))["job_region_mismatch"].Available);
 
     [Fact]
+    public void Set_regions_are_available_from_any_row_even_with_no_jobs()
+    {
+        var check = Checks(B("shift") with { SetRegion = "" }, B("ticket", reference: "1", region: "North") with { SetRegion = "South" })[
+            "job_region_mismatch"
+        ];
+        Assert.True(check.Available);
+        Assert.Empty(check.Rows);
+    }
+
+    [Fact]
     public void Jobs_set_in_another_region_than_their_address()
     {
         var check = Checks(

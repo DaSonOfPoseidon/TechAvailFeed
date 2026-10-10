@@ -60,7 +60,7 @@ export class KpisPage {
     this.freshness.snapshotId();
     return '/api/v1/filters';
   });
-  protected readonly techOptions = lastValue(this.filters);
+  private readonly techOptions = lastValue(this.filters);
   protected readonly capacity = httpResource<CapacityKpis>(() => {
     this.freshness.snapshotId();
     return { url: '/api/v1/kpis/capacity', params: params(this.state.capacity()) };
@@ -202,6 +202,19 @@ export class KpisPage {
     const techs = this.outcomes.value()?.by_tech ?? [];
     const labels = techLabels(techs);
     return techs.map((t) => statsRow(t.tech_id, labels.get(t.tech_id)!, t[this.kind()]));
+  });
+  // The technician filter: today's roster plus anyone in the selected history (a former tech has
+  // outcomes but no shift), labelled like the trend rows.
+  protected readonly techChoices = computed(() => {
+    const byId = new Map<string, string>();
+    for (const t of this.techOptions()?.techs ?? []) byId.set(t.tech_id, t.tech_name);
+    const history = this.outcomes.hasValue() ? this.outcomes.value()?.by_tech : undefined;
+    for (const t of history ?? []) if (!byId.has(t.tech_id)) byId.set(t.tech_id, t.tech_name);
+    const techs = [...byId].map(([tech_id, tech_name]) => ({ tech_id, tech_name }));
+    const labels = techLabels(techs);
+    return techs
+      .map((t) => ({ id: t.tech_id, label: labels.get(t.tech_id)! }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   });
   protected readonly totals = computed(() => {
     const totals = this.outcomes.value()?.totals;

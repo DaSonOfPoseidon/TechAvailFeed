@@ -18,7 +18,7 @@ import { lastValue, params } from '../api/feed-api';
 import { MapPoint, MapResponse } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
-import { cssColor } from '../shared/echart';
+import { cssColor, darkMode } from '../shared/echart';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness } from '../shared/freshness';
 import { hhmm } from '../shared/time';
@@ -81,6 +81,8 @@ export class MapPage {
   // match the markers still drawn, and nothing after an error, when the markers are cleared.
   private readonly last = lastValue(this.result);
   protected readonly shown = computed(() => (this.result.error() ? undefined : this.last()));
+  // Marker colours are inline styles, so a colour-scheme change redraws them.
+  private readonly dark = darkMode();
   protected readonly hhmm = hhmm;
 
   constructor() {
@@ -92,6 +94,7 @@ export class MapPage {
     afterRenderEffect(() => {
       // While a request is in flight the previous markers stay until the new ones arrive; after
       // an error they're cleared, so the error panel isn't shown over stale work.
+      this.dark();
       const points = this.data()?.points;
       const failed = !!this.result.error();
       if (!map) {

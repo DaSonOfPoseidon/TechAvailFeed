@@ -19,7 +19,8 @@ export function reloadOnStaleBundle(event: NavigationError): void {
     if (Date.now() - Number(sessionStorage.getItem(marker) ?? 0) < loopWindowMs) return;
     sessionStorage.setItem(marker, String(Date.now()));
   } catch {
-    // No session storage: reload anyway; a loop needs the bundle to be missing after a reload too.
+    // Without session storage a really missing bundle would reload forever; leave the link dead.
+    return;
   }
   // The router's URL is relative to the app's base href.
   location.assign(new URL(event.url.replace(/^\//, ''), document.baseURI).href);

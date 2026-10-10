@@ -2,6 +2,7 @@ import {
   DestroyRef,
   Directive,
   ElementRef,
+  Signal,
   afterRenderEffect,
   inject,
   input,
@@ -40,6 +41,17 @@ export function cssColor(token: string): string {
 }
 
 const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+// Whether the OS/browser is in dark mode, updating live. Anything that bakes cssColor() values
+// into a canvas or inline styles reads it, so it redraws when the scheme changes. Call it in an
+// injection context.
+export function darkMode(): Signal<boolean> {
+  const dark = signal(scheme.matches);
+  const onScheme = () => dark.set(scheme.matches);
+  scheme.addEventListener('change', onScheme);
+  inject(DestroyRef).onDestroy(() => scheme.removeEventListener('change', onScheme));
+  return dark.asReadonly();
+}
 
 // The chart chrome shared by every chart: recessive axes, hairline grid, text in ink tokens.
 export function chrome() {
@@ -85,20 +97,17 @@ export function chrome() {
 export class EChart {
   readonly appEchart = input.required<() => ChartOptions>();
   private readonly element = inject(ElementRef<HTMLElement>);
-  private readonly dark = signal(scheme.matches);
+  private readonly dark = darkMode();
 
   constructor() {
     const chart = echarts.init(this.element.nativeElement, null, { renderer: 'svg' });
     const resize = new ResizeObserver(() => chart.resize());
     resize.observe(this.element.nativeElement);
-    const onScheme = () => this.dark.set(scheme.matches);
-    scheme.addEventListener('change', onScheme);
     afterRenderEffect(() => {
       this.dark();
       chart.setOption(this.appEchart()(), { notMerge: true });
     });
     inject(DestroyRef).onDestroy(() => {
-      scheme.removeEventListener('change', onScheme);
       resize.disconnect();
       chart.dispose();
     });

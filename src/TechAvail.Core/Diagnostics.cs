@@ -437,7 +437,8 @@ public static class Diagnostics
             "Live jobs, today on, whose region in MBS differs from the region their service address maps to."
         )
         {
-            Available = jobs.Any(b => b.SetRegion is not null),
+            // The parser sets SetRegion on every row ("" when blank) once the export has the column.
+            Available = blocks.Any(b => b.SetRegion is not null),
             Rows = [.. ByTime(wrong).Select(b => WorkRow(b, ("set_region", b.SetRegion)))],
         };
     }
