@@ -220,6 +220,24 @@ public class ApiTests
     }
 
     [DbFact]
+    public async Task Map_lists_a_point_with_half_its_coordinates_as_unmapped()
+    {
+        using var api = new Api([Located(B("job", "08:00", "10:00", reference: "j1"), 40.1, null)]);
+        var body = await api.Get("/api/v1/map");
+        Assert.Empty(body["points"]!.AsArray());
+        Assert.Equal(["j1"], Strings(body["unmapped"], "ref_id"));
+    }
+
+    [DbFact]
+    public async Task No_region_filter_selects_the_blank_region()
+    {
+        using var api = new Api([.. Blocks, B("shift", "08:00", "17:00", "c", "", "INS")]);
+        var body = await api.Get("/api/v1/calendar/2026-10-06?region=(none)");
+        Assert.Equal(["c"], Strings(body["techs"], "tech_id"));
+        Assert.Equal(3, (await api.Get("/api/v1/calendar/2026-10-06"))["techs"]!.AsArray().Count);
+    }
+
+    [DbFact]
     public async Task Map_serves_exact_coordinates_only_when_configured()
     {
         using var api = new Api(Mapped, exact: true);

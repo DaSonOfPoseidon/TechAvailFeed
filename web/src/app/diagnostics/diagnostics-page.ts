@@ -54,7 +54,7 @@ export class DiagnosticsPage {
   protected readonly groups = groups;
   protected readonly group = computed(() => this.state.get('group'));
   protected readonly result = httpResource<DiagnosticsResponse>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return { url: '/api/v1/diagnostics', params: params({ group: this.group() }) };
   });
   protected readonly checks = computed(() =>

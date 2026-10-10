@@ -6,6 +6,10 @@ import { CalendarKind } from '../api/models';
 
 export type Patch = Record<string, string | number | null>;
 
+// The region filter value for work and techs with no region (the API's BlankRegionFilter); an
+// empty value would mean no filter.
+export const noRegion = '(none)';
+
 // The dashboard's filters live in the URL's query string, so a view can be bookmarked or shared.
 // Unset values fall back to the API's own defaults (start today, 30 days, install calendar).
 @Injectable({ providedIn: 'root' })

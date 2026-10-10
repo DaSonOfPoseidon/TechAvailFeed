@@ -32,7 +32,11 @@ builder.Services.AddSingleton<IFeedReads, CachedFeedReads>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddCors();
 builder.Services
-    .AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
+    .AddControllers(options =>
+    {
+        options.Filters.Add<ApiExceptionFilter>();
+        options.Filters.Add<BlankRegionFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;

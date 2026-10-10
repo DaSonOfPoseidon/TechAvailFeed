@@ -11,10 +11,18 @@ import { MatInputModule } from '@angular/material/input';
 
 const isoDay = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-// The query string's "2026-10-10" as a local-midnight Date, built from its parts.
+// The query string's "2026-10-10" as a local-midnight Date, built from its parts. An impossible
+// day (2026-02-31, month 13) is null rather than rolled over into another date. setFullYear keeps
+// years below 100 from being read as 19xx.
 export function fromDay(day: string | null): Date | null {
   const match = day?.match(isoDay);
-  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+  if (!match) return null;
+  const [year, month, date] = [Number(match[1]), Number(match[2]) - 1, Number(match[3])];
+  const parsed = new Date(2000, 0, 1);
+  parsed.setFullYear(year, month, date);
+  return parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === date
+    ? parsed
+    : null;
 }
 
 export function toDay(date: Date | null): string | null {
@@ -28,7 +36,10 @@ export function toDay(date: Date | null): string | null {
 @Injectable()
 export class LocalDateAdapter extends NativeDateAdapter {
   override parse(value: unknown, parseFormat: unknown): Date | null {
-    return (typeof value === 'string' && fromDay(value.trim())) || super.parse(value, parseFormat);
+    // An ISO-shaped value is a real day or invalid; the native parser would roll it over.
+    if (typeof value === 'string' && isoDay.test(value.trim()))
+      return fromDay(value.trim()) ?? this.invalid();
+    return super.parse(value, parseFormat);
   }
 
   override deserialize(value: unknown): Date | null {

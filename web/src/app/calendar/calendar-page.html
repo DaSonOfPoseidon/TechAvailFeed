@@ -40,7 +40,7 @@
                     >
                       <a
                         [routerLink]="['/calendar', data.days[i].date]"
-                        [queryParams]="row.filter ? { region: row.filter } : {}"
+                        [queryParams]="row.filter === null ? {} : { region: row.filter }"
                         queryParamsHandling="merge"
                       >
                         <span class="free">{{

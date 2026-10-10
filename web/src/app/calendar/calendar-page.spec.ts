@@ -42,7 +42,7 @@ describe('calendar rows', () => {
     const grid = rows(range);
     expect(grid.map((r) => r.region)).toEqual(['No region', 'South', 'All regions']);
     expect(grid[0].cells[1]).toBeNull();
-    expect(grid[0].filter).toBe('');
+    expect(grid[0].filter).toBe('(none)');
     expect(grid[1].cells.map((c) => c?.free_h)).toEqual([4, 2]);
     expect(grid[2].filter).toBeNull();
   });

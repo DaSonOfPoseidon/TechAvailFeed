@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
 import { params } from '../api/feed-api';
 import { CalendarRange, Capacity } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
-import { FilterState } from '../filters/filter-state';
+import { FilterState, noRegion } from '../filters/filter-state';
 import { Freshness } from '../shared/freshness';
 import { ErrorPanel } from '../shared/error-panel';
 import { dayLabel, hours, isWeekend, percent, regionName, weekday } from '../shared/time';
@@ -16,7 +16,7 @@ import { utilizationStep, utilizationSteps } from './utilization';
 export interface Row {
   region: string;
   cells: (Capacity | null)[];
-  // The region filter a cell opens the day with (null: all regions).
+  // The region filter a cell opens the day with (null: all regions, noRegion: the blank one).
   filter: string | null;
 }
 
@@ -27,7 +27,7 @@ export function rows(range: CalendarRange): Row[] {
     ...regions.map((region) => ({
       region: regionName(region),
       cells: range.days.map((d) => d.by_region.find((r) => r.region === region) ?? null),
-      filter: region,
+      filter: region || noRegion,
     })),
     { region: 'All regions', cells: range.days.map((d) => d.totals), filter: null },
   ];
@@ -44,7 +44,7 @@ export class CalendarPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly range = httpResource<CalendarRange>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return { url: '/api/v1/calendar', params: params(this.state.capacity()) };
   });
   protected readonly rows = computed(() => {

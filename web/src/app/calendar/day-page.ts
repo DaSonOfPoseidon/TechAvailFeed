@@ -36,7 +36,7 @@ export class DayPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly day = httpResource<CalendarDay>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     const { region, skill, calendar } = this.state.capacity();
     return { url: `/api/v1/calendar/${this.date()}`, params: params({ region, skill, calendar }) };
   });

@@ -57,16 +57,16 @@ export class KpisPage {
   protected readonly state = inject(FilterState);
   private readonly freshness = inject(Freshness);
   protected readonly filters = httpResource<Filters>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return '/api/v1/filters';
   });
   private readonly techOptions = lastValue(this.filters);
   protected readonly capacity = httpResource<CapacityKpis>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return { url: '/api/v1/kpis/capacity', params: params(this.state.capacity()) };
   });
   protected readonly outcomes = httpResource<OutcomeKpis>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return {
       url: '/api/v1/kpis/outcomes',
       params: params({

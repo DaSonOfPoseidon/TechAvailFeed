@@ -62,7 +62,7 @@ export class MapPage {
   // Completed work is shown unless the query string says completed=hide.
   protected readonly completed = computed(() => this.state.get('completed') !== 'hide');
   protected readonly result = httpResource<MapResponse>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return {
       url: '/api/v1/map',
       params: params({

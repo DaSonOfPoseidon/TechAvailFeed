@@ -7,7 +7,7 @@ import { lastValue } from '../api/feed-api';
 import { Filters } from '../api/models';
 import { DateField } from '../shared/date-field';
 import { Freshness } from '../shared/freshness';
-import { FilterState } from './filter-state';
+import { FilterState, noRegion } from './filter-state';
 
 export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
 
@@ -22,6 +22,9 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
           <mat-label>Region</mat-label>
           <mat-select [value]="state.region()" (valueChange)="state.set({ region: $event })">
             <mat-option [value]="null">All regions</mat-option>
+            @if (state.region() === noRegion) {
+              <mat-option [value]="noRegion">No region</mat-option>
+            }
             @for (region of optionList()?.regions ?? []; track region) {
               <mat-option [value]="region">{{ region }}</mat-option>
             }
@@ -89,10 +92,11 @@ export class FilterBar {
   readonly fields = input.required<Field[]>();
   readonly dayOptions = input<number[]>([7, 14, 30, 45, 62]);
   protected readonly state = inject(FilterState);
+  protected readonly noRegion = noRegion;
   private readonly freshness = inject(Freshness);
   // Refetched with each new snapshot, so new regions, skills and techs appear.
   protected readonly options = httpResource<Filters>(() => {
-    this.freshness.snapshotId();
+    this.freshness.reload();
     return '/api/v1/filters';
   });
   protected readonly optionList = lastValue(this.options);

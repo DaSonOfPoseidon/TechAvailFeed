@@ -97,7 +97,9 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
                 b.AddressIssue
             );
         }
-        return ([.. found.Values.Where(p => p.Lat is not null)], [.. found.Values.Where(p => p.Lat is null)]);
+        // A point needs both coordinates; a half pair (one blank or zero in the feed) is unmapped.
+        static bool Mapped(Point p) => p.Lat is not null && p.Lon is not null;
+        return ([.. found.Values.Where(Mapped)], [.. found.Values.Where(p => !Mapped(p))]);
     }
 
     // Jobs as map points with rounded coordinates.

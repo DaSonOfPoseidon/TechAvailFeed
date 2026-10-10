@@ -78,6 +78,21 @@ public sealed class ApiException(int status, string detail) : Exception(detail)
     public int Status { get; } = status;
 }
 
+// `region=(none)` selects the work and techs with no region: an empty query value binds as null
+// (no filter), so the blank region needs a name of its own on the wire.
+public sealed class BlankRegionFilter : IActionFilter
+{
+    public const string NoRegion = "(none)";
+
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (context.ActionArguments.TryGetValue("region", out var region) && region is NoRegion)
+            context.ActionArguments["region"] = "";
+    }
+
+    public void OnActionExecuted(ActionExecutedContext context) { }
+}
+
 public sealed class ApiExceptionFilter : IExceptionFilter
 {
     public void OnException(ExceptionContext context)
