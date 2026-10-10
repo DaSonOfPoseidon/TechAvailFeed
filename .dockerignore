@@ -4,3 +4,6 @@ corpus/
 **/bin/
 **/obj/
 TestResults/
+web/node_modules/
+web/.angular/
+web/dist/
