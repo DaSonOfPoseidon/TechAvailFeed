@@ -200,22 +200,29 @@ export class KpisPage {
   );
   protected readonly techRows = computed(() => {
     const techs = this.outcomes.value()?.by_tech ?? [];
-    const labels = techLabels(techs);
-    return techs.map((t) => statsRow(t.tech_id, labels.get(t.tech_id)!, t[this.kind()]));
+    const labels = this.techNames();
+    return techs.map((t) =>
+      statsRow(t.tech_id, labels.get(t.tech_id) ?? t.tech_name, t[this.kind()]),
+    );
   });
-  // The technician filter: today's roster plus anyone in the selected history (a former tech has
-  // outcomes but no shift), labelled like the trend rows.
-  protected readonly techChoices = computed(() => {
+  private readonly lastOutcomes = lastValue(this.outcomes);
+  // Labels for every technician the page can show: today's roster, anyone with planned work in
+  // the range (a former tech has history but no shift) and the selected one, with ids added where
+  // names repeat. The picker and the trend table share them.
+  private readonly techNames = computed(() => {
     const byId = new Map<string, string>();
     for (const t of this.techOptions()?.techs ?? []) byId.set(t.tech_id, t.tech_name);
-    const history = this.outcomes.hasValue() ? this.outcomes.value()?.by_tech : undefined;
-    for (const t of history ?? []) if (!byId.has(t.tech_id)) byId.set(t.tech_id, t.tech_name);
-    const techs = [...byId].map(([tech_id, tech_name]) => ({ tech_id, tech_name }));
-    const labels = techLabels(techs);
-    return techs
-      .map((t) => ({ id: t.tech_id, label: labels.get(t.tech_id)! }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    for (const t of this.lastOutcomes()?.techs ?? [])
+      if (!byId.has(t.tech_id)) byId.set(t.tech_id, t.tech_name);
+    const selected = this.state.get('tech');
+    if (selected && !byId.has(selected)) byId.set(selected, selected);
+    return techLabels([...byId].map(([tech_id, tech_name]) => ({ tech_id, tech_name })));
   });
+  protected readonly techChoices = computed(() =>
+    [...this.techNames()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  );
   protected readonly totals = computed(() => {
     const totals = this.outcomes.value()?.totals;
     return totals ? statsRow('all', 'All', totals[this.kind()]) : null;

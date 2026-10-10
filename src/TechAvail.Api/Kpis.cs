@@ -41,7 +41,17 @@ public sealed record RegionKpis(string Region, JobStats Job, KindStats Ticket);
 
 public sealed record TechKpis(string TechId, string TechName, JobStats Job, KindStats Ticket);
 
-public sealed record OutcomeKpis(List<DayKpis> Days, ByKind Totals, List<RegionKpis> ByRegion, List<TechKpis> ByTech);
+public sealed record TechOption(string TechId, string TechName);
+
+// Techs: everyone with planned work in the range and region, whatever the tech filter, so a
+// technician picker can offer them (a former tech has history but no shift).
+public sealed record OutcomeKpis(
+    List<DayKpis> Days,
+    ByKind Totals,
+    List<RegionKpis> ByRegion,
+    List<TechKpis> ByTech,
+    List<TechOption> Techs
+);
 
 // Rates over the outcome history's planned items. Each rate's denominator is the planned count of
 // that kind; a day without a morning plan is listed but adds nothing.
@@ -89,8 +99,11 @@ public static class Kpis
     {
         var series = new List<DayKpis>();
         var pooled = new List<Planned>();
+        var techs = new Dictionary<string, string>();
         foreach (var (outcome, provisional) in days.OrderBy(d => d.Outcome.Day))
         {
+            foreach (var item in outcome.Items.Where(i => region is null || i.Region == region))
+                techs.TryAdd(item.TechId, item.TechName);
             var items = outcome.Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech)).ToList();
             var kinds = outcome.Status == "ok" ? Kinds(items) : null;
             series.Add(new DayKpis(outcome.Day, outcome.Status, provisional, kinds?.Job, kinds?.Ticket));
@@ -120,6 +133,12 @@ public static class Kpis
                         var kinds = Kinds(g);
                         return new TechKpis(g.Key, names[g.Key], kinds.Job, kinds.Ticket);
                     }),
+            ],
+            [
+                .. techs
+                    .Select(t => new TechOption(t.Key, t.Value))
+                    .OrderBy(t => t.TechName, StringComparer.Ordinal)
+                    .ThenBy(t => t.TechId, StringComparer.Ordinal),
             ]
         );
     }

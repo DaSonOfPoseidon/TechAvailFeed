@@ -161,6 +161,8 @@ export interface OutcomeKpis {
   totals: { job: JobStats; ticket: KindStats };
   by_region: { region: string; job: JobStats; ticket: KindStats }[];
   by_tech: { tech_id: string; tech_name: string; job: JobStats; ticket: KindStats }[];
+  // Everyone with planned work in the range and region, whatever the tech filter.
+  techs: { tech_id: string; tech_name: string }[];
 }
 
 export interface DiagnosticCheck {
