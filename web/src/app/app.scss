@@ -1,0 +1,51 @@
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 8px 24px;
+  background: var(--ta-surface);
+  border-bottom: 1px solid var(--ta-ring);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  @media (max-width: 600px) {
+    padding: 8px 16px;
+  }
+}
+
+.brand {
+  font-family: var(--mat-sys-headline-small-font);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--ta-ink);
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+
+  a {
+    padding: 8px 12px;
+    color: var(--ta-ink-2);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+
+    &:hover {
+      color: var(--ta-ink);
+    }
+
+    &.active {
+      color: var(--ta-ink);
+      border-bottom-color: var(--mat-sys-primary);
+    }
+  }
+}
+
+.spacer {
+  flex: 1;
+}
