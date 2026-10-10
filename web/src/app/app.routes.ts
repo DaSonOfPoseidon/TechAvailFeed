@@ -17,5 +17,10 @@ export const routes: Routes = [
     title: 'Trends',
     loadComponent: () => import('./kpis/kpis-page').then((m) => m.KpisPage),
   },
+  {
+    path: 'diagnostics',
+    title: 'Data quality',
+    loadComponent: () => import('./diagnostics/diagnostics-page').then((m) => m.DiagnosticsPage),
+  },
   { path: '**', redirectTo: 'calendar' },
 ];

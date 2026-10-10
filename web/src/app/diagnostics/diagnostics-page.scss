@@ -1,0 +1,44 @@
+mat-button-toggle-group {
+  justify-self: start;
+  flex-wrap: wrap;
+}
+
+.summary {
+  margin: 0;
+}
+
+mat-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ta-ink);
+}
+
+mat-panel-description {
+  justify-content: flex-end;
+}
+
+.good {
+  color: var(--ta-good);
+}
+
+.warning {
+  color: var(--ta-warning);
+}
+
+.info {
+  color: var(--ta-series-1);
+}
+
+.na {
+  color: var(--ta-muted);
+}
+
+.unavailable .title {
+  color: var(--ta-muted);
+}
+
+table.plain td,
+table.plain th {
+  text-align: left;
+}
