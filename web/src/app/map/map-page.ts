@@ -96,7 +96,8 @@ export class MapPage {
       // While a request is in flight the previous markers stay until the new ones arrive; after
       // an error they're cleared, so the error panel isn't shown over stale work.
       this.dark();
-      const points = this.data()?.points;
+      const response = this.data();
+      const points = response?.points;
       const failed = !!this.result.error();
       if (!map) {
         map = L.map(this.host().nativeElement, { center: [38.9, -92.3], zoom: 8 });
@@ -122,8 +123,10 @@ export class MapPage {
           .bindPopup(popup(p))
           .addTo(layer!);
       }
+      // The served day, not the query string's start: with no start, the API's default rolls
+      // over at midnight and the new day's work needs a refit.
       const filters = untracked(() =>
-        [this.state.start(), this.state.region(), this.kind(), this.completed()].join('|'),
+        [response!.start, this.state.region(), this.kind(), this.completed()].join('|'),
       );
       if (!points.length) fittedFor = null;
       else if (fittedFor !== filters) {
