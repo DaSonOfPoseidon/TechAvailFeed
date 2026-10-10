@@ -7,5 +7,10 @@ export const routes: Routes = [
     title: 'Capacity',
     loadComponent: () => import('./calendar/calendar-page').then((m) => m.CalendarPage),
   },
+  {
+    path: 'calendar/:date',
+    title: 'Day',
+    loadComponent: () => import('./calendar/day-page').then((m) => m.DayPage),
+  },
   { path: '**', redirectTo: 'calendar' },
 ];
