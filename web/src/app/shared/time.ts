@@ -20,6 +20,7 @@ export function weekday(date: string): string {
 
 // "Sat 10 Oct"
 export function dayLabel(date: string): string {
+  if (!isDay(date)) return date;
   return `${weekday(date)} ${Number(date.slice(8, 10))} ${months[Number(date.slice(5, 7)) - 1]}`;
 }
 
@@ -35,7 +36,16 @@ export function today(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-export function addDays(date: string, count: number): string {
+// Whether date is a real YYYY-MM-DD day (a route can carry anything, e.g. /calendar/2026-02-31).
+export function isDay(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const day = new Date(`${date}T00:00:00Z`);
+  return !isNaN(day.getTime()) && day.toISOString().slice(0, 10) === date;
+}
+
+// date plus count days, or null when date isn't a real day.
+export function addDays(date: string, count: number): string | null {
+  if (!isDay(date)) return null;
   const day = new Date(`${date}T00:00:00Z`);
   day.setUTCDate(day.getUTCDate() + count);
   return day.toISOString().slice(0, 10);

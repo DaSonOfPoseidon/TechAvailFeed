@@ -1,22 +1,26 @@
 <section class="page">
   <div class="title">
-    <a
-      mat-icon-button
-      [routerLink]="['/calendar', previous()]"
-      queryParamsHandling="merge"
-      aria-label="Previous day"
-    >
-      <mat-icon>chevron_left</mat-icon>
-    </a>
+    @if (previous(); as day) {
+      <a
+        mat-icon-button
+        [routerLink]="['/calendar', day]"
+        queryParamsHandling="merge"
+        aria-label="Previous day"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </a>
+    }
     <h1>{{ dayLabel(date()) }}</h1>
-    <a
-      mat-icon-button
-      [routerLink]="['/calendar', next()]"
-      queryParamsHandling="merge"
-      aria-label="Next day"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </a>
+    @if (next(); as day) {
+      <a
+        mat-icon-button
+        [routerLink]="['/calendar', day]"
+        queryParamsHandling="merge"
+        aria-label="Next day"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </a>
+    }
     <a mat-button routerLink="/calendar" queryParamsHandling="merge">Back to the calendar</a>
   </div>
   <app-filter-bar [fields]="['region', 'skill', 'calendar']" />

@@ -28,7 +28,8 @@ export function fromDay(day: string | null): Date | null {
 export function toDay(date: Date | null): string | null {
   if (!date || isNaN(date.getTime())) return null;
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const year = String(date.getFullYear()).padStart(4, '0');
+  return `${year}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 // Material's native adapter reads "2026-10-10" as UTC midnight, which is the previous day west of

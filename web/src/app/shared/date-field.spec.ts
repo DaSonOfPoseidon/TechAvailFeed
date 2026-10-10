@@ -31,6 +31,7 @@ describe('date field', () => {
     expect(fromDay('2026-13-01')).toBeNull();
     expect(toDay(fromDay('2024-02-29'))).toBe('2024-02-29');
     expect(fromDay('0050-01-01')?.getFullYear()).toBe(50);
+    expect(toDay(fromDay('0050-01-01'))).toBe('0050-01-01');
     expect(adapter.isValid(adapter.parse('2026-02-31', null)!)).toBe(false);
   });
 });
