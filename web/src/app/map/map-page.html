@@ -1,0 +1,57 @@
+<section class="page">
+  <h1>Where the work is</h1>
+  <app-filter-bar [fields]="['region', 'start']">
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      aria-label="Kind"
+      [value]="kind() ?? ''"
+      (change)="state.set({ kind: $event.value || null })"
+    >
+      <mat-button-toggle value="">Jobs and tickets</mat-button-toggle>
+      <mat-button-toggle value="job">Jobs</mat-button-toggle>
+      <mat-button-toggle value="ticket">Tickets</mat-button-toggle>
+    </mat-button-toggle-group>
+  </app-filter-bar>
+  @if (result.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (result.error()) {
+    <app-error-panel [error]="result.error()" (retry)="result.reload()" />
+  }
+  <div class="layout">
+    <div class="panel map-panel">
+      <div #map class="map" role="region" aria-label="Map of jobs and tickets"></div>
+      <div class="legend">
+        <span class="key"><i class="dot job"></i>Job</span>
+        <span class="key"><i class="dot ticket"></i>Ticket</span>
+        <span class="key"><i class="dot ring"></i>Unassigned</span>
+        @if (result.value(); as data) {
+          <span class="muted num">{{ data.points.length }} on the map, {{ data.start }}</span>
+          @if (data.exact) {
+            <span class="exact"
+              ><mat-icon aria-hidden="true">warning</mat-icon>Exact home locations shown</span
+            >
+          } @else {
+            <span class="muted">Locations rounded to about 110 m</span>
+          }
+        }
+      </div>
+    </div>
+    @if (result.value()?.unmapped; as unmapped) {
+      <aside class="panel unmapped">
+        <h2>Not on the map</h2>
+        @for (p of unmapped; track p.kind + p.ref_id) {
+          <div class="item">
+            <strong>{{ p.kind === 'ticket' ? 'Ticket' : 'Job' }} {{ p.ref_id }}</strong>
+            <span class="muted num"
+              >{{ hhmm(p.starts_at) }}–{{ hhmm(p.ends_at) }}, {{ p.status }}</span
+            >
+            <span class="muted">{{ p.address_issue || 'No coordinates' }}</span>
+          </div>
+        } @empty {
+          <p class="muted">Every job and ticket on this day has coordinates.</p>
+        }
+      </aside>
+    }
+  </div>
+</section>

@@ -22,5 +22,10 @@ export const routes: Routes = [
     title: 'Data quality',
     loadComponent: () => import('./diagnostics/diagnostics-page').then((m) => m.DiagnosticsPage),
   },
+  {
+    path: 'map',
+    title: 'Map',
+    loadComponent: () => import('./map/map-page').then((m) => m.MapPage),
+  },
   { path: '**', redirectTo: 'calendar' },
 ];
