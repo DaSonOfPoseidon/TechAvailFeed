@@ -21,9 +21,9 @@ import { FreshnessChip } from './shell/freshness-chip';
 export class App {
   protected readonly links = [
     { path: '/calendar', label: 'Capacity' },
+    { path: '/map', label: 'Map' },
     { path: '/kpis', label: 'Trends' },
     { path: '/diagnostics', label: 'Data quality' },
-    { path: '/map', label: 'Map' },
   ];
 
   constructor() {
