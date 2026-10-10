@@ -171,7 +171,7 @@ export class KpisPage {
             i === 0 && provisional.length
               ? {
                   silent: true,
-                  itemStyle: { color: cssColor('--ta-grid') },
+                  itemStyle: { color: cssColor('--ta-grid'), opacity: 0.6 },
                   label: {
                     show: true,
                     position: 'insideTop',
