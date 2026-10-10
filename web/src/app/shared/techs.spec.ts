@@ -1,4 +1,4 @@
-import { techLabels } from './stats-table';
+import { techLabels } from './techs';
 
 describe('techLabels', () => {
   it('adds the id only where two technicians share a name', () => {

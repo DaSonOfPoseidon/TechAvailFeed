@@ -13,7 +13,8 @@ import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness, refreshEvery } from '../shared/freshness';
 import { dayLabel, hours, percent, regionName } from '../shared/time';
-import { StatsTable, StatsRow, techLabels } from './stats-table';
+import { StatsTable, StatsRow } from './stats-table';
+import { techLabels } from '../shared/techs';
 
 // The outcome lines, in the categorical order (slot 1 first).
 const outcomeLines: { name: string; rate: (s: KindStats) => number | null | undefined }[] = [

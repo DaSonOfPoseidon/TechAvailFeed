@@ -13,6 +13,7 @@ import { FilterState } from '../filters/filter-state';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness, refreshEvery } from '../shared/freshness';
 import { addDays, dayLabel, hhmm, hours, percent, regionName } from '../shared/time';
+import { techLabels } from '../shared/techs';
 import { bars, windowFor } from './timeline';
 
 // One day per technician: shift, time off, booked work and free slots on a shared time axis.
@@ -43,6 +44,7 @@ export class DayPage {
   private readonly refreshing = refreshEvery(this.day);
 
   // Working techs first (by region, then name); those off all day at the end.
+  protected readonly names = computed(() => techLabels(this.day.value()?.techs ?? []));
   protected readonly techs = computed(() => {
     const techs = [...(this.day.value()?.techs ?? [])];
     return techs.sort(

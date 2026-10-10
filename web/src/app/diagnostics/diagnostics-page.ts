@@ -58,16 +58,18 @@ export class DiagnosticsPage {
     return { url: '/api/v1/diagnostics', params: params({ group: this.group() }) };
   });
   private readonly refreshing = refreshEvery(this.result);
+  // Each check with its table columns worked out once, not per rendered row.
   protected readonly checks = computed(() =>
-    [...(this.result.value()?.checks ?? [])].sort(
-      (a, b) =>
-        Number(b.available) - Number(a.available) ||
-        Number(b.count > 0) - Number(a.count > 0) ||
-        Number(b.severity === 'warning') - Number(a.severity === 'warning'),
-    ),
+    [...(this.result.value()?.checks ?? [])]
+      .sort(
+        (a, b) =>
+          Number(b.available) - Number(a.available) ||
+          Number(b.count > 0) - Number(a.count > 0) ||
+          Number(b.severity === 'warning') - Number(a.severity === 'warning'),
+      )
+      .map((check) => ({ ...check, columns: columns(check) })),
   );
   protected readonly findings = computed(() => this.checks().reduce((sum, c) => sum + c.count, 0));
-  protected readonly columns = columns;
   protected readonly heading = heading;
   protected readonly cell = cell;
 }

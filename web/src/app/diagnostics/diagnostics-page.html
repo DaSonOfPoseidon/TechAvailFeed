@@ -62,7 +62,7 @@
               <table class="plain num">
                 <thead>
                   <tr>
-                    @for (key of columns(check); track key) {
+                    @for (key of check.columns; track key) {
                       <th>{{ heading(key) }}</th>
                     }
                   </tr>
@@ -70,7 +70,7 @@
                 <tbody>
                   @for (row of check.rows; track $index) {
                     <tr>
-                      @for (key of columns(check); track key) {
+                      @for (key of check.columns; track key) {
                         <td>{{ cell(row[key]) }}</td>
                       }
                     </tr>

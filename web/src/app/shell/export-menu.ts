@@ -5,11 +5,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { FeedApi, Query, errorDetail, lastValue } from '../api/feed-api';
+import { FeedApi, Query, errorDetail, lastValue, params } from '../api/feed-api';
+import { DateField } from '../shared/date-field';
 import { Filters } from '../api/models';
 import { FilterState } from '../filters/filter-state';
 import { today } from '../shared/time';
@@ -20,11 +20,11 @@ type Report = 'arrivals' | 'jeopardy';
 @Component({
   selector: 'app-report-dialog',
   imports: [
+    DateField,
     FormsModule,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
-    MatInputModule,
     MatSelectModule,
   ],
   template: `
@@ -32,10 +32,12 @@ type Report = 'arrivals' | 'jeopardy';
       {{ report === 'arrivals' ? 'On-time arrivals' : 'Jobs in jeopardy update' }}
     </h2>
     <mat-dialog-content class="fields">
-      <mat-form-field appearance="outline">
-        <mat-label>Date</mat-label>
-        <input matInput type="date" [max]="maxDate" [(ngModel)]="date" />
-      </mat-form-field>
+      <app-date-field
+        label="Date"
+        [max]="maxDate"
+        [value]="date()"
+        (valueChange)="date.set($event)"
+      />
       @if (report === 'jeopardy') {
         <mat-form-field appearance="outline">
           <mat-label>Run</mat-label>
@@ -76,13 +78,20 @@ export class ReportDialog {
   private readonly filterList = lastValue(this.filters);
   protected readonly maxDate = today();
   protected readonly runs = ['10:00', '13:00', '15:00', '17:00'];
-  protected readonly date = signal(today());
+  protected readonly date = signal<string | null>(today());
   protected readonly at = signal<string | null>(null);
   protected readonly region = signal<string | null>(null);
 
+  // An arrival report's regions come from its own day, which can predate the latest snapshot.
+  private readonly arrivalRegions = httpResource<{ regions: string[] }>(() =>
+    this.report === 'arrivals' && this.date()
+      ? { url: '/api/v1/arrivals/regions', params: params({ date: this.date() }) }
+      : undefined,
+  );
+
   protected regions(): string[] {
-    const filters = this.filterList();
-    return (this.report === 'jeopardy' ? filters?.vp_regions : filters?.regions) ?? [];
+    if (this.report === 'jeopardy') return this.filterList()?.vp_regions ?? [];
+    return this.arrivalRegions.hasValue() ? (this.arrivalRegions.value()?.regions ?? []) : [];
   }
 
   protected query(): Query {

@@ -1,5 +1,11 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
+import { MatIconRegistry } from '@angular/material/icon';
 import {
   provideRouter,
   withComponentInputBinding,
@@ -12,6 +18,14 @@ import { reloadOnStaleBundle } from './shared/stale-bundle';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    // index.html loads Material Symbols Outlined. MatIcon picks it up by sniffing loaded fonts,
+    // which misses a slow stylesheet, so name it.
+    provideAppInitializer(() => {
+      inject(MatIconRegistry).setDefaultFontSetClass(
+        'material-symbols-outlined',
+        'mat-ligature-font',
+      );
+    }),
     provideHttpClient(withInterceptors([apiKeyInterceptor])),
     provideRouter(
       routes,

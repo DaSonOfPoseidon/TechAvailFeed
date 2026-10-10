@@ -67,7 +67,7 @@
       @for (tech of techs(); track tech.tech_id) {
         <div class="tech" [class.off]="tech.on_time_off">
           <span class="name">
-            <span>{{ tech.tech_name }}</span>
+            <span>{{ names().get(tech.tech_id) }}</span>
             <span class="muted">{{ regionName(tech.region) }}</span>
           </span>
           <div class="track">

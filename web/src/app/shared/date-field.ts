@@ -62,6 +62,7 @@ export class LocalDateAdapter extends NativeDateAdapter {
       <input
         matInput
         [matDatepicker]="picker"
+        [max]="maxDate()"
         [value]="date()"
         (click)="picker.open()"
         (dateChange)="valueChange.emit(toDay($event.value))"
@@ -79,6 +80,8 @@ export class LocalDateAdapter extends NativeDateAdapter {
 export class DateField {
   readonly label = input.required<string>();
   readonly value = input<string | null>(null);
+  readonly max = input<string | null>(null);
+  protected readonly maxDate = computed(() => fromDay(this.max()));
   readonly valueChange = output<string | null>();
   protected readonly toDay = toDay;
 
