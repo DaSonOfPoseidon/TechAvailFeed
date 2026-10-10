@@ -1,0 +1,79 @@
+<section class="page">
+  <h1>Free capacity</h1>
+  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']" />
+
+  @if (range.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (range.error()) {
+    <app-error-panel [error]="range.error()" (retry)="range.reload()" />
+  } @else if (range.value(); as data) {
+    <div class="panel grid-panel">
+      <div class="grid-scroll">
+        <table class="grid num" [style.--days]="data.days.length">
+          <caption class="sr-only">
+            Free hours per region and day
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col" class="region">Region</th>
+              @for (day of data.days; track day.date) {
+                <th scope="col" [class.weekend]="isWeekend(day.date)">
+                  <a [routerLink]="['/calendar', day.date]" queryParamsHandling="merge">
+                    <span class="dow">{{ weekday(day.date) }}</span>
+                    <span class="dom">{{ +day.date.slice(8, 10) }}</span>
+                  </a>
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.region; let last = $last) {
+              <tr [class.totals]="last">
+                <th scope="row" class="region">{{ row.region }}</th>
+                @for (cell of row.cells; track $index; let i = $index) {
+                  @if (cell) {
+                    <td
+                      [attr.data-step]="step(cell.utilization)"
+                      [matTooltip]="tooltip(row.region, data.days[i].date, cell)"
+                      matTooltipClass="multiline"
+                    >
+                      <a
+                        [routerLink]="['/calendar', data.days[i].date]"
+                        [queryParams]="row.filter ? { region: row.filter } : {}"
+                        queryParamsHandling="merge"
+                      >
+                        <span class="free">{{
+                          cell.available_h ? (cell.free_h | number: '1.0-0') : '—'
+                        }}</span>
+                        @if (cell.unassigned_jobs + cell.unassigned_tickets > 0) {
+                          <span
+                            class="badge"
+                            [attr.aria-label]="
+                              cell.unassigned_jobs + cell.unassigned_tickets + ' unassigned'
+                            "
+                          >
+                            {{ cell.unassigned_jobs + cell.unassigned_tickets }}
+                          </span>
+                        }
+                      </a>
+                    </td>
+                  } @else {
+                    <td data-step="0"><span class="free">—</span></td>
+                  }
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span>Free hours, shaded by how much of the available time is booked:</span>
+        @for (s of steps; track s.label; let i = $index) {
+          <span class="key"><i [attr.data-step]="i + 1"></i>{{ s.label }}</span>
+        }
+        <span class="key"><span class="badge">2</span>unassigned work</span>
+      </div>
+    </div>
+  }
+</section>
