@@ -80,7 +80,7 @@ export class ReportDialog {
   protected readonly region = signal<string | null>(null);
 
   protected regions(): string[] {
-    const filters = this.filters.value();
+    const filters = this.filters.hasValue() ? this.filters.value() : undefined;
     return (this.report === 'jeopardy' ? filters?.vp_regions : filters?.regions) ?? [];
   }
 

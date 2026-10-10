@@ -1,8 +1,17 @@
-import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams, HttpResourceRef, HttpResponse } from '@angular/common/http';
+import { Injectable, Signal, inject, linkedSignal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 export type Query = Record<string, string | number | null | undefined>;
+
+// A resource's latest loaded value, kept while it refetches (each new snapshot refetches it) or
+// after a failed refetch, so dropdowns built from it don't empty for a moment.
+export function lastValue<T>(resource: HttpResourceRef<T | undefined>): Signal<T | undefined> {
+  return linkedSignal<T | undefined, T | undefined>({
+    source: () => (resource.hasValue() ? resource.value() : undefined),
+    computation: (value, previous) => value ?? previous?.value,
+  });
+}
 
 // The query string for an API call, without the unset values.
 export function params(query: Query): HttpParams {

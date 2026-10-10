@@ -4,7 +4,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { params } from '../api/feed-api';
+import { lastValue, params } from '../api/feed-api';
 import { CapacityKpis, Filters, JobStats, KindStats, OutcomeKpis } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
@@ -60,6 +60,7 @@ export class KpisPage {
     this.freshness.snapshotId();
     return '/api/v1/filters';
   });
+  protected readonly techOptions = lastValue(this.filters);
   protected readonly capacity = httpResource<CapacityKpis>(() => {
     this.freshness.snapshotId();
     return { url: '/api/v1/kpis/capacity', params: params(this.state.capacity()) };

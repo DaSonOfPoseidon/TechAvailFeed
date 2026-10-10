@@ -70,7 +70,7 @@
       <mat-label>Technician</mat-label>
       <mat-select [value]="state.get('tech')" (valueChange)="state.set({ tech: $event })">
         <mat-option [value]="null">All technicians</mat-option>
-        @for (t of filters.value()?.techs ?? []; track t.tech_id) {
+        @for (t of techOptions()?.techs ?? []; track t.tech_id) {
           <mat-option [value]="t.tech_id">{{ t.tech_name }}</mat-option>
         }
       </mat-select>

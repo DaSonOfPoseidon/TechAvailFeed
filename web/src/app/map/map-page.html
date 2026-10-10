@@ -30,7 +30,7 @@
         <span class="key"><i class="dot job"></i>Job</span>
         <span class="key"><i class="dot ticket"></i>Ticket</span>
         <span class="key"><i class="dot ring"></i>Unassigned</span>
-        @if (result.value(); as data) {
+        @if (data(); as data) {
           <span class="muted num">{{ data.points.length }} on the map, {{ data.start }}</span>
           @if (data.exact) {
             <span class="exact"
@@ -42,7 +42,7 @@
         }
       </div>
     </div>
-    @if (result.value()?.unmapped; as unmapped) {
+    @if (data()?.unmapped; as unmapped) {
       <aside class="panel unmapped">
         <h2>Not on the map</h2>
         @for (p of unmapped; track p.kind + p.ref_id) {

@@ -12,13 +12,15 @@ const storageKey = 'techavail.apiKey';
 export class ApiKey {
   private readonly dialog = inject(MatDialog);
   private pending: Promise<string | null> | null = null;
-  private remembered = '';
+  private remembered: string | null = null;
 
+  // The key set on this page wins, in case saving it failed.
   get value(): string {
+    if (this.remembered !== null) return this.remembered;
     try {
-      return localStorage.getItem(storageKey) ?? this.remembered;
+      return localStorage.getItem(storageKey) ?? '';
     } catch {
-      return this.remembered;
+      return '';
     }
   }
 

@@ -73,6 +73,10 @@ export class MapPage {
       }),
     };
   });
+  // The loaded response; undefined while loading or after an error (value() throws then).
+  protected readonly data = computed(() =>
+    this.result.hasValue() ? this.result.value() : undefined,
+  );
   protected readonly hhmm = hhmm;
 
   constructor() {
@@ -82,7 +86,10 @@ export class MapPage {
     // snapshot of the same filters keeps the user's pan and zoom.
     let fittedFor: string | null = null;
     afterRenderEffect(() => {
-      const points = this.result.value()?.points;
+      // While a request is in flight the previous markers stay until the new ones arrive; after
+      // an error they're cleared, so the error panel isn't shown over stale work.
+      const points = this.data()?.points;
+      const failed = !!this.result.error();
       if (!map) {
         map = L.map(this.host().nativeElement, { center: [38.9, -92.3], zoom: 8 });
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -91,8 +98,8 @@ export class MapPage {
         }).addTo(map);
         layer = L.layerGroup().addTo(map);
       }
-      // While a request is in flight, value() can still hold the previous filters' points.
-      if (!points || this.result.isLoading()) return;
+      if (failed) layer?.clearLayers();
+      if (!points) return;
       layer!.clearLayers();
       const colors = { job: cssColor('--ta-series-1'), ticket: cssColor('--ta-series-2') };
       const surface = cssColor('--ta-surface');

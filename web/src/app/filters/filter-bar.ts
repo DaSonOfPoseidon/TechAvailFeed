@@ -3,6 +3,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { lastValue } from '../api/feed-api';
 import { Filters } from '../api/models';
 import { DateField } from '../shared/date-field';
 import { Freshness } from '../shared/freshness';
@@ -21,7 +22,7 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
           <mat-label>Region</mat-label>
           <mat-select [value]="state.region()" (valueChange)="state.set({ region: $event })">
             <mat-option [value]="null">All regions</mat-option>
-            @for (region of options.value()?.regions ?? []; track region) {
+            @for (region of optionList()?.regions ?? []; track region) {
               <mat-option [value]="region">{{ region }}</mat-option>
             }
           </mat-select>
@@ -32,7 +33,7 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
           <mat-label>Skill</mat-label>
           <mat-select [value]="state.skill()" (valueChange)="state.set({ skill: $event })">
             <mat-option [value]="null">Any skill</mat-option>
-            @for (skill of options.value()?.skills ?? []; track skill) {
+            @for (skill of optionList()?.skills ?? []; track skill) {
               <mat-option [value]="skill">{{ skill }}</mat-option>
             }
           </mat-select>
@@ -94,6 +95,7 @@ export class FilterBar {
     this.freshness.snapshotId();
     return '/api/v1/filters';
   });
+  protected readonly optionList = lastValue(this.options);
 
   protected has(field: Field): boolean {
     return this.fields().includes(field);
