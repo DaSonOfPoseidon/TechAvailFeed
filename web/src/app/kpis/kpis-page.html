@@ -1,0 +1,126 @@
+<section class="page">
+  <h1>Capacity ahead</h1>
+  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']" />
+  @if (capacity.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (capacity.error()) {
+    <app-error-panel [error]="capacity.error()" (retry)="capacity.reload()" />
+  } @else if (capacity.value(); as data) {
+    <div class="panel">
+      <h2>Hours per day</h2>
+      <div
+        class="chart"
+        [appEchart]="capacityChart()"
+        role="img"
+        aria-label="Booked, unassigned and free hours per day"
+      ></div>
+      <h2>Share of available time booked</h2>
+      <div
+        class="chart short"
+        [appEchart]="utilizationChart()"
+        role="img"
+        aria-label="Utilisation per day"
+      ></div>
+    </div>
+    <div class="panel table-scroll">
+      <h2>By region, over the whole range</h2>
+      <table class="plain num">
+        <thead>
+          <tr>
+            <th>Region</th>
+            <th>Available</th>
+            <th>Booked</th>
+            <th>Free</th>
+            <th>Utilised</th>
+            <th>Unassigned</th>
+            <th>Tech days off</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of data.by_region; track r.region) {
+            <tr>
+              <td>{{ regionName(r.region) }}</td>
+              <td>{{ hours(r.available_h) }}</td>
+              <td>{{ hours(r.booked_h) }}</td>
+              <td>{{ hours(r.free_h) }}</td>
+              <td>{{ percent(r.utilization) }}</td>
+              <td>{{ r.unassigned_jobs + r.unassigned_tickets }} ({{ hours(r.unassigned_h) }})</td>
+              <td>{{ r.tech_days_off }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <h1 class="second">What happened to planned work</h1>
+  <div class="outcome-filters">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>From</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="state.get('from') ?? ''"
+        (change)="state.set({ from: $any($event.target).value })"
+      />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>To</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="state.get('to') ?? ''"
+        (change)="state.set({ to: $any($event.target).value })"
+      />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tech">
+      <mat-label>Technician</mat-label>
+      <mat-select [value]="state.get('tech')" (valueChange)="state.set({ tech: $event })">
+        <mat-option [value]="null">All technicians</mat-option>
+        @for (t of filters.value()?.techs ?? []; track t.tech_id) {
+          <mat-option [value]="t.tech_id">{{ t.tech_name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      aria-label="Work"
+      [value]="kind()"
+      (change)="state.set({ kind: $event.value === 'job' ? null : $event.value })"
+    >
+      <mat-button-toggle value="job">Jobs</mat-button-toggle>
+      <mat-button-toggle value="ticket">Tickets</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+  @if (outcomes.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (outcomes.error()) {
+    <app-error-panel [error]="outcomes.error()" (retry)="outcomes.reload()" />
+  } @else if (outcomes.value()) {
+    <div class="panel">
+      <h2>Share of the morning plan, per day</h2>
+      <div
+        class="chart"
+        [appEchart]="outcomeChart()"
+        role="img"
+        aria-label="Completed, canceled and rescheduled rates per day"
+      ></div>
+      <p class="muted note">
+        Days without a morning plan are gaps. The latest days are provisional until their outcome is
+        final.
+      </p>
+    </div>
+    <div class="tables">
+      <div class="panel table-scroll">
+        <h2>By region</h2>
+        <app-stats-table [rows]="regionRows()" [totals]="totals()" [jobs]="kind() === 'job'" />
+      </div>
+      <div class="panel table-scroll">
+        <h2>By technician</h2>
+        <app-stats-table [rows]="techRows()" [jobs]="kind() === 'job'" />
+      </div>
+    </div>
+  }
+</section>
