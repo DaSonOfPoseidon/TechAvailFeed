@@ -11,6 +11,11 @@
       <mat-button-toggle value="job">Jobs</mat-button-toggle>
       <mat-button-toggle value="ticket">Tickets</mat-button-toggle>
     </mat-button-toggle-group>
+    <mat-slide-toggle
+      [checked]="completed()"
+      (change)="state.set({ completed: $event.checked ? null : 'hide' })"
+      >Completed</mat-slide-toggle
+    >
   </app-filter-bar>
   @if (result.isLoading()) {
     <mat-progress-bar mode="indeterminate" />

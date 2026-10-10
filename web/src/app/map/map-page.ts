@@ -11,6 +11,7 @@ import {
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import * as L from 'leaflet';
 import { params } from '../api/feed-api';
 import { MapPoint, MapResponse } from '../api/models';
@@ -41,7 +42,14 @@ export function popup(p: MapPoint): string {
 // One day's jobs and tickets: filled dots are assigned, rings unassigned.
 @Component({
   selector: 'app-map-page',
-  imports: [ErrorPanel, FilterBar, MatButtonToggleModule, MatIconModule, MatProgressBarModule],
+  imports: [
+    ErrorPanel,
+    FilterBar,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatSlideToggleModule,
+  ],
   templateUrl: './map-page.html',
   styleUrl: './map-page.scss',
 })
@@ -50,11 +58,18 @@ export class MapPage {
   private readonly freshness = inject(Freshness);
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('map');
   protected readonly kind = computed(() => this.state.get('kind'));
+  // Completed work is shown unless the query string says completed=hide.
+  protected readonly completed = computed(() => this.state.get('completed') !== 'hide');
   protected readonly result = httpResource<MapResponse>(() => {
     this.freshness.snapshotId();
     return {
       url: '/api/v1/map',
-      params: params({ start: this.state.start(), region: this.state.region(), kind: this.kind() }),
+      params: params({
+        start: this.state.start(),
+        region: this.state.region(),
+        kind: this.kind(),
+        completed: this.completed() ? null : 'false',
+      }),
     };
   });
   protected readonly hhmm = hhmm;

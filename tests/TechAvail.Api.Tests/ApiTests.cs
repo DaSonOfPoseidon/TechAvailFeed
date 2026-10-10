@@ -208,6 +208,25 @@ public class ApiTests
     }
 
     [DbFact]
+    public async Task Map_shows_completed_work_unless_hidden()
+    {
+        using var api = new Api(
+            [
+                Located(B("job", "08:00", "09:00", reference: "j1", status: "C"), 40, -100),
+                Located(B("ticket", "09:00", "10:00", reference: "t1", status: "C"), 40, -100),
+                Located(B("ticket", "10:00", "11:00", reference: "t2", status: "R"), 40, -100),
+                Located(B("ticket", "11:00", "12:00", reference: "t3", status: "O"), 40, -100),
+                Located(B("ticket", "12:00", "13:00", reference: "t4", status: "D"), 40, -100),
+                Located(B("job", "13:00", "14:00", reference: "j2", status: "X"), 40, -100),
+            ]
+        );
+        Assert.Equal(["j1", "t1", "t2", "t3"], Strings((await api.Get("/api/v1/map"))["points"], "ref_id"));
+        var open = await api.Get("/api/v1/map?completed=false");
+        Assert.Equal(["t3"], Strings(open["points"], "ref_id"));
+        Assert.False(open["filters"]!["completed"]!.GetValue<bool>());
+    }
+
+    [DbFact]
     public async Task Diagnostics()
     {
         using var api = new Api(Blocks);
