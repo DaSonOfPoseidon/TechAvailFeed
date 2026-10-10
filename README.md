@@ -4,7 +4,7 @@ Near-real-time field technician availability, built on a scheduling system whose
 scheduled report emailed as CSV.
 
 An ingest service polls a mailbox over IMAP, parses each CSV into Postgres and tracks how fresh the data is.
-A REST API turns the snapshots into a 30-day capacity calendar, KPI series, an outcome history (what happened
+A REST API, which also serves the Angular dashboard, turns the snapshots into a 30-day capacity calendar, KPI series, an outcome history (what happened
 to the work planned for each day), data-quality diagnostics, a map feed and Excel workbooks for each.
 
 All sample data in this repository is fictional.
@@ -20,7 +20,7 @@ scheduling system ──scheduled report (CSV by email)──▶ mailbox ──I
 | Service | Path | Port | Role |
 |---|---|---|---|
 | `ingest` | `src/TechAvail.Ingest/` | 8095 | Polls IMAP, parses and stores snapshots, records delivery latency |
-| `api` | `src/TechAvail.Api/` | 8097 | Read-only REST API: calendar, KPIs, outcomes, diagnostics, map, Excel exports |
+| `api` | `src/TechAvail.Api/`, `web/` | 8097 | The dashboard at `/`, and the read-only REST API behind it: calendar, KPIs, outcomes, diagnostics, map, Excel exports |
 | `postgres` | | (internal) | Storage |
 
 The domain rules (free time, outcomes, diagnostics, arrivals, jeopardy) live in `src/TechAvail.Core`, with no
@@ -46,6 +46,23 @@ I/O, not in SQL or in the API layer. That keeps them unit-testable without a dat
   never include them, and the feed carries no address text.
 - **Format evolution.** New columns are optional, so older exports still parse. The parser recognises the
   format from the header row. See [`docs/feed-format.md`](docs/feed-format.md).
+
+## Dashboard
+
+An Angular 22 app (`web/`, Angular Material, ECharts, Leaflet), built into the API image and served from the same
+origin, so it needs no CORS. It has four views:
+
+- **Capacity**: free hours per region and day, shaded by utilisation. A day opens one timeline row per technician
+  (shift, time off, booked work and free slots), with that day's unassigned work.
+- **Trends**: capacity over the coming days, and what happened to each day's morning plan (completed, canceled,
+  rescheduled, pulled on the day) per region and technician.
+- **Data quality**: the diagnostics, one expandable check each.
+- **Map**: a day's jobs and tickets, at the rounded coordinates.
+
+The filters live in the query string, so any view can be bookmarked. The toolbar shows the feed's age (from `/health`)
+and downloads each Excel export with the current filters. When `API_KEY` is set, the app asks for the key once and keeps
+it in the browser's localStorage. The app's files are public, but its data is not. The app holds no business rules: it
+draws what the API computed. Timestamps are naive local times and are shown as they are.
 
 ## API
 
@@ -98,17 +115,28 @@ scripts/dotnet.sh format TechAvailFeed.slnx --verify-no-changes
 docker compose up -d --build ingest api        # deploy a change; the source is baked into the images
 ```
 
+The dashboard needs Node 24, which also runs in Docker:
+
+```
+scripts/node.sh npm ci
+scripts/node.sh npm test -- --watch=false
+scripts/node.sh npm run format:check           # Prettier; `npm run format` rewrites
+NODE_DOCKER_ARGS=--network=host scripts/node.sh npm start   # ng serve on :4200, proxying /api and /health to :8097
+```
+
 ```
 TechAvailFeed.slnx
 src/TechAvail.Core/          parsing, sender check and domain rules (no I/O)
 src/TechAvail.Data/          Postgres: DbUp migrations, the store, outcome history
 src/TechAvail.Api/           the dashboard API and its Excel exports (Xlsx.cs and AboutSheet.cs are shared)
+web/                         the Angular dashboard, served by the API (wwwroot/index.html is a placeholder for the tests)
 src/TechAvail.Ingest/        the ingest worker
-Dockerfile                   one image per project, chosen with the PROJECT build arg
+Dockerfile                   one image per project (PROJECT build arg); the api target adds the built dashboard
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
 tests/fixtures/              fake feed files (.csv) and what the parser makes of them (.json)
 tools/TechAvail.ImapCheck/   read-only check of the mailbox code against the live mailbox
 scripts/dotnet.sh            runs the .NET SDK in Docker
+scripts/node.sh              runs Node (npm, ng) in Docker for web/
 ```
 
 The fixture snapshots cover edge and error cases. After an intended parser change, rewrite them with
@@ -135,7 +163,7 @@ serialisation.
 - [x] REST API and Excel exports
 - [x] Ingest worker (MailKit)
 - [x] Python retired
-- [ ] Angular dashboard
+- [x] Angular dashboard
 
 ### Performance
 
