@@ -7,15 +7,31 @@ mat-button-toggle-group {
   margin: 0;
 }
 
+// Material's header has a fixed height and gives the description twice the title's width, so on
+// a phone long titles wrap into the next row. Let the header grow and the title take the room.
+mat-expansion-panel-header {
+  height: auto;
+  min-height: 48px;
+  padding-block: 8px;
+}
+
 mat-panel-title {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   color: var(--ta-ink);
+
+  mat-icon {
+    flex-shrink: 0;
+  }
 }
 
 mat-panel-description {
+  flex: 0 0 auto;
   justify-content: flex-end;
+  white-space: nowrap;
 }
 
 .good {
