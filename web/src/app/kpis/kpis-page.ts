@@ -5,7 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { lastValue, params } from '../api/feed-api';
-import { CapacityKpis, Filters, JobStats, KindStats, OutcomeKpis } from '../api/models';
+import { CapacityKpis, Filters, OutcomeKpis } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
 import { FilterState } from '../filters/filter-state';
 import { ChartOptions, EChart, chrome, cssColor } from '../shared/echart';
@@ -13,29 +13,16 @@ import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
 import { Freshness, refreshEvery } from '../shared/freshness';
 import { dayLabel, hours, percent, regionName } from '../shared/time';
-import { StatsTable, StatsRow } from './stats-table';
+import { StatsTable, outcome, statsRow } from './stats-table';
 import { techLabels } from '../shared/techs';
 
 // The outcome lines, in the categorical order (slot 1 first).
-const outcomeLines: { name: string; rate: (s: KindStats) => number | null | undefined }[] = [
-  { name: 'Completed', rate: (s) => s.outcome_rate['completed'] },
-  { name: 'Canceled', rate: (s) => s.outcome_rate['canceled'] },
-  { name: 'Rescheduled', rate: (s) => s.outcome_rate['rescheduled'] },
-  { name: 'Pulled on the day', rate: (s) => (s as JobStats).pulled_d0_rate },
+const outcomeLines = [
+  { name: 'Completed', key: 'completed' },
+  { name: 'Canceled', key: 'canceled' },
+  { name: 'Rescheduled', key: 'rescheduled' },
+  { name: 'Pulled on the day', key: 'pulled' },
 ];
-
-export function statsRow(id: string, name: string, stats: KindStats): StatsRow {
-  return {
-    id,
-    name,
-    planned: stats.planned,
-    completed: stats.outcome_rate['completed'] ?? null,
-    canceled: stats.outcome_rate['canceled'] ?? null,
-    rescheduled: stats.outcome_rate['rescheduled'] ?? null,
-    unscheduled: stats.outcome_rate['unscheduled'] ?? null,
-    pulled: (stats as JobStats).pulled_d0_rate ?? null,
-  };
-}
 
 // Capacity over the coming days, and what happened to the work planned on past days.
 @Component({
@@ -82,6 +69,7 @@ export class KpisPage {
   protected readonly kind = computed(() =>
     this.state.get('kind') === 'ticket' ? 'ticket' : 'job',
   );
+  protected readonly measure = this.state.measure;
 
   protected readonly capacityChart = computed(() => {
     const series = this.capacity.value()?.series ?? [];
@@ -115,8 +103,37 @@ export class KpisPage {
 
   protected readonly utilizationChart = computed(() => {
     const series = this.capacity.value()?.series ?? [];
+    const counting = this.measure() === 'count';
     return (): ChartOptions => {
       const c = chrome();
+      const line = (name: string, token: string, data: (number | null)[]) => ({
+        name,
+        type: 'line',
+        showSymbol: false,
+        lineStyle: { width: 2, color: cssColor(token) },
+        itemStyle: { color: cssColor(token) },
+        data,
+      });
+      if (counting)
+        return {
+          ...c,
+          grid: { ...c.grid, top: 32 },
+          tooltip: { ...c.tooltip, valueFormatter: (v: number) => hours(v) },
+          xAxis: { type: 'category', data: series.map((d) => dayLabel(d.date)), ...c.category },
+          yAxis: { type: 'value', ...c.value },
+          series: [
+            line(
+              'Available',
+              '--ta-series-1',
+              series.map((d) => d.available_h),
+            ),
+            line(
+              'Booked',
+              '--ta-series-2',
+              series.map((d) => d.booked_h),
+            ),
+          ],
+        };
       return {
         ...c,
         grid: { ...c.grid, top: 16 },
@@ -131,14 +148,11 @@ export class KpisPage {
           splitLine: c.value.splitLine,
         },
         series: [
-          {
-            name: 'Utilisation',
-            type: 'line',
-            showSymbol: false,
-            lineStyle: { width: 2, color: cssColor('--ta-series-1') },
-            itemStyle: { color: cssColor('--ta-series-1') },
-            data: series.map((d) => d.utilization),
-          },
+          line(
+            'Utilisation',
+            '--ta-series-1',
+            series.map((d) => d.utilization),
+          ),
         ],
       };
     };
@@ -147,21 +161,29 @@ export class KpisPage {
   protected readonly outcomeChart = computed(() => {
     const days = this.outcomes.value()?.days ?? [];
     const kind = this.kind();
+    const measure = this.measure();
     const lines = kind === 'job' ? outcomeLines : outcomeLines.slice(0, 3);
     return (): ChartOptions => {
       const c = chrome();
       const provisional = days.filter((d) => d.provisional).map((d) => dayLabel(d.date));
       return {
         ...c,
-        tooltip: { ...c.tooltip, valueFormatter: (v: number | null) => percent(v) },
-        xAxis: { type: 'category', data: days.map((d) => dayLabel(d.date)), ...c.category },
-        yAxis: {
-          type: 'value',
-          min: 0,
-          max: 1,
-          axisLabel: { ...c.value.axisLabel, formatter: (v: number) => percent(v) },
-          splitLine: c.value.splitLine,
+        tooltip: {
+          ...c.tooltip,
+          valueFormatter: (v: number | null) =>
+            measure === 'rate' ? percent(v) : v === null ? '—' : String(v),
         },
+        xAxis: { type: 'category', data: days.map((d) => dayLabel(d.date)), ...c.category },
+        yAxis:
+          measure === 'rate'
+            ? {
+                type: 'value',
+                min: 0,
+                max: 1,
+                axisLabel: { ...c.value.axisLabel, formatter: (v: number) => percent(v) },
+                splitLine: c.value.splitLine,
+              }
+            : { type: 'value', minInterval: 1, ...c.value },
         series: lines.map((line, i) => ({
           name: line.name,
           type: 'line',
@@ -171,7 +193,7 @@ export class KpisPage {
           itemStyle: { color: cssColor(`--ta-series-${i + 1}`) },
           data: days.map((d) => {
             const stats = d[kind];
-            return stats ? (line.rate(stats) ?? null) : null;
+            return stats ? outcome(stats, line.key, measure) : null;
           }),
           // Days whose outcome can still change are shaded behind the lines.
           markArea:
@@ -197,14 +219,14 @@ export class KpisPage {
 
   protected readonly regionRows = computed(() =>
     (this.outcomes.value()?.by_region ?? []).map((r) =>
-      statsRow(r.region, regionName(r.region), r[this.kind()]),
+      statsRow(r.region, regionName(r.region), r[this.kind()], this.measure()),
     ),
   );
   protected readonly techRows = computed(() => {
     const techs = this.outcomes.value()?.by_tech ?? [];
     const labels = this.techNames();
     return techs.map((t) =>
-      statsRow(t.tech_id, labels.get(t.tech_id) ?? t.tech_name, t[this.kind()]),
+      statsRow(t.tech_id, labels.get(t.tech_id) ?? t.tech_name, t[this.kind()], this.measure()),
     );
   });
   private readonly lastOutcomes = lastValue(this.outcomes);
@@ -227,7 +249,7 @@ export class KpisPage {
   );
   protected readonly totals = computed(() => {
     const totals = this.outcomes.value()?.totals;
-    return totals ? statsRow('all', 'All', totals[this.kind()]) : null;
+    return totals ? statsRow('all', 'All', totals[this.kind()], this.measure()) : null;
   });
   protected readonly percent = percent;
   protected readonly hours = hours;

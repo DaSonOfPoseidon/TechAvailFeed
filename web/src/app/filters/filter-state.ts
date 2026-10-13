@@ -11,7 +11,8 @@ export type Patch = Record<string, string | number | null>;
 export const noRegion = '(none)';
 
 // The dashboard's filters live in the URL's query string, so a view can be bookmarked or shared.
-// Unset values fall back to the API's own defaults (start today, 30 days, install calendar).
+// Unset values fall back to the API's own defaults (start today, 30 days, install calendar). unit and
+// measure are display choices: free hours or booking windows, rates or counts.
 @Injectable({ providedIn: 'root' })
 export class FilterState {
   private readonly router = inject(Router);
@@ -31,6 +32,12 @@ export class FilterState {
   readonly skill = computed(() => this.get('skill'));
   readonly calendar = computed<CalendarKind>(() =>
     this.get('calendar') === 'tc' ? 'tc' : 'install',
+  );
+  readonly unit = computed<'hours' | 'jobs'>(() =>
+    this.get('unit') === 'jobs' ? 'jobs' : 'hours',
+  );
+  readonly measure = computed<'rate' | 'count'>(() =>
+    this.get('measure') === 'count' ? 'count' : 'rate',
   );
   readonly start = computed(() => this.get('start'));
   readonly days = computed(() => {
@@ -54,7 +61,9 @@ export class FilterState {
       queryParams[key] =
         value === '' ||
         (key === 'calendar' && value === 'install') ||
-        (key === 'days' && value === 30)
+        (key === 'days' && value === 30) ||
+        (key === 'unit' && value === 'hours') ||
+        (key === 'measure' && value === 'rate')
           ? null
           : value;
     return this.router.navigate([], { queryParams, queryParamsHandling: 'merge' });

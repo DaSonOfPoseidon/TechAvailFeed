@@ -30,6 +30,9 @@ export interface Capacity {
   available_h: number;
   booked_h: number;
   free_h: number;
+  // Free 2-hour booking windows, and windows with the other hour open to a 1-hour job.
+  free_slots: number;
+  free_hour_slots: number;
   jobs: number;
   tickets: number;
   unassigned_jobs: number;
@@ -114,6 +117,8 @@ export interface RegionTotal {
   available_h: number;
   booked_h: number;
   free_h: number;
+  free_slots: number;
+  free_hour_slots: number;
   jobs: number;
   tickets: number;
   unassigned_jobs: number;
@@ -141,7 +146,14 @@ export interface KindStats {
 }
 
 export interface JobStats extends KindStats {
-  pulled_d0: Record<string, number>;
+  pulled_d0: {
+    total: number;
+    in_progress: number;
+    en_route: number;
+    not_started: number;
+    unknown: number;
+    prereqs_open: number;
+  };
   pulled_d0_rate: number | null;
 }
 
