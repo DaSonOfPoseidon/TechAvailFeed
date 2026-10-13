@@ -19,6 +19,16 @@ public static class CapacityExport
                 + "closed/deleted/held/cleared tickets don't count."
         ),
         ("Free h", "Open slots of at least 60 minutes; today's start no sooner than 30 minutes after the snapshot was read."),
+        (
+            "Free windows",
+            "Booking windows (8-10, 10-12, 1-3, 3-5, and 5-7 on weekdays) wholly inside available time with no work "
+                + "in them; today's only if they start at least 30 minutes after the snapshot was read."
+        ),
+        (
+            "1h openings",
+            "Windows holding one 1-hour job (voice install, equipment install or MDU) with the other hour free, "
+                + "for techs skilled for a 1-hour job."
+        ),
         ("Utilization", "Booked h / available h."),
         (
             "Unassigned h",
@@ -37,6 +47,8 @@ public static class CapacityExport
         new("Available h", Xlsx.Hours),
         new("Booked h", Xlsx.Hours),
         new("Free h", Xlsx.Hours),
+        new("Free windows"),
+        new("1h openings"),
         new("Utilization", Xlsx.Percent),
         new("Jobs"),
         new("Tickets"),
@@ -54,6 +66,8 @@ public static class CapacityExport
             c.AvailableH,
             c.BookedH,
             c.FreeH,
+            c.FreeSlots,
+            c.FreeHourSlots,
             c.Utilization,
             c.Jobs,
             c.Tickets,
@@ -78,6 +92,8 @@ public static class CapacityExport
         new("Available h", Xlsx.Hours),
         new("Booked h", Xlsx.Hours),
         new("Free h", Xlsx.Hours),
+        new("Free windows"),
+        new("1h openings"),
         new("Jobs"),
         new("Tickets"),
         new("On time off"),
@@ -147,6 +163,8 @@ public static class CapacityExport
                             d.AvailableHours,
                             d.BookedHours,
                             d.FreeHours,
+                            d.FreeWindows,
+                            d.HourOpenings,
                             d.Jobs,
                             d.Tickets,
                             d.OnTimeOff,

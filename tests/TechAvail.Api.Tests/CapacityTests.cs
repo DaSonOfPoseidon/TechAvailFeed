@@ -62,6 +62,9 @@ public class CapacityTests
         Assert.Equal((2, 18.0, 16.0), (t.TechsOn, t.ShiftH, t.AvailableH));
         Assert.Equal((3.0, 1, 1), (t.BookedH, t.Jobs, t.Tickets));
         Assert.Equal(13, t.FreeH);
+        // a's job takes 8-10 and b's ticket 1-3; 5-7 is past both shifts.
+        Assert.Equal((6, 0), (t.FreeSlots, t.FreeHourSlots));
+        Assert.Equal(3, monday.ByRegion[0].FreeSlots);
         Assert.Equal((1, 1), (t.UnassignedJobs, t.UnassignedTickets));
         Assert.Equal((3.0, 10.0), (t.UnassignedH, t.NetH));
         Assert.Equal(Math.Round(3.0 / 16, 3), t.Utilization);
@@ -100,7 +103,7 @@ public class CapacityTests
     public void Region_totals_sum_the_range()
     {
         var north = CapacityRollup.RegionTotals(Build())[0];
-        Assert.Equal(("North", 1, 2.0), (north.Region, north.TechDaysOff, north.UnassignedH));
+        Assert.Equal(("North", 1, 2.0, 3), (north.Region, north.TechDaysOff, north.UnassignedH, north.FreeSlots));
     }
 
     [Fact]
