@@ -1,5 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { Component, computed, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -7,7 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { lastValue, params } from '../api/feed-api';
 import { CapacityKpis, Filters, OutcomeKpis } from '../api/models';
 import { FilterBar } from '../filters/filter-bar';
-import { FilterState } from '../filters/filter-state';
+import { FilterState, noRegion } from '../filters/filter-state';
 import { ChartOptions, EChart, chrome, cssColor } from '../shared/echart';
 import { DateField } from '../shared/date-field';
 import { ErrorPanel } from '../shared/error-panel';
@@ -32,6 +33,7 @@ const outcomeLines = [
     EChart,
     ErrorPanel,
     FilterBar,
+    MatButtonModule,
     MatButtonToggleModule,
     MatFormFieldModule,
     MatProgressBarModule,
@@ -247,6 +249,17 @@ export class KpisPage {
       .map(([id, label]) => ({ id, label }))
       .sort((a, b) => a.label.localeCompare(b.label)),
   );
+  // What the outcome chart covers, so a region or tech carried over from another page is obvious.
+  protected readonly scope = computed(() => {
+    const region = this.state.region();
+    const tech = this.state.get('tech');
+    return [
+      region ? regionName(region === noRegion ? '' : region) : 'All regions',
+      ...(tech ? [this.techNames().get(tech) ?? tech] : []),
+      this.kind() === 'job' ? 'installs' : 'tickets',
+    ].join(' · ');
+  });
+  protected readonly narrowed = computed(() => !!(this.state.region() || this.state.get('tech')));
   protected readonly totals = computed(() => {
     const totals = this.outcomes.value()?.totals;
     return totals ? statsRow('all', 'All', totals[this.kind()], this.measure()) : null;
