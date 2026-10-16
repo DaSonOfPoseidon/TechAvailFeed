@@ -298,7 +298,10 @@ public static class CapacityExport
     {
         using var wb = new XLWorkbook();
         if (install is not null)
-            WriteInstall(wb, TimeZoneInfo.ConvertTime(now, tz).DateTime, install);
+        {
+            var local = TimeZoneInfo.ConvertTime(now, tz).DateTime;
+            WriteInstall(wb, local.AddTicks(-(local.Ticks % TimeSpan.TicksPerMinute)), install);
+        }
         WriteSheets(wb, entries, days, demand, schedule);
         new AboutSheet(wb)
             .ExportedAt(tz, now)
