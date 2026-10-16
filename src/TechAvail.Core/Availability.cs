@@ -163,7 +163,8 @@ public static class Availability
         && !(NotBusy.TryGetValue(block.Kind, out var statuses) && statuses.Contains(block.Status));
 
     // One calendar's shift segments per tech and day, and every busy block per tech (time off can
-    // span days), in first-seen order.
+    // span days), in first-seen order. A shift with no region is a data issue (Diagnostics'
+    // tech_no_region), not capacity: no region could book it.
     static (OrderedDictionary<(string, DateOnly), List<Block>>, OrderedDictionary<string, List<Block>>) Group(
         IEnumerable<Block> blocks,
         string calendar
@@ -175,7 +176,10 @@ public static class Availability
         foreach (var block in blocks)
         {
             if (block.Kind == shiftKind)
-                Add(shifts, (block.TechId, block.WorkDate), block);
+            {
+                if (block.Region.Length > 0)
+                    Add(shifts, (block.TechId, block.WorkDate), block);
+            }
             else if (IsBusy(block, calendar))
                 Add(busy, block.TechId, block);
         }
@@ -291,7 +295,8 @@ public static class Availability
 
     // Every tech and date in [start, end] with a shift on this calendar, or time off. The range
     // defaults to the shift dates. A day off counts on every calendar the tech has shifts on; a
-    // tech with no shifts at all stays on install, as before TC shifts were sent.
+    // tech with no shifts at all stays on install, as before TC shifts were sent. One whose only
+    // shifts have no region is on no calendar.
     public static List<TechDay> TechDays(
         IReadOnlyList<Block> blocks,
         DateTime now,
@@ -301,13 +306,10 @@ public static class Availability
     )
     {
         var (shifts, busy) = Group(blocks, calendar);
-        var scheduled = Calendars.ToDictionary(
-            c => c.Key,
-            c => blocks.Where(b => b.Kind == c.Value).Select(b => b.TechId).ToHashSet()
-        );
-        var onAny = scheduled.Values.SelectMany(s => s).ToHashSet();
+        var scheduled = shifts.Keys.Select(k => k.Item1).ToHashSet();
+        var onAny = blocks.Where(b => Calendars.Values.Contains(b.Kind)).Select(b => b.TechId).ToHashSet();
         bool Belongs(string techId) =>
-            scheduled[calendar].Contains(techId) || (calendar == "install" && !onAny.Contains(techId));
+            scheduled.Contains(techId) || (calendar == "install" && !onAny.Contains(techId));
 
         var shiftDates = shifts.Keys.Select(k => k.Item2).ToList();
         var from = start ?? (shiftDates.Count > 0 ? shiftDates.Min() : null);

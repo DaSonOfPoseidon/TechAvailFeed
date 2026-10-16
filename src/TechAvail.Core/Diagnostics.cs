@@ -138,8 +138,8 @@ public static class Diagnostics
                 "tech_setup",
                 "Techs with shifts but no primary region",
                 "warning",
-                "Shift days whose schedule has no primary department/region row, so their capacity "
-                    + "lands under no region."
+                "Shift days whose schedule has no primary department/region row. They aren't counted as "
+                    + "capacity until a region is set."
             )
             {
                 Rows =

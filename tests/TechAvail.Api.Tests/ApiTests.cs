@@ -231,10 +231,18 @@ public class ApiTests
     [DbFact]
     public async Task No_region_filter_selects_the_blank_region()
     {
-        using var api = new Api([.. Blocks, B("shift", "08:00", "17:00", "c", "", "INS")]);
+        using var api = new Api([.. Blocks, B("time_off", "00:00", "23:59", "c")]);
         var body = await api.Get("/api/v1/calendar/2026-10-06?region=(none)");
         Assert.Equal(["c"], Strings(body["techs"], "tech_id"));
         Assert.Equal(3, (await api.Get("/api/v1/calendar/2026-10-06"))["techs"]!.AsArray().Count);
+    }
+
+    [DbFact]
+    public async Task A_shift_with_no_region_is_not_capacity()
+    {
+        using var api = new Api([.. Blocks, B("shift", "08:00", "17:00", "c", "", "INS")]);
+        var body = await api.Get("/api/v1/calendar/2026-10-06");
+        Assert.DoesNotContain("c", Strings(body["techs"], "tech_id"));
     }
 
     [DbFact]

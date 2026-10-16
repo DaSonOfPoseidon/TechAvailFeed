@@ -23,8 +23,8 @@ public class AvailabilityTests
             EndsAt = At(day, end),
             RefId = "",
             Status = status,
-            Region = kind == "shift" ? "North" : "",
-            Skills = kind == "shift" ? "INS" : "",
+            Region = kind.StartsWith("shift", StringComparison.Ordinal) ? "North" : "",
+            Skills = kind.StartsWith("shift", StringComparison.Ordinal) ? "INS" : "",
         };
 
     static List<(string, string)> Windows(IEnumerable<FreeSlot> slots) =>
@@ -261,6 +261,22 @@ public class AvailabilityTests
             EndsAt = At(new DateOnly(2027, 10, 1), "23:59"),
         };
         Assert.Equal([Tuesday], Availability.TechDays([leave], Early, start: Tuesday, end: Tuesday).Select(d => d.WorkDate));
+    }
+
+    [Fact]
+    public void A_shift_with_no_region_is_not_capacity()
+    {
+        Block[] blocks =
+        [
+            B("shift", Tuesday, "08:00", "17:00", tech: "placed"),
+            B("shift", Tuesday, "08:00", "17:00", tech: "unplaced") with { Region = "" },
+            B("time_off", Wednesday, "00:00", "23:59", tech: "unplaced"),
+        ];
+        Assert.Equal(["placed"], Availability.FreeSlots(blocks, Early).Select(s => s.TechId).Distinct());
+        Assert.Equal(
+            ["placed"],
+            Availability.TechDays(blocks, Early, start: Tuesday, end: Wednesday).Select(d => d.TechId)
+        );
     }
 
     [Fact]
