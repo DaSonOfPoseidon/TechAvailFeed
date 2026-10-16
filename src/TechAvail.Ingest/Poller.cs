@@ -23,12 +23,17 @@ public sealed class PollState
 }
 
 // One poll: fetch new feed mail, ingest each once, file it as processed
-// or failed, purge processed mail from before today, then finalize the outcome history.
+// or failed, purge processed mail from before today, then finalize the outcome history. Returns an
+// error for /health when feed mail landed in Spam, where the poll can't see it.
 public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings settings, TimeProvider clock, ILogger<Poller> log)
 {
-    public void PollOnce()
+    // Long enough to catch every run on a 15-minute schedule, short enough to clear soon after a fix.
+    static readonly TimeSpan SpamWindow = TimeSpan.FromHours(1);
+
+    public string? PollOnce()
     {
         var ingested = false;
+        string? error = null;
         using (var session = mailbox.Open())
         {
             var mails = session.FetchNew();
@@ -52,6 +57,13 @@ public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings set
             var purged = session.PurgeProcessed(today);
             if (purged > 0)
                 log.LogInformation("deleted {Count} processed emails from before {Today}", purged, today);
+            if (session.CountSpam(clock.GetUtcNow() - SpamWindow) is var spam and > 0)
+            {
+                error =
+                    $"{spam} feed email{(spam == 1 ? "" : "s")} went to Gmail Spam in the last hour, and only the inbox is read. "
+                    + $"Add a Gmail filter for subject {settings.MailSubject} that never sends it to Spam.";
+                log.LogWarning("{Error}", error);
+            }
         }
         if (ingested)
         {
@@ -59,6 +71,7 @@ public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings set
             if (written > 0)
                 log.LogInformation("finalized outcome history for {Count} days", written);
         }
+        return error;
     }
 }
 
@@ -78,7 +91,7 @@ public sealed class PollWorker(Poller poller, PollState state, IngestSettings se
             string? error = null;
             try
             {
-                await Task.Run(poller.PollOnce, stoppingToken);
+                error = await Task.Run(poller.PollOnce, stoppingToken);
             }
             catch (Exception exc) when (exc is not OperationCanceledException)
             {

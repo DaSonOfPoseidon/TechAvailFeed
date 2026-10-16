@@ -18,10 +18,11 @@ public class PollerTests
         "GENERATED_AT,KIND,WORK_DATE,TECH_ID,TECH_NAME,STARTS_AT,ENDS_AT,REF_ID,STATUS,REGION,SKILLS\n"
         + "2026-10-06T06:15:02-05,shift,2026-10-06,jdoe0170,Jane Doe,2026-10-06 08:00,2026-10-06 17:00,,,North,INS\n";
 
-    sealed class FakeMailbox(List<FetchedMail> mails) : IMailbox, IMailboxSession
+    sealed class FakeMailbox(List<FetchedMail> mails, int spam = 0) : IMailbox, IMailboxSession
     {
         public List<(uint Uid, string Label)> Filed { get; } = [];
         public List<DateOnly> Purged { get; } = [];
+        public List<DateTimeOffset> SpamChecks { get; } = [];
 
         public IMailboxSession Open() => this;
 
@@ -37,6 +38,12 @@ public class PollerTests
         {
             Purged.Add(before);
             return 0;
+        }
+
+        public int CountSpam(DateTimeOffset since)
+        {
+            SpamChecks.Add(since);
+            return spam;
         }
 
         public void Dispose() { }
@@ -88,6 +95,27 @@ public class PollerTests
         // Only processed mail is archived, once.
         Assert.Single(Directory.GetFiles(archive, "*.eml"));
     }
+
+    [DbFact]
+    public void Feed_mail_in_spam_is_an_error_until_an_hour_has_passed()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var now = new DateTimeOffset(2026, 10, 16, 16, 5, 0, TimeSpan.Zero);
+        var clock = new FakeTimeProvider(now);
+
+        var clean = new FakeMailbox([]);
+        Assert.Null(new Poller(store, clean, Settings(db), clock, NullLogger<Poller>.Instance).PollOnce());
+        Assert.Equal([now.AddHours(-1)], clean.SpamChecks);
+
+        var spam = new FakeMailbox([], spam: 2);
+        var error = new Poller(store, spam, Settings(db), clock, NullLogger<Poller>.Instance).PollOnce();
+        Assert.Equal(
+            "2 feed emails went to Gmail Spam in the last hour, and only the inbox is read. "
+                + "Add a Gmail filter for subject TechAvailFeed that never sends it to Spam.",
+            error
+        );
+    }
 }
 
 public class PollWorkerTests
@@ -121,6 +149,8 @@ public class PollWorkerTests
         public void EnsureLabels() { }
 
         public int PurgeProcessed(DateOnly before) => 0;
+
+        public int CountSpam(DateTimeOffset since) => 0;
 
         public void Dispose() { }
     }
