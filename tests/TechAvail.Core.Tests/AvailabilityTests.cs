@@ -375,6 +375,20 @@ public class AvailabilityTests
     }
 
     [Fact]
+    public void Bookable_windows_count_booked_ones_but_not_lunch_leave_or_started_ones()
+    {
+        Block[] blocks =
+        [
+            B("shift", Tuesday, "08:00", "17:00"),
+            B("job", Tuesday, "13:00", "15:00"),
+            B("time_off", Tuesday, "15:30", "17:00"),
+        ];
+        // 8-10 has started by 9:00; 10-12 is free; 1-3 is booked; 3-5 is partly on leave; 5-7 is after the shift.
+        var day = Assert.Single(Availability.TechDays(blocks, At(Tuesday, "09:00")));
+        Assert.Equal((1, 2), (day.FreeWindows, day.BookableWindows));
+    }
+
+    [Fact]
     public void A_two_hour_job_takes_its_window() =>
         Assert.Equal((4, 0), WindowCounts(Tuesday, "INS,VOI", [B("job", Tuesday, "10:00", "12:00")]));
 

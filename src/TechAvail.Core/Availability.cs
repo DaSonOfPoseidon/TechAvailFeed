@@ -16,7 +16,7 @@ public sealed record FreeSlot(
 // One tech's day. available = shift - lunch - time off; booked is the jobs and tickets inside it;
 // free is the usable slots (FreeSlots' rules, so today's are clipped to now + lead time).
 // booked + free <= available: gaps shorter than MinMinutes are neither. FreeWindows and HourOpenings
-// count the booking windows a job could still go in (Windows' rules).
+// count the booking windows a job could still go in, out of BookableWindows (Windows' rules).
 public sealed record TechDay(
     DateOnly WorkDate,
     string TechId,
@@ -37,7 +37,8 @@ public sealed record TechDay(
     int Tickets,
     bool OnTimeOff,
     int FreeWindows,
-    int HourOpenings
+    int HourOpenings,
+    int BookableWindows
 );
 
 public sealed record UnassignedDemand(DateOnly WorkDate, string Region, int Jobs, int Tickets, double Hours);
@@ -256,9 +257,10 @@ public static class Availability
 
     // A booking window that hasn't started (by the lead time) is free when it lies wholly inside the
     // available time with no work in it. One holding a single 1-hour job, with the other hour still
-    // available and free, is an opening for another 1-hour job, if the tech can do one.
+    // available and free, is an opening for another 1-hour job, if the tech can do one. A window that
+    // hasn't started and lies wholly inside the available time is bookable, booked or not.
     // available must be merged and sorted.
-    public static (int Free, int Openings) Windows(
+    public static (int Free, int Openings, int Bookable) Windows(
         DateOnly workDate,
         List<(DateTime Start, DateTime End)> available,
         IReadOnlyList<Block> work,
@@ -268,13 +270,16 @@ public static class Availability
     {
         var earliest = Earliest(now, LeadMinutes);
         var hourJobs = HasAnySkill(techSkills, OneHourSkills);
-        int free = 0, openings = 0;
+        int free = 0, openings = 0, bookable = 0;
         foreach (var start in BookingWindows(workDate).Where(s => s >= earliest))
         {
             List<(DateTime, DateTime)> window = [(start, start + WindowLength)];
             var open = Intersect(window, available);
             var inside = work.Where(b => b.StartsAt < start + WindowLength && b.EndsAt > start).ToList();
-            if (inside.Count == 0 && Subtract(window, open).Count == 0)
+            var wholly = Subtract(window, open).Count == 0;
+            if (wholly)
+                bookable++;
+            if (inside.Count == 0 && wholly)
                 free++;
             else if (
                 hourJobs
@@ -284,7 +289,7 @@ public static class Availability
             )
                 openings++;
         }
-        return (free, openings);
+        return (free, openings, bookable);
     }
 
     static (DateTime, DateTime) DaySpan(DateOnly workDate)
@@ -361,7 +366,7 @@ public static class Availability
             var booked = Intersect(available, Merge(work.Select(b => (b.StartsAt, b.EndsAt))));
             var slots = free.GetValueOrDefault((techId, workDate), []);
             var info = segments.Count > 0 ? segments[0] : home.GetValueOrDefault(techId);
-            var (windows, openings) = Windows(workDate, available, work, info?.Skills ?? "", now);
+            var (windows, openings, bookable) = Windows(workDate, available, work, info?.Skills ?? "", now);
             days.Add(
                 new TechDay(
                     workDate,
@@ -387,7 +392,8 @@ public static class Availability
                     work.Where(b => b.Kind == "ticket").Select(b => b.RefId).Distinct().Count(),
                     off.Count > 0 || (working.Count == 0 && Intersect(span, leave).Count > 0),
                     windows,
-                    openings
+                    openings,
+                    bookable
                 )
             );
         }
