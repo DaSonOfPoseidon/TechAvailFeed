@@ -79,7 +79,7 @@ header. Errors are `{"detail": "..."}`, with 422 for bad query values.
 | `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day, region and technician |
 | `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps, jobs with no skill or set in a region other than their address's |
 | `GET /api/v1/map` | Jobs and tickets as map points with rounded coordinates. Canceled work is left out; `completed=false` also hides completed work |
-| `GET /api/v1/capacity.xlsx` | The calendar as a workbook (same filters as `/calendar`): capacity per day and region, tech days, free slots, the schedule behind them and unassigned work |
+| `GET /api/v1/capacity.xlsx` | The calendar as a workbook (same filters as `/calendar`). On the install calendar it opens with the VP's *Residential Install Availability* sheet: same day/next day exceptions text and a 7-day grid of free ÷ bookable booking windows per VP area, red under 15%, yellow under 30%. Rules and the area map: `src/TechAvail.Core/InstallAvailability.cs`. Then capacity per day and region, tech days, free slots, the schedule behind them and unassigned work |
 | `GET /api/v1/outcomes.xlsx` | The outcome history as a workbook (same filters as `/kpis/outcomes`): outcomes per day, and per planned job |
 | `GET /api/v1/diagnostics.xlsx` | The data-quality checks as a workbook (same filters as `/diagnostics`), one row per finding |
 | `GET /api/v1/arrivals.xlsx` | On-time arrival workbook for `date` (default today): the 8:00 jobs as of the 8:15 run, the day so far, or a past day's completed jobs, highlighted en route (yellow) / not started (red). |
