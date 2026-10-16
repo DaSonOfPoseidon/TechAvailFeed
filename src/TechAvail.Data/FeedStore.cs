@@ -34,6 +34,71 @@ public sealed partial class FeedStore(string connectionString)
         return connection;
     }
 
+    // Removes snapshot fromId and every later one, reopening the blocks they closed, so the store is as
+    // it was before fromId and runs can be replayed in order (a backfill of runs that arrived late).
+    // Returns the removed runs' ingested_at by message id, for SetIngestedAt once they are replayed.
+    // Finalized outcome history is never recomputed, so a rewind into it is refused.
+    public Dictionary<string, DateTimeOffset> Rewind(long fromId)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using (
+            var check = new NpgsqlCommand(
+                """
+                SELECT EXISTS (SELECT 1 FROM outcome_days WHERE morning_snapshot_id >= @id)
+                    OR EXISTS (SELECT 1 FROM job_outcomes WHERE morning_snapshot_id >= @id)
+                """,
+                connection,
+                transaction
+            )
+        )
+        {
+            check.Parameters.AddWithValue("id", fromId);
+            if ((bool)check.ExecuteScalar()!)
+                throw new InvalidOperationException($"outcome history uses snapshot {fromId} or later");
+        }
+        var removed = new Dictionary<string, DateTimeOffset>();
+        using (var command = new NpgsqlCommand("SELECT message_id, ingested_at FROM snapshots WHERE id >= @id", connection, transaction))
+        {
+            command.Parameters.AddWithValue("id", fromId);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                removed[reader.GetString(0)] = reader.GetFieldValue<DateTimeOffset>(1);
+        }
+        string[] steps =
+        [
+            "DELETE FROM blocks WHERE first_snapshot_id >= @id",
+            "UPDATE blocks SET closed_snapshot_id = NULL WHERE closed_snapshot_id >= @id",
+            "DELETE FROM snapshots WHERE id >= @id",
+        ];
+        foreach (var sql in steps)
+        {
+            using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("id", fromId);
+            command.ExecuteNonQuery();
+        }
+        NotifyChanged(connection, transaction);
+        transaction.Commit();
+        return removed;
+    }
+
+    // Puts back the ingest times Rewind returned, so replayed runs keep their real latency.
+    public void SetIngestedAt(IReadOnlyDictionary<string, DateTimeOffset> times)
+    {
+        using var connection = Open();
+        using var command = new NpgsqlCommand(
+            """
+            UPDATE snapshots s SET ingested_at = t.at
+            FROM unnest(@ids, @ats) AS t (id, at)
+            WHERE s.message_id = t.id
+            """,
+            connection
+        );
+        command.Parameters.AddWithValue("ids", times.Keys.ToArray());
+        command.Parameters.AddWithValue("ats", times.Values.Select(t => t.ToUniversalTime()).ToArray());
+        command.ExecuteNonQuery();
+    }
+
     // The newest run loaded. Ingest only appends, so an older run can't be loaded after it.
     public DateTimeOffset? NewestGeneratedAt()
     {

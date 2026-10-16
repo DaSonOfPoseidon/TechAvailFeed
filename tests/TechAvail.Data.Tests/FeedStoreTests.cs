@@ -194,4 +194,42 @@ public class FeedStoreTests
         Save(store, "<3>", Blocks(Job("a") with { SetRegion = "South" }));
         Assert.Equal("South", Assert.Single(store.Latest()!.Blocks!).SetRegion);
     }
+
+    [DbFact]
+    public void Rewind_then_replay_with_a_missing_run_rebuilds_every_other_run_unchanged()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var s1 = Save(store, "<1>", Blocks(Job("a")));
+        var s2 = Save(store, "<2>", Blocks(Job("a"), Job("b")));
+        var s3 = Save(store, "<3>", Blocks(Job("b", "E")));
+        using var connection = db.Open();
+        var before = new[] { s2, s3 }.Select(id => At(connection, id)).ToList();
+        var ingested = connection.QuerySingle<DateTime>("SELECT ingested_at FROM snapshots WHERE id = @s3", new { s3 });
+
+        var removed = store.Rewind(s2);
+        Assert.Equal(["<2>", "<3>"], removed.Keys.Order());
+        // The open rows are s1's again: what s2 and s3 closed is reopened.
+        Assert.Equal(At(connection, s1), At(connection, long.MaxValue));
+
+        var r2 = Save(store, "<2>", Blocks(Job("a"), Job("b")));
+        var middle = Save(store, "<2b>", Blocks(Job("b"), Job("c")));
+        var r3 = Save(store, "<3>", Blocks(Job("b", "E")));
+        store.SetIngestedAt(removed);
+
+        Assert.Equal(before, new[] { r2, r3 }.Select(id => At(connection, id)).ToList());
+        Assert.Equal(["b", "c"], At(connection, middle).Select(k => k.RefId));
+        Assert.Equal(ingested, connection.QuerySingle<DateTime>("SELECT ingested_at FROM snapshots WHERE id = @r3", new { r3 }));
+    }
+
+    [DbFact]
+    public void Rewind_refuses_to_undo_finalized_outcome_history()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var s1 = Save(store, "<1>", Blocks(Job("a")));
+        using var connection = db.Open();
+        connection.Execute("INSERT INTO outcome_days (plan_date, status, morning_snapshot_id) VALUES ('2026-10-06', 'ok', @s1)", new { s1 });
+        Assert.Throws<InvalidOperationException>(() => store.Rewind(s1));
+    }
 }
