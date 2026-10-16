@@ -34,6 +34,14 @@ public sealed partial class FeedStore(string connectionString)
         return connection;
     }
 
+    // The newest run loaded. Ingest only appends, so an older run can't be loaded after it.
+    public DateTimeOffset? NewestGeneratedAt()
+    {
+        using var connection = Open();
+        using var command = new NpgsqlCommand("SELECT max(generated_at) FROM snapshots WHERE status = 'ok'", connection);
+        return command.ExecuteScalar() is DateTime at ? new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) : null;
+    }
+
     public bool Seen(string messageId)
     {
         using var connection = Open();

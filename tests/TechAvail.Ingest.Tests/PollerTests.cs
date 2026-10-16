@@ -97,6 +97,24 @@ public class PollerTests
     }
 
     [DbFact]
+    public void A_run_older_than_the_newest_snapshot_is_failed_not_loaded()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var older = Csv.Replace("2026-10-06T06:15:02-05", "2026-10-06T06:00:01-05");
+        var mailbox = new FakeMailbox([Mail(1, "<new>", ("f.csv", Csv)), Mail(2, "<old>", ("f.csv", older))]);
+        new Poller(store, mailbox, Settings(db), new FakeTimeProvider(), NullLogger<Poller>.Instance).PollOnce();
+
+        Assert.Equal([(1u, "techavail-processed"), (2u, "techavail-failed")], mailbox.Filed);
+        using var connection = db.Open();
+        Assert.Equal(
+            ("error", "generated 2026-10-06 11:00:01Z, before the newest snapshot (2026-10-06 11:15:02Z)"),
+            connection.QuerySingle<(string, string)>("SELECT status, error FROM snapshots WHERE message_id = '<old>'")
+        );
+        Assert.Equal("<new>", store.Latest()!.Snapshot.MessageId);
+    }
+
+    [DbFact]
     public void Feed_mail_in_spam_is_an_error_until_an_hour_has_passed()
     {
         using var db = new TestDatabase();
