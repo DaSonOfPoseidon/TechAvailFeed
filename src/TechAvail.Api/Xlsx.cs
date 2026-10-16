@@ -22,6 +22,19 @@ public static class Xlsx
     // grey row stripes keep black text at well over 7:1.
     public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
 
+    // Excel's built-in good/neutral/bad fills, with the text darkened from Excel's to reach WCAG AAA
+    // contrast (at least 7:1; 7.3 for all three), and a grey for "nothing to show".
+    public static readonly (string Fill, string Font) Good = ("#C6EFCE", "#005400");
+    public static readonly (string Fill, string Font) Neutral = ("#FFEB9C", "#703F00");
+    public static readonly (string Fill, string Font) Bad = ("#FFC7CE", "#830005");
+    public static readonly (string Fill, string Font) Muted = ("#EDEDED", "#3B3B3B");
+
+    public static void Fill(IXLCell cell, (string Fill, string Font) colors)
+    {
+        cell.Style.Fill.SetBackgroundColor(XLColor.FromHtml(colors.Fill));
+        cell.Style.Font.SetFontColor(XLColor.FromHtml(colors.Font));
+    }
+
     // A cell value as text, for column widths and diagnostic details.
     internal static string Text(object? value) =>
         value switch
