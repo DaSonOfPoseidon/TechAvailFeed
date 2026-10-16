@@ -11,7 +11,7 @@ Required columns (`FeedParser.BlockColumns` in `src/TechAvail.Core/Parsing/FeedP
 | Column | Meaning |
 |---|---|
 | `generated_at` | When the query ran (ISO 8601 with offset); used for delivery latency |
-| `kind` | `shift`, `shift_tc`, `job`, `ticket`, `time_off`, `job_moved`, `ticket_moved`, `job_unassigned`, `ticket_unassigned` |
+| `kind` | `shift`, `shift_tc`, `job`, `ticket`, `time_off`, `job_moved`, `ticket_moved`, `job_unassigned`, `ticket_unassigned`. `time_off` is sent only for techs with a live schedule in the window |
 | `work_date` | The schedule date |
 | `tech_id`, `tech_name` | Assigned tech (blank for `*_unassigned`) |
 | `starts_at`, `ends_at` | Local timestamps |
