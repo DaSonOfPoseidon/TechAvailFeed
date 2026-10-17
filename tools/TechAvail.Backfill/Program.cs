@@ -41,13 +41,16 @@ if (late.Count == 0)
     Console.WriteLine("no late runs under the failed label");
     return 0;
 }
-var runs = late.Select(m => (m.Mail, m.ReceivedAt, Feed: Parse(m.Mail), Late: true)).ToList();
-var from = runs.Min(r => r.Feed.GeneratedAt!.Value);
+// Each run is replayed at its generation time. A header-only run has none, so it keeps its place after
+// the run loaded before it (an empty blocks snapshot rebuilds to the blocks open at its position).
+var runs = late.Select(m => (m.Mail, m.ReceivedAt, At: Parse(m.Mail).GeneratedAt!.Value, Late: true)).ToList();
+var from = runs.Min(r => r.At);
 var fromId = (long)Query("SELECT min(id) FROM snapshots WHERE status = 'ok' AND format = 'blocks' AND generated_at > @from", ("from", from.ToUniversalTime()))[0][0];
 
 // The rewind deletes every snapshot from fromId on, so each must be replayed: a late run from its mail,
 // any other loaded run from the archive (ingest archives ok and empty runs).
 var lateIds = late.Select(m => m.Mail.MessageId).ToHashSet();
+var previous = from;
 var loaded = Query("SELECT message_id, status, id, format FROM snapshots WHERE id >= @id ORDER BY id", ("id", fromId));
 foreach (var row in loaded.Where(r => !lateIds.Contains((string)r[0])))
 {
@@ -58,11 +61,12 @@ foreach (var row in loaded.Where(r => !lateIds.Contains((string)r[0])))
                 : $"snapshot {row[2]} is {row[1]}, and only ok and empty runs are archived to replay"
         );
     var (mail, received) = Archived((string)row[0]);
-    runs.Add((mail, received, Parse(mail), false));
+    previous = Parse(mail).GeneratedAt ?? previous;
+    runs.Add((mail, received, previous, false));
 }
-runs = [.. runs.OrderBy(r => r.Feed.GeneratedAt)];
+runs = [.. runs.OrderBy(r => r.At)];
 Console.WriteLine($"rewind from snapshot {fromId} ({from.UtcDateTime:u}); replay {runs.Count} runs: {late.Count} late, {runs.Count - late.Count} already loaded");
-Console.WriteLine($"through {runs[^1].Feed.GeneratedAt!.Value.UtcDateTime:u}");
+Console.WriteLine($"through {runs[^1].At.UtcDateTime:u}");
 if (!apply)
 {
     Console.WriteLine("dry run: pass --apply to rewind and replay");
