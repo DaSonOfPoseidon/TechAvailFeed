@@ -42,7 +42,7 @@ if (late.Count == 0)
 }
 var runs = late.Select(m => (m.Mail, m.ReceivedAt, Feed: Parse(m.Mail), Late: true)).ToList();
 var from = runs.Min(r => r.Feed.GeneratedAt!.Value);
-var fromId = (long)Query("SELECT min(id) FROM snapshots WHERE status = 'ok' AND generated_at > @from", ("from", from.ToUniversalTime()))[0][0];
+var fromId = (long)Query("SELECT min(id) FROM snapshots WHERE status = 'ok' AND format = 'blocks' AND generated_at > @from", ("from", from.ToUniversalTime()))[0][0];
 
 // The rewind deletes every snapshot from fromId on, so each must be replayed: a late run from its mail,
 // any other loaded run from the archive (ingest archives ok and empty runs).

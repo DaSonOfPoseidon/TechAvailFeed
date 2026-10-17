@@ -108,9 +108,12 @@ public class PollerTests
         Assert.Equal([(1u, "techavail-processed"), (2u, "techavail-failed")], mailbox.Filed);
         using var connection = db.Open();
         Assert.Equal(
-            ("error", "generated 2026-10-06 11:00:01Z, before the newest snapshot (2026-10-06 11:15:02Z)"),
-            connection.QuerySingle<(string, string)>("SELECT status, error FROM snapshots WHERE message_id = '<old>'")
+            ("error", "generated 2026-10-06 11:00:01Z, before the newest snapshot (2026-10-06 11:15:02Z)", "blocks", 1),
+            connection.QuerySingle<(string, string, string, int)>("SELECT status, error, format, row_count FROM snapshots WHERE message_id = '<old>'")
         );
+        // Its generation time is kept for latency, but none of its rows are loaded.
+        Assert.NotNull(connection.QuerySingle<DateTime?>("SELECT generated_at FROM snapshots WHERE message_id = '<old>'"));
+        Assert.Single(store.Latest()!.Blocks!);
         Assert.Equal("<new>", store.Latest()!.Snapshot.MessageId);
     }
 
