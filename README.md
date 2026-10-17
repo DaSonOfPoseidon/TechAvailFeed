@@ -153,7 +153,8 @@ schedules and locations.
 `scripts/backfill.sh` loads late runs. It rewinds the store to the first one, replays every run from there in
 generation order (late mail from the failed label, the rest from `corpus/mail`), and checks that each run already
 loaded rebuilds unchanged. It refuses if finalized outcome history reads any of those snapshots. It is a dry run
-unless `--apply`; take a `pg_dump` and `docker compose stop ingest` first.
+unless `--apply`; take a `pg_dump` and `docker compose stop ingest api` first, since each replayed run commits on its own and
+the API would serve the partial store.
 
 ## History
 

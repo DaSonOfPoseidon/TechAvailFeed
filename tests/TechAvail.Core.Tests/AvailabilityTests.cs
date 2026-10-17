@@ -401,6 +401,10 @@ public class AvailabilityTests
     }
 
     [Fact]
+    public void A_repeated_one_hour_job_row_still_leaves_an_opening() =>
+        Assert.Equal((4, 1), WindowCounts(Tuesday, "VOI", [HourJob(Tuesday, "08:00", "09:00"), HourJob(Tuesday, "08:00", "09:00")]));
+
+    [Fact]
     public void A_one_hour_job_with_other_work_in_its_window_leaves_no_opening()
     {
         Assert.Equal((4, 0), WindowCounts(Tuesday, "VOI", [HourJob(Tuesday, "08:00", "09:00"), B("ticket", Tuesday, "09:00", "09:30")]));

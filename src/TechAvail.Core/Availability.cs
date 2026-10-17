@@ -275,7 +275,10 @@ public static class Availability
         {
             List<(DateTime, DateTime)> window = [(start, start + WindowLength)];
             var open = Intersect(window, available);
-            var inside = work.Where(b => b.StartsAt < start + WindowLength && b.EndsAt > start).ToList();
+            // The feed can repeat a row; a repeat is still one piece of work.
+            var inside = work.Where(b => b.StartsAt < start + WindowLength && b.EndsAt > start)
+                .DistinctBy(b => (b.Kind, b.RefId, b.StartsAt, b.EndsAt))
+                .ToList();
             var wholly = Subtract(window, open).Count == 0;
             if (wholly)
                 bookable++;

@@ -11,7 +11,8 @@ using TechAvail.Ingest;
 // failed rather than load over newer runs. The store is rewound to the first late run, then every run
 // from there is replayed in generation order: the late mail from the failed label, the rest from the
 // raw copies in corpus/mail. Each replayed run keeps its ingest time, and every run that was already
-// loaded must rebuild exactly as before. A dry run unless --apply; stop ingest before applying.
+// loaded must rebuild exactly as before. A dry run unless --apply; stop ingest and the API before
+// applying, as each replayed run commits on its own and the API would serve the partial store.
 //
 //   scripts/backfill.sh [--apply]
 var apply = args.Contains("--apply");

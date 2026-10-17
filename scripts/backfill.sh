@@ -1,6 +1,7 @@
 #!/bin/sh
 # Backfills feed runs ingest refused for arriving late (see tools/TechAvail.Backfill). A dry run unless
-# --apply; take a pg_dump and stop ingest (docker compose stop ingest) before applying.
+# --apply; take a pg_dump and stop ingest and the api (docker compose stop ingest api) before applying,
+# so nothing serves the store while it is rewound and replayed run by run.
 set -e
 cd "$(dirname "$0")/.."
 scripts/dotnet.sh build tools/TechAvail.Backfill >/dev/null
