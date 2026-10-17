@@ -90,8 +90,7 @@ public class CapacityExportTests
         var grid = InstallAvailability.Build(
             [Day(16, "Carrollton", 1, 10), Day(16, "Columbia Core", 2, 10), Day(17, "Columbia Core", 5, 10)],
             new DateOnly(2026, 10, 16),
-            days: 3,
-            allAreas: false
+            days: 3
         );
         using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
         Assert.Equal(CapacityExport.InstallSheet, wb.Worksheets.First().Name);

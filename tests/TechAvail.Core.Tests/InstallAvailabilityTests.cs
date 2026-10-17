@@ -50,10 +50,24 @@ public class InstallAvailabilityTests
     }
 
     [Fact]
-    public void Only_the_areas_seen_are_shown_when_asked()
+    public void A_region_shows_only_its_area()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Columbia Core", 1, 4)], Friday, days: 1, allAreas: false);
+        var grid = InstallAvailability.Build([Day(Friday, "Columbia Core", 1, 4)], Friday, days: 1, region: "Columbia Core");
         Assert.Equal(["Central MO"], grid.Rows.Select(r => r.Area));
+    }
+
+    [Fact]
+    public void A_region_with_no_techs_still_shows_its_area()
+    {
+        var grid = InstallAvailability.Build([], Friday, days: 1, region: "Lebanon-Rolla");
+        Assert.Equal((0, 0, "No slots"), (Row(grid, "Lebanon-Rolla").Days[0].Free, Row(grid, "Lebanon-Rolla").Days[0].Bookable, Row(grid, "Lebanon-Rolla").Days[0].Status));
+    }
+
+    [Fact]
+    public void A_grid_ending_on_the_last_date_builds()
+    {
+        var grid = InstallAvailability.Build([Day(DateOnly.MaxValue, "Carrollton", 1, 4)], DateOnly.MaxValue, days: 1);
+        Assert.Equal(1, Row(grid, "Carrollton").Days[0].Free);
     }
 
     [Fact]
@@ -82,7 +96,7 @@ public class InstallAvailabilityTests
             ],
             Friday,
             days: 3,
-            allAreas: false
+            region: "Lebanon-Rolla"
         );
         Assert.Equal(
             [
@@ -101,7 +115,14 @@ public class InstallAvailabilityTests
     [Fact]
     public void Exceptions_say_so_when_nothing_is_closed()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Friday, days: 2, allAreas: false);
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Friday, days: 2, region: "Carrollton");
         Assert.Equal(["All areas have same day/next day availability."], grid.Exceptions);
+    }
+
+    [Fact]
+    public void A_one_day_grid_speaks_only_for_same_day()
+    {
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4)], Friday, days: 1, region: "Carrollton");
+        Assert.Equal(["All areas have same day availability."], grid.Exceptions);
     }
 }

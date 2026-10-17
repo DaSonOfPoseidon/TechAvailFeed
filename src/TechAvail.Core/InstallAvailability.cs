@@ -62,22 +62,21 @@ public static class InstallAvailability
         : (double)free / bookable < LimitedBelow ? Limited
         : Open;
 
-    // allAreas shows every VP area, even one with no techs in the grid's days (so a region-filtered
-    // export doesn't list the others as closed).
-    public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, int days = GridDays, bool allAreas = true)
+    // Every VP area is shown, even one with no techs in the grid's days. A region-filtered export shows
+    // only that region's area (so it doesn't list the others as closed), even when it has no techs.
+    public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, int days = GridDays, string? region = null)
     {
         List<DateOnly> dates = [.. Enumerable.Range(0, days).Select(start.AddDays)];
         var counts = techDays
-            .Where(d => d.Region.Length > 0 && start <= d.WorkDate && d.WorkDate < start.AddDays(days))
+            .Where(d => d.Region.Length > 0 && start <= d.WorkDate && d.WorkDate <= dates[^1])
             .GroupBy(d => (Area: AreaFor(d.Region), d.WorkDate))
             .ToDictionary(g => g.Key, g => (Free: g.Sum(d => d.FreeWindows), Bookable: g.Sum(d => d.BookableWindows)));
         var seen = counts.Keys.Select(k => k.Area).ToHashSet();
         var known = Areas.Select(a => a.Area).ToHashSet();
         List<string> areas =
-        [
-            .. Areas.Select(a => a.Area).Where(a => allAreas || seen.Contains(a)),
-            .. seen.Where(a => !known.Contains(a)).Order(StringComparer.Ordinal),
-        ];
+            region is not null
+                ? [AreaFor(region)]
+                : [.. Areas.Select(a => a.Area), .. seen.Where(a => !known.Contains(a)).Order(StringComparer.Ordinal)];
         var withSlots = dates.ToDictionary(d => d, d => counts.Any(c => c.Key.WorkDate == d && c.Value.Bookable > 0));
         var anySlots = withSlots.Values.Any(v => v);
 
@@ -100,16 +99,18 @@ public static class InstallAvailability
         return new InstallGrid(dates, rows, Exceptions(dates, rows));
     }
 
+    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has.
     static List<string> Exceptions(List<DateOnly> dates, List<AvailabilityRow> rows)
     {
+        var when = dates.Count >= ExceptionDays ? "same day/next day" : "same day";
         var closed = dates
             .Take(ExceptionDays)
             .Select((date, i) => (date, Areas: rows.Where(r => r.Days[i].Status == Closed).Select(r => r.Area).ToList()))
             .Where(d => d.Areas.Count > 0)
             .ToList();
         if (closed.Count == 0)
-            return ["All areas have same day/next day availability."];
-        List<string> lines = ["All areas have same day/next day availability with the following notes/exceptions:"];
+            return [$"All areas have {when} availability."];
+        List<string> lines = [$"All areas have {when} availability with the following notes/exceptions:"];
         foreach (var (date, areas) in closed)
             lines.AddRange(["", date.ToString("dddd M/d", CultureInfo.InvariantCulture), .. areas.Select(a => $"{a} - {Closed}")]);
         return lines;
