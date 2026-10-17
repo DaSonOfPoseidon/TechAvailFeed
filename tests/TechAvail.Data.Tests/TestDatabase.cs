@@ -53,3 +53,12 @@ public sealed class DbFactAttribute : FactAttribute
             Skip = "TEST_DATABASE_URL is not set (scripts/test-db.sh up)";
     }
 }
+
+public sealed class DbTheoryAttribute : TheoryAttribute
+{
+    public DbTheoryAttribute()
+    {
+        if (TestDatabase.Server is null)
+            Skip = "TEST_DATABASE_URL is not set (scripts/test-db.sh up)";
+    }
+}

@@ -1,5 +1,6 @@
 using Npgsql;
 using NpgsqlTypes;
+using TechAvail.Core;
 using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
@@ -32,6 +33,73 @@ public sealed partial class FeedStore(string connectionString)
         var connection = new NpgsqlConnection(connectionString);
         connection.Open();
         return connection;
+    }
+
+    // Removes snapshot fromId and every later one, reopening the blocks they closed, so the store is as
+    // it was before fromId and runs can be replayed in order (a backfill of runs that arrived late).
+    // Returns the removed runs' ingested_at by message id, for SetIngestedAt once they are replayed.
+    // Finalized outcome history is never recomputed, so a rewind into it is refused: firstDay is the
+    // local date of the earliest run replayed, and a day's outcome reads snapshots through its last
+    // checkpoint (D+2), so any finalized day from firstDay - 2 on could change.
+    public Dictionary<string, DateTimeOffset> Rewind(long fromId, DateOnly firstDay)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        var finalizedFrom = firstDay.AddDays(-(Outcomes.Checkpoints.Length - 1));
+        using (var check = new NpgsqlCommand("SELECT max(plan_date) FROM outcome_days WHERE plan_date >= @day", connection, transaction))
+        {
+            check.Parameters.AddWithValue("day", finalizedFrom);
+            if (check.ExecuteScalar() is DateOnly day)
+                throw new InvalidOperationException($"outcome history for {day:yyyy-MM-dd} is finalized and reads snapshots from {firstDay:yyyy-MM-dd} on");
+        }
+        var removed = new Dictionary<string, DateTimeOffset>();
+        using (var command = new NpgsqlCommand("SELECT message_id, ingested_at FROM snapshots WHERE id >= @id", connection, transaction))
+        {
+            command.Parameters.AddWithValue("id", fromId);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                removed[reader.GetString(0)] = reader.GetFieldValue<DateTimeOffset>(1);
+        }
+        string[] steps =
+        [
+            "DELETE FROM blocks WHERE first_snapshot_id >= @id",
+            "UPDATE blocks SET closed_snapshot_id = NULL WHERE closed_snapshot_id >= @id",
+            "DELETE FROM snapshots WHERE id >= @id",
+        ];
+        foreach (var sql in steps)
+        {
+            using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("id", fromId);
+            command.ExecuteNonQuery();
+        }
+        NotifyChanged(connection, transaction);
+        transaction.Commit();
+        return removed;
+    }
+
+    // Puts back the ingest times Rewind returned, so replayed runs keep their real latency.
+    public void SetIngestedAt(IReadOnlyDictionary<string, DateTimeOffset> times)
+    {
+        using var connection = Open();
+        using var command = new NpgsqlCommand(
+            """
+            UPDATE snapshots s SET ingested_at = t.at
+            FROM unnest(@ids, @ats) AS t (id, at)
+            WHERE s.message_id = t.id
+            """,
+            connection
+        );
+        command.Parameters.AddWithValue("ids", times.Keys.ToArray());
+        command.Parameters.AddWithValue("ats", times.Values.Select(t => t.ToUniversalTime()).ToArray());
+        command.ExecuteNonQuery();
+    }
+
+    // The newest blocks run loaded. Ingest only appends, so an older one can't be loaded after it.
+    public DateTimeOffset? NewestGeneratedAt()
+    {
+        using var connection = Open();
+        using var command = new NpgsqlCommand("SELECT max(generated_at) FROM snapshots WHERE status = 'ok' AND format = 'blocks'", connection);
+        return command.ExecuteScalar() is DateTime at ? new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) : null;
     }
 
     public bool Seen(string messageId)

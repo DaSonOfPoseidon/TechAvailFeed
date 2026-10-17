@@ -18,10 +18,11 @@ public class PollerTests
         "GENERATED_AT,KIND,WORK_DATE,TECH_ID,TECH_NAME,STARTS_AT,ENDS_AT,REF_ID,STATUS,REGION,SKILLS\n"
         + "2026-10-06T06:15:02-05,shift,2026-10-06,jdoe0170,Jane Doe,2026-10-06 08:00,2026-10-06 17:00,,,North,INS\n";
 
-    sealed class FakeMailbox(List<FetchedMail> mails) : IMailbox, IMailboxSession
+    sealed class FakeMailbox(List<FetchedMail> mails, int spam = 0) : IMailbox, IMailboxSession
     {
         public List<(uint Uid, string Label)> Filed { get; } = [];
         public List<DateOnly> Purged { get; } = [];
+        public List<DateTimeOffset> SpamChecks { get; } = [];
 
         public IMailboxSession Open() => this;
 
@@ -37,6 +38,12 @@ public class PollerTests
         {
             Purged.Add(before);
             return 0;
+        }
+
+        public int CountSpam(DateTimeOffset since)
+        {
+            SpamChecks.Add(since);
+            return spam;
         }
 
         public void Dispose() { }
@@ -88,6 +95,63 @@ public class PollerTests
         // Only processed mail is archived, once.
         Assert.Single(Directory.GetFiles(archive, "*.eml"));
     }
+
+    [DbFact]
+    public void A_run_older_than_the_newest_snapshot_is_failed_not_loaded()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var older = Csv.Replace("2026-10-06T06:15:02-05", "2026-10-06T06:00:01-05");
+        var mailbox = new FakeMailbox([Mail(1, "<new>", ("f.csv", Csv)), Mail(2, "<old>", ("f.csv", older))]);
+        new Poller(store, mailbox, Settings(db), new FakeTimeProvider(), NullLogger<Poller>.Instance).PollOnce();
+
+        Assert.Equal([(1u, "techavail-processed"), (2u, "techavail-failed")], mailbox.Filed);
+        using var connection = db.Open();
+        Assert.Equal(
+            ("error", "generated 2026-10-06 11:00:01Z, before the newest snapshot (2026-10-06 11:15:02Z)", "blocks", 1),
+            connection.QuerySingle<(string, string, string, int)>("SELECT status, error, format, row_count FROM snapshots WHERE message_id = '<old>'")
+        );
+        // Its generation time is kept for latency, but none of its rows are loaded.
+        Assert.NotNull(connection.QuerySingle<DateTime?>("SELECT generated_at FROM snapshots WHERE message_id = '<old>'"));
+        Assert.Single(store.Latest()!.Blocks!);
+        Assert.Equal("<new>", store.Latest()!.Snapshot.MessageId);
+    }
+
+    [DbFact]
+    public void A_late_legacy_slots_run_still_loads()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var slots = "GENERATED_AT,WORK_DATE,TECH_ID,TECH_NAME,OPEN_FROM,OPEN_UNTIL,OPEN_MINUTES,REGION,SKILLS\n"
+            + "2026-10-06T06:00:01-05,2026-10-06,jdoe0170,Jane Doe,2026-10-06 08:00,2026-10-06 10:30,150,North,INS\n";
+        var mailbox = new FakeMailbox([Mail(1, "<new>", ("f.csv", Csv)), Mail(2, "<slots>", ("f.csv", slots))]);
+        new Poller(store, mailbox, Settings(db), new FakeTimeProvider(), NullLogger<Poller>.Instance).PollOnce();
+
+        // Slots runs are stored whole, so an older one can't overwrite the newer blocks run.
+        Assert.Equal([(1u, "techavail-processed"), (2u, "techavail-processed")], mailbox.Filed);
+        Assert.Equal("<new>", store.Latest()!.Snapshot.MessageId);
+    }
+
+    [DbFact]
+    public void Feed_mail_in_spam_is_an_error_until_an_hour_has_passed()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var now = new DateTimeOffset(2026, 10, 16, 16, 5, 0, TimeSpan.Zero);
+        var clock = new FakeTimeProvider(now);
+
+        var clean = new FakeMailbox([]);
+        Assert.Null(new Poller(store, clean, Settings(db), clock, NullLogger<Poller>.Instance).PollOnce());
+        Assert.Equal([now.AddHours(-1)], clean.SpamChecks);
+
+        var spam = new FakeMailbox([], spam: 2);
+        var error = new Poller(store, spam, Settings(db), clock, NullLogger<Poller>.Instance).PollOnce();
+        Assert.Equal(
+            "2 feed emails went to Gmail Spam in the last hour, and only the inbox is read. "
+                + "Add a Gmail filter for subject TechAvailFeed that never sends it to Spam.",
+            error
+        );
+    }
 }
 
 public class PollWorkerTests
@@ -121,6 +185,8 @@ public class PollWorkerTests
         public void EnsureLabels() { }
 
         public int PurgeProcessed(DateOnly before) => 0;
+
+        public int CountSpam(DateTimeOffset since) => 0;
 
         public void Dispose() { }
     }
