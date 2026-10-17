@@ -120,6 +120,16 @@ public class InstallAvailabilityTests
     }
 
     [Fact]
+    public void A_day_no_area_can_book_is_an_exception_for_all_areas()
+    {
+        var grid = InstallAvailability.Build([Day(Saturday, "Carrollton", 4, 4), Day(Sunday, "Carrollton", 0, 0)], Saturday, days: 2, region: "Carrollton");
+        Assert.Equal(
+            ["All areas have same day/next day availability with the following notes/exceptions:", "", "Sunday 10/18", "All areas - No slots"],
+            grid.Exceptions
+        );
+    }
+
+    [Fact]
     public void A_one_day_grid_speaks_only_for_same_day()
     {
         var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4)], Friday, days: 1, region: "Carrollton");

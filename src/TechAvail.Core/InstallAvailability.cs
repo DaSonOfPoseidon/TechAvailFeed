@@ -99,20 +99,29 @@ public static class InstallAvailability
         return new InstallGrid(dates, rows, Exceptions(dates, rows));
     }
 
-    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has.
+    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has. A day no area can
+    // book (a Sunday) is an exception for every area, not availability.
     static List<string> Exceptions(List<DateOnly> dates, List<AvailabilityRow> rows)
     {
         var when = dates.Count >= ExceptionDays ? "same day/next day" : "same day";
-        var closed = dates
+        var notes = dates
             .Take(ExceptionDays)
-            .Select((date, i) => (date, Areas: rows.Where(r => r.Days[i].Status == Closed).Select(r => r.Area).ToList()))
-            .Where(d => d.Areas.Count > 0)
+            .Select(
+                (date, i) =>
+                    (
+                        date,
+                        Lines: rows.Count > 0 && rows.All(r => r.Days[i].Status == NoSlots)
+                            ? [$"All areas - {NoSlots}"]
+                            : rows.Where(r => r.Days[i].Status == Closed).Select(r => $"{r.Area} - {Closed}").ToList()
+                    )
+            )
+            .Where(d => d.Lines.Count > 0)
             .ToList();
-        if (closed.Count == 0)
+        if (notes.Count == 0)
             return [$"All areas have {when} availability."];
         List<string> lines = [$"All areas have {when} availability with the following notes/exceptions:"];
-        foreach (var (date, areas) in closed)
-            lines.AddRange(["", date.ToString("dddd M/d", CultureInfo.InvariantCulture), .. areas.Select(a => $"{a} - {Closed}")]);
+        foreach (var (date, notesFor) in notes)
+            lines.AddRange(["", date.ToString("dddd M/d", CultureInfo.InvariantCulture), .. notesFor]);
         return lines;
     }
 }
