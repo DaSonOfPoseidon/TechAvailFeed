@@ -1,5 +1,6 @@
 using System.Net;
 using ClosedXML.Excel;
+using TechAvail.Core;
 using TechAvail.Core.Parsing;
 using TechAvail.Data;
 using TechAvail.Data.Tests;
@@ -78,6 +79,50 @@ public class CapacityExportTests
         var headers = wb.Worksheets.SelectMany(ws => ws.Row(1).CellsUsed()).Select(c => c.GetString()).ToHashSet();
         Assert.DoesNotContain(headers, h => h.Contains("lat", StringComparison.OrdinalIgnoreCase) || h.Contains("lon", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Address issue", headers);
+    }
+
+    [Fact]
+    public void Install_availability_is_the_first_sheet_laid_out_for_the_email()
+    {
+        static TechDay Day(int date, string region, int free, int bookable) =>
+            new(new DateOnly(2026, 10, date), "t", "T", region, "INS", [], [], [], [], 0, 0, 0, 0, 0, 0, 0, 0, false, free, 0, bookable);
+
+        var grid = InstallAvailability.Build(
+            [Day(16, "Carrollton", 1, 10), Day(16, "Columbia Core", 2, 10), Day(17, "Columbia Core", 5, 10)],
+            new DateOnly(2026, 10, 16),
+            days: 3
+        );
+        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
+        Assert.Equal(CapacityExport.InstallSheet, wb.Worksheets.First().Name);
+        var ws = wb.Worksheet(CapacityExport.InstallSheet);
+        Assert.Equal(InstallAvailability.Title, ws.Cell(1, 1).GetText());
+        var texts = ws.Column(1).CellsUsed().Select(c => c.GetString()).ToList();
+        Assert.Contains("Friday 10/16", texts);
+        Assert.Contains("Carrollton - Closed", texts);
+        Assert.Contains("Saturday 10/17", texts);
+
+        var header = ws.Column(1).CellsUsed().Single(c => c.GetString() == "Area").Address.RowNumber;
+        Assert.Equal(["Area", "Fri 10/16", "Sat 10/17", "Sun 10/18", "3-Day Total"], ws.Row(header).CellsUsed().Select(c => c.GetString()));
+        var central = ws.Row(header + 2);
+        Assert.Equal("Central MO", central.Cell(1).GetText());
+        Assert.Equal(0.2, central.Cell(2).GetDouble());
+        Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Limited].Fill), central.Cell(2).Style.Fill.BackgroundColor);
+        Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Open].Fill), central.Cell(3).Style.Fill.BackgroundColor);
+        Assert.Equal("No slots", central.Cell(4).GetText());
+        Assert.Equal("Closed", ws.Row(header + 1).Cell(3).GetText());
+    }
+
+    [DbFact]
+    public async Task Only_the_install_calendar_gets_the_availability_sheet()
+    {
+        using var db = new TestDatabase();
+        Seed(db);
+        using var factory = new ApiFactory(db, Now);
+        var client = factory.CreateClient();
+        using var install = Open(await (await client.GetAsync("/api/v1/capacity.xlsx")).Content.ReadAsByteArrayAsync());
+        Assert.Equal(CapacityExport.InstallSheet, install.Worksheets.First().Name);
+        using var tc = Open(await (await client.GetAsync("/api/v1/capacity.xlsx?calendar=tc")).Content.ReadAsByteArrayAsync());
+        Assert.DoesNotContain(tc.Worksheets, ws => ws.Name == CapacityExport.InstallSheet);
     }
 
     [DbFact]

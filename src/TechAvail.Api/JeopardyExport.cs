@@ -10,13 +10,11 @@ public static class JeopardyExport
     public const string UpdateSheet = "Update";
     public const string JeopardySheet = "Jobs in jeopardy";
 
-    // Excel's built-in good/neutral/bad fills, with the text darkened from Excel's to reach WCAG AAA
-    // contrast (at least 7:1; 7.3 for all three).
     public static readonly (string Status, string Fill, string Font)[] Highlights =
     [
-        ("Green", "#C6EFCE", "#005400"),
-        ("Yellow", "#FFEB9C", "#703F00"),
-        ("Red", "#FFC7CE", "#830005"),
+        ("Green", Xlsx.Good.Fill, Xlsx.Good.Font),
+        ("Yellow", Xlsx.Neutral.Fill, Xlsx.Neutral.Font),
+        ("Red", Xlsx.Bad.Fill, Xlsx.Bad.Font),
     ];
 
     static readonly Xlsx.Column[] Columns =
@@ -78,8 +76,7 @@ public static class JeopardyExport
             ws.Cell(row, 1).Value = region.Region;
             ws.Cell(row, 2).Value = region.Status;
             var (_, fill, font) = Highlights.Single(h => h.Status == region.Status);
-            ws.Cell(row, 2).Style.Fill.SetBackgroundColor(XLColor.FromHtml(fill));
-            ws.Cell(row, 2).Style.Font.SetFontColor(XLColor.FromHtml(font));
+            Xlsx.Fill(ws.Cell(row, 2), (fill, font));
         }
         Xlsx.Borders(ws, first - 1, row, 2);
 

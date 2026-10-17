@@ -1,3 +1,4 @@
+using System.Globalization;
 using ClosedXML.Excel;
 using TechAvail.Core;
 using TechAvail.Core.Parsing;
@@ -5,10 +6,29 @@ using Column = TechAvail.Api.Xlsx.Column;
 
 namespace TechAvail.Api;
 
-// The forward calendar as a workbook: capacity per day and region, each tech's day, the free slots,
-// and the shifts, work and leave behind them. Job coordinates are never written.
+// The forward calendar as a workbook: the VP's install availability (install calendar only), capacity
+// per day and region, each tech's day, the free slots, and the shifts, work and leave behind them.
+// Job coordinates are never written.
 public static class CapacityExport
 {
+    public const string InstallSheet = "Install availability";
+
+    public static readonly IReadOnlyDictionary<string, (string Fill, string Font)> StatusColors = new Dictionary<string, (string, string)>
+    {
+        [InstallAvailability.Open] = Xlsx.Good,
+        [InstallAvailability.Limited] = Xlsx.Neutral,
+        [InstallAvailability.Closed] = Xlsx.Bad,
+        [InstallAvailability.NoSlots] = Xlsx.Muted,
+    };
+
+    static readonly (string Status, string Meaning)[] Legend =
+    [
+        (InstallAvailability.Closed, $"Under {InstallAvailability.ClosedBelow:0%} of booking windows free, or no tech working"),
+        (InstallAvailability.Limited, $"{InstallAvailability.ClosedBelow:0%} to under {InstallAvailability.LimitedBelow:0%} free"),
+        (InstallAvailability.Open, $"{InstallAvailability.LimitedBelow:0%} or more free"),
+        (InstallAvailability.NoSlots, "No area can book that day (e.g. Sunday)"),
+    ];
+
     internal static readonly (string Name, object? Text)[] Definitions =
     [
         ("Shift h", "Scheduled shift hours."),
@@ -37,6 +57,18 @@ public static class CapacityExport
         ),
         ("Net h", "Free h minus unassigned h: capacity left once unassigned work is placed."),
         ("Techs off", "Techs with time off overlapping their shift, or a day off entirely."),
+        (
+            "Availability",
+            "Install availability sheet: free booking windows / bookable windows (windows wholly inside available "
+                + "time, booked or not), per VP area. Today's only count if they start at least 30 minutes after the export."
+        ),
+        (
+            "Status",
+            $"Closed: under {InstallAvailability.ClosedBelow:0%}, or nothing bookable while other areas can book. Limited: under "
+                + $"{InstallAvailability.LimitedBelow:0%}. Open: the rest. No slots: no area can book that day."
+        ),
+        .. InstallAvailability.Areas.Where(a => a.Territories is not [var t] || t != a.Area).Select(a => ($"  {a.Area}", (object?)string.Join(", ", a.Territories))),
+        ("  Other territories", "Listed as rows of their own."),
     ];
 
     static readonly Column[] CapacityColumns =
@@ -186,6 +218,71 @@ public static class CapacityExport
         Xlsx.WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
     }
 
+    // The VP's update laid out to paste into an email: title, exceptions text, then the colour-coded grid.
+    static void WriteInstall(XLWorkbook wb, DateTime asOf, InstallGrid grid)
+    {
+        var ws = wb.Worksheets.Add(InstallSheet);
+        ws.Cell(1, 1).Value = InstallAvailability.Title;
+        ws.Cell(1, 1).Style.Font.Bold = true;
+        ws.Cell(1, 1).Style.Font.FontSize = 14;
+        ws.Cell(2, 1).Value = "As of";
+        ws.Cell(2, 2).Value = asOf;
+        ws.Cell(2, 2).Style.NumberFormat.Format = Xlsx.Stamp;
+        ws.Cell(2, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+
+        var row = 3;
+        foreach (var line in grid.Exceptions)
+            ws.Cell(++row, 1).Value = line;
+
+        row += 2;
+        var header = row;
+        Xlsx.HeaderRow(
+            ws,
+            row,
+            [
+                "Area",
+                .. grid.Days.Select(d => d.ToString("ddd M/d", CultureInfo.InvariantCulture)),
+                $"{grid.Days.Count}-Day Total",
+            ]
+        );
+        foreach (var area in grid.Rows)
+        {
+            ws.Cell(++row, 1).Value = area.Area;
+            var column = 1;
+            foreach (var cell in area.Days.Append(area.Total))
+            {
+                var target = ws.Cell(row, ++column);
+                if (cell.Share is { } share)
+                {
+                    target.Value = share;
+                    target.Style.NumberFormat.Format = "0%";
+                }
+                else
+                    target.Value = cell.Status;
+                target.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                Xlsx.Fill(target, StatusColors[cell.Status]);
+            }
+        }
+        var columns = grid.Days.Count + 2;
+        Xlsx.Borders(ws, header, row, columns);
+
+        row += 2;
+        ws.Cell(row, 1).Value = "Legend";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        foreach (var (status, meaning) in Legend)
+        {
+            ws.Cell(++row, 1).Value = status;
+            Xlsx.Fill(ws.Cell(row, 1), StatusColors[status]);
+            ws.Cell(row, 2).Value = meaning;
+        }
+        ws.Cell(++row, 1).Value =
+            "Availability = free 2-hour booking windows / bookable windows. Today counts only windows starting 30+ minutes after the time above.";
+
+        Xlsx.SetWidth(ws.Column(1), 28);
+        for (var c = 2; c <= columns; c++)
+            Xlsx.SetWidth(ws.Column(c), 12);
+    }
+
     public static byte[] Workbook(
         TimeZoneInfo tz,
         DateTimeOffset now,
@@ -195,10 +292,16 @@ public static class CapacityExport
         List<CalendarEntry> entries,
         List<TechDay> days,
         List<Block> demand,
-        List<Block> schedule
+        List<Block> schedule,
+        InstallGrid? install = null
     )
     {
         using var wb = new XLWorkbook();
+        if (install is not null)
+        {
+            var local = TimeZoneInfo.ConvertTime(now, tz).DateTime;
+            WriteInstall(wb, local.AddTicks(-(local.Ticks % TimeSpan.TicksPerMinute)), install);
+        }
         WriteSheets(wb, entries, days, demand, schedule);
         new AboutSheet(wb)
             .ExportedAt(tz, now)
