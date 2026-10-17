@@ -3,6 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DecimalPipe } from '@angular/common';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { RouterLink } from '@angular/router';
 import { params } from '../api/feed-api';
 import { CalendarRange, Capacity } from '../api/models';
@@ -33,10 +34,19 @@ export function rows(range: CalendarRange): Row[] {
   ];
 }
 
-// Free hours per region and day, shaded by utilisation. A column opens that day.
+// Free hours (or free booking windows) per region and day, shaded by utilisation. A column opens
+// that day.
 @Component({
   selector: 'app-calendar-page',
-  imports: [DecimalPipe, ErrorPanel, FilterBar, MatProgressBarModule, MatTooltipModule, RouterLink],
+  imports: [
+    DecimalPipe,
+    ErrorPanel,
+    FilterBar,
+    MatButtonToggleModule,
+    MatProgressBarModule,
+    MatTooltipModule,
+    RouterLink,
+  ],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
 })
@@ -64,6 +74,7 @@ export class CalendarPage {
     return [
       `${region}, ${dayLabel(date)}`,
       `${hours(cell.free_h)} free of ${hours(cell.available_h)} available (${percent(cell.utilization)} booked)`,
+      `${cell.free_slots} free 2-hour slots, ${cell.free_hour_slots} 1-hour openings (voice, equipment, MDU)`,
       `${cell.techs_on} techs on, ${cell.techs_off} off`,
       `${cell.jobs} jobs, ${cell.tickets} tickets`,
       cell.unassigned_jobs + cell.unassigned_tickets > 0

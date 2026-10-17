@@ -28,6 +28,15 @@ public static class FeedIngest
             Save(filename, null, exc.Message);
             return false;
         }
+        // The blocks store keeps only the diff from the newest run, so a late blocks run (one Gmail held
+        // in Spam) would replace newer data. It is recorded as failed and left for a backfill. Legacy
+        // slots runs are verbatim copies, so a late one changes nothing newer. The parsed feed is kept
+        // on the failed snapshot (an error writes no rows) so its latency and format still show.
+        if (feed.Format == "blocks" && feed.GeneratedAt is { } at && store.NewestGeneratedAt() is { } newest && at < newest)
+        {
+            Save(filename, feed, $"generated {at.UtcDateTime:u}, before the newest snapshot ({newest.UtcDateTime:u})");
+            return false;
+        }
         Save(filename, feed);
         return true;
     }

@@ -1,6 +1,16 @@
 <section class="page">
   <h1>Capacity ahead</h1>
-  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']" />
+  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']">
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      aria-label="Measure"
+      [value]="measure()"
+      (change)="state.set({ measure: $event.value })"
+    >
+      <mat-button-toggle value="rate">%</mat-button-toggle>
+      <mat-button-toggle value="count">#</mat-button-toggle>
+    </mat-button-toggle-group>
+  </app-filter-bar>
   @if (capacity.isLoading()) {
     <mat-progress-bar mode="indeterminate" />
   }
@@ -15,12 +25,16 @@
         role="img"
         aria-label="Booked, unassigned and free hours per day"
       ></div>
-      <h2>Share of available time booked</h2>
+      <h2>
+        {{ measure() === 'rate' ? 'Share of available time booked' : 'Booked of available hours' }}
+      </h2>
       <div
         class="chart short"
         [appEchart]="utilizationChart()"
         role="img"
-        aria-label="Utilisation per day"
+        [attr.aria-label]="
+          measure() === 'rate' ? 'Utilisation per day' : 'Available and booked hours per day'
+        "
       ></div>
     </div>
     <div class="panel table-scroll">
@@ -44,7 +58,13 @@
               <td>{{ hours(r.available_h) }}</td>
               <td>{{ hours(r.booked_h) }}</td>
               <td>{{ hours(r.free_h) }}</td>
-              <td>{{ percent(r.utilization) }}</td>
+              <td>
+                {{
+                  measure() === 'rate'
+                    ? percent(r.utilization)
+                    : hours(r.booked_h) + ' of ' + hours(r.available_h)
+                }}
+              </td>
               <td>{{ r.unassigned_jobs + r.unassigned_tickets }} ({{ hours(r.unassigned_h) }})</td>
               <td>{{ r.tech_days_off }}</td>
             </tr>
@@ -84,6 +104,15 @@
       <mat-button-toggle value="job">Jobs</mat-button-toggle>
       <mat-button-toggle value="ticket">Tickets</mat-button-toggle>
     </mat-button-toggle-group>
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      aria-label="Measure"
+      [value]="measure()"
+      (change)="state.set({ measure: $event.value })"
+    >
+      <mat-button-toggle value="rate">%</mat-button-toggle>
+      <mat-button-toggle value="count">#</mat-button-toggle>
+    </mat-button-toggle-group>
   </div>
   @if (outcomes.isLoading()) {
     <mat-progress-bar mode="indeterminate" />
@@ -92,26 +121,54 @@
     <app-error-panel [error]="outcomes.error()" (retry)="outcomes.reload()" />
   } @else if (outcomes.value()) {
     <div class="panel">
-      <h2>Share of the morning plan, per day</h2>
+      <div class="outcome-heading">
+        <h2>
+          {{
+            measure() === 'rate'
+              ? 'Share of the morning plan, per day'
+              : 'Morning-plan work, per day'
+          }}
+          <span class="muted">· {{ scope() }}</span>
+        </h2>
+        @if (narrowed()) {
+          <button mat-button type="button" (click)="state.set({ region: null, tech: null })">
+            Show all regions
+          </button>
+        }
+      </div>
       <div
         class="chart"
         [appEchart]="outcomeChart()"
         role="img"
-        aria-label="Completed, canceled and rescheduled rates per day"
+        [attr.aria-label]="
+          'Completed, canceled and rescheduled ' +
+          (measure() === 'rate' ? 'rates' : 'counts') +
+          ' per day'
+        "
       ></div>
       <p class="muted note">
-        Days without a morning plan are gaps. The latest days are provisional until their outcome is
-        final.
+        Counts the {{ kind() === 'job' ? 'install jobs' : 'tickets' }} on the 6–7am morning plan;
+        work added later in the day isn't included. Days without a morning plan are gaps. The latest
+        days are provisional until their outcome is final.
       </p>
     </div>
     <div class="tables">
       <div class="panel table-scroll">
         <h2>By region</h2>
-        <app-stats-table [rows]="regionRows()" [totals]="totals()" [jobs]="kind() === 'job'" />
+        <app-stats-table
+          [rows]="regionRows()"
+          [totals]="totals()"
+          [jobs]="kind() === 'job'"
+          [count]="measure() === 'count'"
+        />
       </div>
       <div class="panel table-scroll">
         <h2>By technician</h2>
-        <app-stats-table [rows]="techRows()" [jobs]="kind() === 'job'" />
+        <app-stats-table
+          [rows]="techRows()"
+          [jobs]="kind() === 'job'"
+          [count]="measure() === 'count'"
+        />
       </div>
     </div>
   }

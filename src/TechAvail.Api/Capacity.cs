@@ -14,6 +14,10 @@ public class Capacity
     public double AvailableH { get; set; }
     public double BookedH { get; set; }
     public double FreeH { get; set; }
+
+    // Free 2-hour booking windows, and windows with the other hour open to a 1-hour job.
+    public int FreeSlots { get; set; }
+    public int FreeHourSlots { get; set; }
     public int Jobs { get; set; }
     public int Tickets { get; set; }
     public int UnassignedJobs { get; set; }
@@ -32,6 +36,8 @@ public class Capacity
         AvailableH += day.AvailableHours;
         BookedH += day.BookedHours;
         FreeH += day.FreeHours;
+        FreeSlots += day.FreeWindows;
+        FreeHourSlots += day.HourOpenings;
         Jobs += day.Jobs;
         Tickets += day.Tickets;
     }
@@ -65,6 +71,8 @@ public class Capacity
         other.AvailableH = AvailableH;
         other.BookedH = BookedH;
         other.FreeH = FreeH;
+        other.FreeSlots = FreeSlots;
+        other.FreeHourSlots = FreeHourSlots;
         other.Jobs = Jobs;
         other.Tickets = Tickets;
         other.UnassignedJobs = UnassignedJobs;
@@ -111,6 +119,8 @@ public sealed record RegionTotal(
     double AvailableH,
     double BookedH,
     double FreeH,
+    int FreeSlots,
+    int FreeHourSlots,
     int Jobs,
     int Tickets,
     int UnassignedJobs,
@@ -220,6 +230,8 @@ public static class CapacityRollup
             total.AvailableH += row.AvailableH;
             total.BookedH += row.BookedH;
             total.FreeH += row.FreeH;
+            total.FreeSlots += row.FreeSlots;
+            total.FreeHourSlots += row.FreeHourSlots;
             total.Jobs += row.Jobs;
             total.Tickets += row.Tickets;
             total.UnassignedJobs += row.UnassignedJobs;
@@ -237,6 +249,8 @@ public static class CapacityRollup
                     t.AvailableH,
                     t.BookedH,
                     t.FreeH,
+                    t.FreeSlots,
+                    t.FreeHourSlots,
                     t.Jobs,
                     t.Tickets,
                     t.UnassignedJobs,

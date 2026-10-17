@@ -20,6 +20,10 @@ public interface IMailboxSession : IDisposable
     void FileAway(UniqueId uid, string label);
     void EnsureLabels();
     int PurgeProcessed(DateOnly before);
+
+    // Feed mail Gmail filed as Spam since `since`, read-only. The poll only reads the inbox, so it
+    // never sees these.
+    int CountSpam(DateTimeOffset since);
 }
 
 public interface IMailbox
@@ -131,6 +135,21 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
                 trash.Expunge(trashed);
             }
             return uids.Count;
+        }
+
+        public int CountSpam(DateTimeOffset since)
+        {
+            var spam = (client.Capabilities & ImapCapabilities.SpecialUse) != 0 ? client.GetFolder(SpecialFolder.Junk) : null;
+            if (spam is null)
+                throw new InvalidOperationException("could not find the Gmail Spam folder");
+            spam.Open(FolderAccess.ReadOnly);
+            // IMAP's SINCE is a whole day, so the exact cut-off is applied to the delivery times.
+            var query = SearchQuery
+                .DeliveredAfter(since.UtcDateTime.Date.AddDays(-1))
+                .And(SearchQuery.SubjectContains(settings.MailSubject))
+                .And(SearchQuery.FromContains(settings.MailFrom));
+            var uids = spam.Search(query);
+            return uids.Count == 0 ? 0 : spam.Fetch(uids, MessageSummaryItems.InternalDate).Count(m => m.InternalDate >= since);
         }
 
         public void Dispose()

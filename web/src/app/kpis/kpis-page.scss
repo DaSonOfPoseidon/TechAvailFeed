@@ -30,6 +30,14 @@ h2 {
   }
 }
 
+.outcome-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .note {
   margin: 8px 0 0;
 }

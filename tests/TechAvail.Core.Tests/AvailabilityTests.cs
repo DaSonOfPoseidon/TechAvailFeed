@@ -23,8 +23,8 @@ public class AvailabilityTests
             EndsAt = At(day, end),
             RefId = "",
             Status = status,
-            Region = kind == "shift" ? "North" : "",
-            Skills = kind == "shift" ? "INS" : "",
+            Region = kind.StartsWith("shift", StringComparison.Ordinal) ? "North" : "",
+            Skills = kind.StartsWith("shift", StringComparison.Ordinal) ? "INS" : "",
         };
 
     static List<(string, string)> Windows(IEnumerable<FreeSlot> slots) =>
@@ -264,6 +264,22 @@ public class AvailabilityTests
     }
 
     [Fact]
+    public void A_shift_with_no_region_is_not_capacity()
+    {
+        Block[] blocks =
+        [
+            B("shift", Tuesday, "08:00", "17:00", tech: "placed"),
+            B("shift", Tuesday, "08:00", "17:00", tech: "unplaced") with { Region = "" },
+            B("time_off", Wednesday, "00:00", "23:59", tech: "unplaced"),
+        ];
+        Assert.Equal(["placed"], Availability.FreeSlots(blocks, Early).Select(s => s.TechId).Distinct());
+        Assert.Equal(
+            ["placed"],
+            Availability.TechDays(blocks, Early, start: Tuesday, end: Wednesday).Select(d => d.TechId)
+        );
+    }
+
+    [Fact]
     public void Lead_time_only_clips_free_hours()
     {
         var day = Assert.Single(Availability.TechDays([B("shift", Tuesday, "08:00", "17:00")], At(Tuesday, "13:10")));
@@ -339,4 +355,68 @@ public class AvailabilityTests
         var days = Availability.TechDays(blocks, Early, start: Wednesday, end: Wednesday, calendar: calendar);
         Assert.Equal([("dual", true)], days.Select(d => (d.TechId, d.OnTimeOff)));
     }
+
+    static (int, int) WindowCounts(DateOnly day, string skills, IEnumerable<Block> work, DateTime? now = null)
+    {
+        Block[] blocks = [B("shift", day, "08:00", "19:00") with { Skills = skills }, .. work];
+        var techDay = Assert.Single(Availability.TechDays(blocks, now ?? Early));
+        return (techDay.FreeWindows, techDay.HourOpenings);
+    }
+
+    static Block HourJob(DateOnly day, string start, string end, string skills = "VOI") =>
+        B("job", day, start, end) with { Skills = skills };
+
+    [Fact]
+    public void An_open_weekday_has_five_windows_and_a_saturday_four()
+    {
+        Assert.Equal((5, 0), WindowCounts(Tuesday, "INS,VOI", []));
+        Assert.Equal((4, 0), WindowCounts(Saturday, "INS,VOI", []));
+        Assert.Equal(["09:00", "11:00", "14:00", "16:00"], Availability.BookingWindows(OldSaturday).Select(w => w.ToString("HH:mm")));
+    }
+
+    [Fact]
+    public void Bookable_windows_count_booked_ones_but_not_lunch_leave_or_started_ones()
+    {
+        Block[] blocks =
+        [
+            B("shift", Tuesday, "08:00", "17:00"),
+            B("job", Tuesday, "13:00", "15:00"),
+            B("time_off", Tuesday, "15:30", "17:00"),
+        ];
+        // 8-10 has started by 9:00; 10-12 is free; 1-3 is booked; 3-5 is partly on leave; 5-7 is after the shift.
+        var day = Assert.Single(Availability.TechDays(blocks, At(Tuesday, "09:00")));
+        Assert.Equal((1, 2), (day.FreeWindows, day.BookableWindows));
+    }
+
+    [Fact]
+    public void A_two_hour_job_takes_its_window() =>
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "INS,VOI", [B("job", Tuesday, "10:00", "12:00")]));
+
+    [Fact]
+    public void A_one_hour_job_leaves_an_opening_for_a_tech_who_can_take_one()
+    {
+        Assert.Equal((4, 1), WindowCounts(Tuesday, "INS,VOI", [HourJob(Tuesday, "08:00", "09:00")]));
+        Assert.Equal((4, 1), WindowCounts(Tuesday, "MDU", [HourJob(Tuesday, "14:00", "15:00", skills: "INH")]));
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "INS", [HourJob(Tuesday, "08:00", "09:00")]));
+    }
+
+    [Fact]
+    public void A_repeated_one_hour_job_row_still_leaves_an_opening() =>
+        Assert.Equal((4, 1), WindowCounts(Tuesday, "VOI", [HourJob(Tuesday, "08:00", "09:00"), HourJob(Tuesday, "08:00", "09:00")]));
+
+    [Fact]
+    public void A_one_hour_job_with_other_work_in_its_window_leaves_no_opening()
+    {
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "VOI", [HourJob(Tuesday, "08:00", "09:00"), B("ticket", Tuesday, "09:00", "09:30")]));
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "VOI", [HourJob(Tuesday, "08:30", "09:30")]));
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "VOI", [B("job", Tuesday, "08:00", "09:00") with { Skills = "INS" }]));
+    }
+
+    [Fact]
+    public void Time_off_in_a_window_removes_it() =>
+        Assert.Equal((4, 0), WindowCounts(Tuesday, "INS", [B("time_off", Tuesday, "16:00", "17:00")]));
+
+    [Fact]
+    public void Started_windows_dont_count() =>
+        Assert.Equal((2, 0), WindowCounts(Tuesday, "INS", [], now: At(Tuesday, "12:40")));
 }

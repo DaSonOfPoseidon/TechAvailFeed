@@ -10,6 +10,8 @@ function cap(free: number, utilization: number | null): Capacity {
     available_h: 8,
     booked_h: 8 - free,
     free_h: free,
+    free_slots: Math.floor(free / 2),
+    free_hour_slots: 0,
     jobs: 1,
     tickets: 0,
     unassigned_jobs: 0,

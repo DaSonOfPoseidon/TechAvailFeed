@@ -34,6 +34,16 @@ describe('FilterState', () => {
     expect(state.days()).toBe(30);
     expect(state.calendar()).toBe('install');
     expect(state.capacity().days).toBeNull();
+    expect(state.unit()).toBe('hours');
+    expect(state.measure()).toBe('rate');
+  });
+
+  it('reads and drops the display choices', async () => {
+    const { state } = await at('/calendar?unit=jobs&measure=count');
+    expect(state.unit()).toBe('jobs');
+    expect(state.measure()).toBe('count');
+    await state.set({ unit: 'hours', measure: 'rate' });
+    expect(TestBed.inject(Router).url).toBe('/calendar');
   });
 
   it('writes changes back, dropping default values', async () => {

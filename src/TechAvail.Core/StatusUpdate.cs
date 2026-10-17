@@ -40,13 +40,6 @@ public static class StatusUpdate
     // A region with no concern is Green, up to YellowMax is Yellow, more is Red.
     public const int YellowMax = 2;
 
-    // The canonical booking windows (MBSReporter's multiregion rules), as starts; each is 2 hours long.
-    static readonly int[] WeekdaySlots = [8, 10, 13, 15, 17];
-    // Saturdays use the weekday windows without 5pm; before Availability.NewSaturdaysFrom they were 9, 11, 2, 4.
-    static readonly int[] SaturdaySlots = [8, 10, 13, 15];
-    static readonly int[] OldSaturdaySlots = [9, 11, 14, 16];
-    static readonly TimeSpan SlotLength = TimeSpan.FromHours(2);
-
     // The update for a requested time reads the first run in [at, at + Window), else the latest before.
     static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
 
@@ -147,12 +140,6 @@ public static class StatusUpdate
     // job brings no tech).
     static IEnumerable<ConcernRow> Overbooked(List<Block> blocks, DateOnly day, DateTime asOf)
     {
-        int[] starts = day.DayOfWeek switch
-        {
-            DayOfWeek.Sunday => [],
-            DayOfWeek.Saturday => Availability.OldSaturday(day) ? OldSaturdaySlots : SaturdaySlots,
-            _ => WeekdaySlots,
-        };
         var open = blocks
             .Where(b =>
                 b.Kind is "job" or "job_unassigned"
@@ -163,12 +150,11 @@ public static class StatusUpdate
                 && !Outcomes.CanceledStatuses["job"].Contains(b.Status)
             )
             .ToList();
-        foreach (var hour in starts)
+        foreach (var from in Availability.BookingWindows(day))
         {
-            var from = day.ToDateTime(new TimeOnly(hour, 0));
-            if (from + SlotLength <= asOf)
+            if (from + Availability.WindowLength <= asOf)
                 continue;
-            foreach (var area in open.Where(b => from <= b.StartsAt && b.StartsAt < from + SlotLength).GroupBy(b => b.Region))
+            foreach (var area in open.Where(b => from <= b.StartsAt && b.StartsAt < from + Availability.WindowLength).GroupBy(b => b.Region))
             {
                 var jobs = area.Select(b => b.RefId).Distinct().Count();
                 var techs = area.Select(b => b.TechId).Where(t => t.Length > 0).Distinct().Count();

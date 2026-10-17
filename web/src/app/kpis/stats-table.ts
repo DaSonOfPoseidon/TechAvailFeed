@@ -1,4 +1,5 @@
 import { Component, computed, input, signal } from '@angular/core';
+import { JobStats, KindStats } from '../api/models';
 import { percent } from '../shared/time';
 
 export interface StatsRow {
@@ -14,7 +15,31 @@ export interface StatsRow {
 
 type Column = Exclude<keyof StatsRow, 'id'>;
 
-// Outcome rates per region or technician; click a heading to sort by it.
+export type Measure = 'rate' | 'count';
+
+// An outcome's rate or count; pulled is only counted for jobs.
+export function outcome(stats: KindStats, name: string, measure: Measure): number | null {
+  if (name === 'pulled') {
+    const job = stats as JobStats;
+    return (measure === 'rate' ? job.pulled_d0_rate : job.pulled_d0?.total) ?? null;
+  }
+  return (measure === 'rate' ? stats.outcome_rate[name] : stats.outcome[name]) ?? null;
+}
+
+export function statsRow(id: string, name: string, stats: KindStats, measure: Measure): StatsRow {
+  return {
+    id,
+    name,
+    planned: stats.planned,
+    completed: outcome(stats, 'completed', measure),
+    canceled: outcome(stats, 'canceled', measure),
+    rescheduled: outcome(stats, 'rescheduled', measure),
+    unscheduled: outcome(stats, 'unscheduled', measure),
+    pulled: outcome(stats, 'pulled', measure),
+  };
+}
+
+// Outcome rates (or counts) per region or technician; click a heading to sort by it.
 @Component({
   selector: 'app-stats-table',
   template: `
@@ -39,9 +64,7 @@ type Column = Exclude<keyof StatsRow, 'id'>;
           <tr>
             @for (c of columns(); track c.key) {
               <td>
-                {{
-                  c.key === 'name' || c.key === 'planned' ? row[c.key] : percent($any(row[c.key]))
-                }}
+                {{ cell(row, c.key) }}
               </td>
             }
           </tr>
@@ -58,7 +81,7 @@ type Column = Exclude<keyof StatsRow, 'id'>;
           <tr>
             @for (c of columns(); track c.key) {
               <td>
-                {{ c.key === 'name' || c.key === 'planned' ? t[c.key] : percent($any(t[c.key])) }}
+                {{ cell(t, c.key) }}
               </td>
             }
           </tr>
@@ -81,8 +104,16 @@ export class StatsTable {
   readonly rows = input.required<StatsRow[]>();
   readonly totals = input<StatsRow | null>(null);
   readonly jobs = input(true);
+  // Outcome columns hold counts rather than rates.
+  readonly count = input(false);
   protected readonly sort = signal<{ key: Column; desc: boolean }>({ key: 'planned', desc: true });
-  protected readonly percent = percent;
+
+  protected cell(row: StatsRow, key: Column): string | number {
+    const value = row[key];
+    if (key === 'name' || key === 'planned') return value ?? '';
+    if (this.count()) return value ?? '—';
+    return percent(value as number | null);
+  }
 
   protected readonly columns = computed(() => {
     const columns: { key: Column; label: string }[] = [

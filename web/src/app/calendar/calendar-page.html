@@ -1,6 +1,16 @@
 <section class="page">
   <h1>Free capacity</h1>
-  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']" />
+  <app-filter-bar [fields]="['region', 'skill', 'start', 'days', 'calendar']">
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      aria-label="Show"
+      [value]="state.unit()"
+      (change)="state.set({ unit: $event.value })"
+    >
+      <mat-button-toggle value="hours">Hours</mat-button-toggle>
+      <mat-button-toggle value="jobs">Jobs</mat-button-toggle>
+    </mat-button-toggle-group>
+  </app-filter-bar>
 
   @if (range.isLoading()) {
     <mat-progress-bar mode="indeterminate" />
@@ -12,7 +22,10 @@
       <div class="grid-scroll">
         <table class="grid num" [style.--days]="data.days.length">
           <caption class="sr-only">
-            Free hours per region and day
+            {{
+              state.unit() === 'jobs' ? 'Free booking windows' : 'Free hours'
+            }}
+            per region and day
           </caption>
           <thead>
             <tr>
@@ -43,9 +56,18 @@
                         [queryParams]="row.filter === null ? {} : { region: row.filter }"
                         queryParamsHandling="merge"
                       >
-                        <span class="free">{{
-                          cell.available_h ? (cell.free_h | number: '1.0-0') : '—'
-                        }}</span>
+                        @if (!cell.available_h) {
+                          <span class="free">—</span>
+                        } @else if (state.unit() === 'jobs') {
+                          <span class="free"
+                            >{{ cell.free_slots }}
+                            @if (cell.free_hour_slots) {
+                              <small class="hour-slots">+{{ cell.free_hour_slots }}</small>
+                            }
+                          </span>
+                        } @else {
+                          <span class="free">{{ cell.free_h | number: '1.0-0' }}</span>
+                        }
                         @if (cell.unassigned_jobs + cell.unassigned_tickets > 0) {
                           <span
                             class="badge"
@@ -68,7 +90,13 @@
         </table>
       </div>
       <div class="legend">
-        <span>Free hours, shaded by how much of the available time is booked:</span>
+        <span
+          >{{
+            state.unit() === 'jobs'
+              ? 'Free 2-hour slots (+1-hour openings for voice, equipment and MDU jobs)'
+              : 'Free hours'
+          }}, shaded by how much of the available time is booked:</span
+        >
         @for (s of steps; track s.label; let i = $index) {
           <span class="key"><i [attr.data-step]="i + 1"></i>{{ s.label }}</span>
         }
