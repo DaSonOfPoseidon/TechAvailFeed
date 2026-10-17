@@ -33,6 +33,10 @@ I/O, not in SQL or in the API layer. That keeps them unit-testable without a dat
   rebuilt exactly. That makes it possible to measure feed latency and reliability after the fact.
 - **Safe ingestion.** Duplicate deliveries are skipped by `Message-ID`. A file that fails to parse is archived
   with the reason. An empty or failed run never replaces the last good snapshot in anything user-facing.
+- **Late runs wait for a backfill.** Because the store keeps only the diff from the newest run, a blocks run
+  generated before the newest one (mail Gmail held in Spam) is recorded as failed, with its timing kept for
+  latency, instead of loaded over newer data. `/health` reports feed mail that landed in Spam in the last hour,
+  because only the inbox is read.
 - **Mailbox hygiene.** Processed mail is labelled, then deleted the next day. Failed mail is kept for inspection.
   With `ARCHIVE_DIR` set, a raw copy of each processed mail is kept locally (`corpus/mail`, never committed).
 - **Freshness is part of every response.** Each API response includes the snapshot it was computed from and
@@ -135,6 +139,7 @@ Dockerfile                   one image per project (PROJECT build arg); the api 
 tests/TechAvail.*.Tests/     xUnit (data tests need scripts/test-db.sh up)
 tests/fixtures/              fake feed files (.csv) and what the parser makes of them (.json)
 tools/TechAvail.ImapCheck/   read-only check of the mailbox code against the live mailbox
+tools/TechAvail.Backfill/    replays late runs from the failed label (scripts/backfill.sh)
 scripts/dotnet.sh            runs the .NET SDK in Docker
 scripts/node.sh              runs Node (npm, ng) in Docker for web/
 ```
@@ -144,6 +149,11 @@ The fixture snapshots cover edge and error cases. After an intended parser chang
 `scripts/imap-check.sh` fetches every processed mail still in the mailbox (EXAMINE and BODY.PEEK only) and
 compares it with the archived copy in `corpus/mail`. The corpus never leaves the machine, because it holds real
 schedules and locations.
+
+`scripts/backfill.sh` loads late runs. It rewinds the store to the first one, replays every run from there in
+generation order (late mail from the failed label, the rest from `corpus/mail`), and checks that each run already
+loaded rebuilds unchanged. It refuses if finalized outcome history reads any of those snapshots. It is a dry run
+unless `--apply`; take a `pg_dump` and `docker compose stop ingest` first.
 
 ## History
 
