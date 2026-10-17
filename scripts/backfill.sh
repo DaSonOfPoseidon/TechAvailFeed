@@ -4,10 +4,12 @@
 set -e
 cd "$(dirname "$0")/.."
 scripts/dotnet.sh build tools/TechAvail.Backfill >/dev/null
-password=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)
+# DATABASE_URL in .env (an external Postgres) wins; otherwise the compose postgres service.
+url=$(grep '^DATABASE_URL=' .env | cut -d= -f2-) || true
+[ -n "$url" ] || url="postgresql://techavail:$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)@postgres:5432/techavail"
 exec docker run --rm -i --label monitoring.ignore=true --label wud.watch=false \
 	--network techavailfeed_default --memory 1g --memory-swap 1g \
-	--env-file .env -e DATABASE_URL="postgresql://techavail:$password@postgres:5432/techavail" \
+	--env-file .env -e DATABASE_URL="$url" \
 	-v "$PWD:/src" -w /src -v techavail-nuget:/root/.nuget/packages \
 	-e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e DOTNET_NOLOGO=1 \
 	mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --no-build --project tools/TechAvail.Backfill -- "$@"

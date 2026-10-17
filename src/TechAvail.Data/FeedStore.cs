@@ -1,5 +1,6 @@
 using Npgsql;
 using NpgsqlTypes;
+using TechAvail.Core;
 using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
@@ -37,25 +38,19 @@ public sealed partial class FeedStore(string connectionString)
     // Removes snapshot fromId and every later one, reopening the blocks they closed, so the store is as
     // it was before fromId and runs can be replayed in order (a backfill of runs that arrived late).
     // Returns the removed runs' ingested_at by message id, for SetIngestedAt once they are replayed.
-    // Finalized outcome history is never recomputed, so a rewind into it is refused.
-    public Dictionary<string, DateTimeOffset> Rewind(long fromId)
+    // Finalized outcome history is never recomputed, so a rewind into it is refused: firstDay is the
+    // local date of the earliest run replayed, and a day's outcome reads snapshots through its last
+    // checkpoint (D+2), so any finalized day from firstDay - 2 on could change.
+    public Dictionary<string, DateTimeOffset> Rewind(long fromId, DateOnly firstDay)
     {
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
-        using (
-            var check = new NpgsqlCommand(
-                """
-                SELECT EXISTS (SELECT 1 FROM outcome_days WHERE morning_snapshot_id >= @id)
-                    OR EXISTS (SELECT 1 FROM job_outcomes WHERE morning_snapshot_id >= @id)
-                """,
-                connection,
-                transaction
-            )
-        )
+        var finalizedFrom = firstDay.AddDays(-(Outcomes.Checkpoints.Length - 1));
+        using (var check = new NpgsqlCommand("SELECT max(plan_date) FROM outcome_days WHERE plan_date >= @day", connection, transaction))
         {
-            check.Parameters.AddWithValue("id", fromId);
-            if ((bool)check.ExecuteScalar()!)
-                throw new InvalidOperationException($"outcome history uses snapshot {fromId} or later");
+            check.Parameters.AddWithValue("day", finalizedFrom);
+            if (check.ExecuteScalar() is DateOnly day)
+                throw new InvalidOperationException($"outcome history for {day:yyyy-MM-dd} is finalized and reads snapshots from {firstDay:yyyy-MM-dd} on");
         }
         var removed = new Dictionary<string, DateTimeOffset>();
         using (var command = new NpgsqlCommand("SELECT message_id, ingested_at FROM snapshots WHERE id >= @id", connection, transaction))
@@ -99,11 +94,11 @@ public sealed partial class FeedStore(string connectionString)
         command.ExecuteNonQuery();
     }
 
-    // The newest run loaded. Ingest only appends, so an older run can't be loaded after it.
+    // The newest blocks run loaded. Ingest only appends, so an older one can't be loaded after it.
     public DateTimeOffset? NewestGeneratedAt()
     {
         using var connection = Open();
-        using var command = new NpgsqlCommand("SELECT max(generated_at) FROM snapshots WHERE status = 'ok'", connection);
+        using var command = new NpgsqlCommand("SELECT max(generated_at) FROM snapshots WHERE status = 'ok' AND format = 'blocks'", connection);
         return command.ExecuteScalar() is DateTime at ? new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) : null;
     }
 

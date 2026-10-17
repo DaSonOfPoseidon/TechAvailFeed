@@ -207,7 +207,7 @@ public class FeedStoreTests
         var before = new[] { s2, s3 }.Select(id => At(connection, id)).ToList();
         var ingested = connection.QuerySingle<DateTime>("SELECT ingested_at FROM snapshots WHERE id = @s3", new { s3 });
 
-        var removed = store.Rewind(s2);
+        var removed = store.Rewind(s2, new DateOnly(2026, 10, 6));
         Assert.Equal(["<2>", "<3>"], removed.Keys.Order());
         // The open rows are s1's again: what s2 and s3 closed is reopened.
         Assert.Equal(At(connection, s1), At(connection, long.MaxValue));
@@ -222,14 +222,22 @@ public class FeedStoreTests
         Assert.Equal(ingested, connection.QuerySingle<DateTime>("SELECT ingested_at FROM snapshots WHERE id = @r3", new { r3 }));
     }
 
-    [DbFact]
-    public void Rewind_refuses_to_undo_finalized_outcome_history()
+    [DbTheory]
+    [InlineData("2026-10-04", true)]
+    [InlineData("2026-10-03", false)]
+    public void Rewind_refuses_to_undo_finalized_outcome_history_its_checkpoints_read(string finalized, bool refused)
     {
         using var db = new TestDatabase();
         var store = new FeedStore(db.ConnectionString);
         var s1 = Save(store, "<1>", Blocks(Job("a")));
         using var connection = db.Open();
-        connection.Execute("INSERT INTO outcome_days (plan_date, status, morning_snapshot_id) VALUES ('2026-10-06', 'ok', @s1)", new { s1 });
-        Assert.Throws<InvalidOperationException>(() => store.Rewind(s1));
+        // A no_morning day has no snapshot id; its date alone decides.
+        connection.Execute("INSERT INTO outcome_days (plan_date, status) VALUES (@day::date, 'no_morning')", new { day = finalized });
+        // Replaying from 10-06 changes 10-04's d2 checkpoint, but nothing 10-03 reads.
+        var rewind = () => store.Rewind(s1, new DateOnly(2026, 10, 6));
+        if (refused)
+            Assert.Throws<InvalidOperationException>(rewind);
+        else
+            Assert.Single(rewind());
     }
 }

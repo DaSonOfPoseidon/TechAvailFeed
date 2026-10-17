@@ -23,10 +23,18 @@ List<FetchedMail> late;
 using (var session = new ImapMailbox(settings, NullLogger<ImapMailbox>.Instance).Open())
     late = [.. session.Peek(settings.FailedLabel)];
 
-// The late runs: failed mail that ingest refused only for arriving after a newer run.
+// The late runs: failed mail that ingest refused only for arriving after a newer run. The failed label
+// also holds mail SenderCheck rejected, so each candidate must pass it as the inbox poll does.
 var lateErrors = Query("SELECT message_id, id FROM snapshots WHERE status = 'error' AND error LIKE 'generated %, before the newest snapshot%'")
     .ToDictionary(r => (string)r[0], r => (long)r[1]);
-late = [.. late.Where(m => lateErrors.ContainsKey(m.Mail.MessageId)).DistinctBy(m => m.Mail.MessageId)];
+late =
+[
+    .. late.Where(m =>
+            lateErrors.ContainsKey(m.Mail.MessageId)
+            && SenderCheck.Rejection(MimeMessage.Load(new MemoryStream(m.Raw)), settings.MailFrom, settings.AuthservId) is null
+        )
+        .DistinctBy(m => m.Mail.MessageId),
+];
 if (late.Count == 0)
 {
     Console.WriteLine("no late runs under the failed label");
@@ -36,11 +44,18 @@ var runs = late.Select(m => (m.Mail, m.ReceivedAt, Feed: Parse(m.Mail), Late: tr
 var from = runs.Min(r => r.Feed.GeneratedAt!.Value);
 var fromId = (long)Query("SELECT min(id) FROM snapshots WHERE status = 'ok' AND generated_at > @from", ("from", from.ToUniversalTime()))[0][0];
 
-var loaded = Query("SELECT message_id, status, id FROM snapshots WHERE id >= @id ORDER BY id", ("id", fromId));
-foreach (var row in loaded.Where(r => !lateErrors.ContainsKey((string)r[0])))
+// The rewind deletes every snapshot from fromId on, so each must be replayed: a late run from its mail,
+// any other loaded run from the archive (ingest archives ok and empty runs).
+var lateIds = late.Select(m => m.Mail.MessageId).ToHashSet();
+var loaded = Query("SELECT message_id, status, id, format FROM snapshots WHERE id >= @id ORDER BY id", ("id", fromId));
+foreach (var row in loaded.Where(r => !lateIds.Contains((string)r[0])))
 {
-    if ((string)row[1] != "ok")
-        throw new InvalidOperationException($"snapshot {row[2]} is {row[1]}, and only ok runs are archived to replay");
+    if ((string)row[1] is not ("ok" or "empty"))
+        throw new InvalidOperationException(
+            lateErrors.ContainsKey((string)row[0])
+                ? $"late run {row[0]} (snapshot {row[2]}) has no authenticated mail under the failed label to replay"
+                : $"snapshot {row[2]} is {row[1]}, and only ok and empty runs are archived to replay"
+        );
     var (mail, received) = Archived((string)row[0]);
     runs.Add((mail, received, Parse(mail), false));
 }
@@ -53,8 +68,8 @@ if (!apply)
     return 0;
 }
 
-var before = loaded.Where(r => (string)r[1] == "ok").ToDictionary(r => (string)r[0], r => Fingerprint((long)r[2]));
-var times = store.Rewind(fromId);
+var before = loaded.Where(r => (string)r[1] is "ok" or "empty").ToDictionary(r => (string)r[0], r => Fingerprint((long)r[2], (string)r[3]));
+var times = store.Rewind(fromId, DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(from, settings.Tz).DateTime));
 foreach (var (mail, received, _, isLate) in runs)
 {
     if (!FeedIngest.Ingest(store, mail, received))
@@ -64,8 +79,8 @@ foreach (var (mail, received, _, isLate) in runs)
 }
 store.SetIngestedAt(times);
 
-var after = Query("SELECT message_id, id FROM snapshots WHERE id > @id AND status = 'ok'", ("id", fromId - 1))
-    .ToDictionary(r => (string)r[0], r => Fingerprint((long)r[1]));
+var after = Query("SELECT message_id, id, format FROM snapshots WHERE id >= @id AND status IN ('ok', 'empty')", ("id", fromId))
+    .ToDictionary(r => (string)r[0], r => Fingerprint((long)r[1], (string)r[2]));
 var changed = before.Where(b => after.GetValueOrDefault(b.Key) != b.Value).Select(b => b.Key).ToList();
 Console.WriteLine($"replayed {after.Count} runs; {before.Count - changed.Count} of {before.Count} already-loaded runs rebuild unchanged");
 foreach (var id in changed)
@@ -83,17 +98,19 @@ ParsedFeed Parse(FeedMail mail) =>
         throw new InvalidOperationException($"{messageId} is not archived in {archive}");
     var meta = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.ChangeExtension(eml, ".json")))!;
     var received = meta["mailbox_received_at"]?.GetValue<string>() is { } at ? DateTimeOffset.Parse(at) : (DateTimeOffset?)null;
-    return (FeedMail.FromMime(MimeMessage.Load(eml), "archive"), received);
+    // Keep the stored id: a mail with no Message-ID was loaded under its IMAP fallback (uid:123).
+    return (FeedMail.FromMime(MimeMessage.Load(eml), "archive") with { MessageId = messageId }, received);
 }
 
-// A hash of the rows a snapshot reconstructs to, independent of row ids.
-string Fingerprint(long snapshot) =>
-    (string)
-        Query(
-            $"SELECT md5(coalesce(string_agg(ROW({FeedStore.BlockColumns})::text, E'\\n' ORDER BY ROW({FeedStore.BlockColumns})::text), '')) "
-                + $"FROM blocks WHERE {FeedStore.AtSnapshot}",
-            ("snapshot", snapshot)
-        )[0][0];
+// A hash of the rows a snapshot reconstructs to, independent of row ids: its blocks, or a legacy
+// slots run's own slot rows.
+string Fingerprint(long snapshot, string format)
+{
+    var (rows, from) = format == "blocks"
+        ? ($"ROW({FeedStore.BlockColumns})::text", $"blocks WHERE {FeedStore.AtSnapshot}")
+        : ("(to_jsonb(slots) - 'snapshot_id')::text", "slots WHERE snapshot_id = @snapshot");
+    return (string)Query($"SELECT md5(coalesce(string_agg({rows}, E'\\n' ORDER BY {rows}), '')) FROM {from}", ("snapshot", snapshot))[0][0];
+}
 
 List<object[]> Query(string sql, params (string Name, object Value)[] parameters)
 {

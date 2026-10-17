@@ -115,6 +115,21 @@ public class PollerTests
     }
 
     [DbFact]
+    public void A_late_legacy_slots_run_still_loads()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var slots = "GENERATED_AT,WORK_DATE,TECH_ID,TECH_NAME,OPEN_FROM,OPEN_UNTIL,OPEN_MINUTES,REGION,SKILLS\n"
+            + "2026-10-06T06:00:01-05,2026-10-06,jdoe0170,Jane Doe,2026-10-06 08:00,2026-10-06 10:30,150,North,INS\n";
+        var mailbox = new FakeMailbox([Mail(1, "<new>", ("f.csv", Csv)), Mail(2, "<slots>", ("f.csv", slots))]);
+        new Poller(store, mailbox, Settings(db), new FakeTimeProvider(), NullLogger<Poller>.Instance).PollOnce();
+
+        // Slots runs are stored whole, so an older one can't overwrite the newer blocks run.
+        Assert.Equal([(1u, "techavail-processed"), (2u, "techavail-processed")], mailbox.Filed);
+        Assert.Equal("<new>", store.Latest()!.Snapshot.MessageId);
+    }
+
+    [DbFact]
     public void Feed_mail_in_spam_is_an_error_until_an_hour_has_passed()
     {
         using var db = new TestDatabase();
