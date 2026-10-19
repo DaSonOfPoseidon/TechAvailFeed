@@ -18,9 +18,9 @@ public static class Xlsx
 
     public sealed record Column(string Header, string? Format = null, int? Width = null);
 
-    // Every workbook's header: Excel's standard purple under white bold text (8.0:1, WCAG AAA). The
+    // Every workbook's header: violet under white bold text (8.0:1, WCAG AAA). The
     // grey row stripes keep black text at well over 7:1.
-    public static readonly (string Fill, string Font) Header = ("#7030A0", "#FFFFFF");
+    public static readonly (string Fill, string Font) Header = ("#5E35B1", "#FFFFFF");
 
     // Excel's built-in good/neutral/bad fills, with the text darkened from Excel's to reach WCAG AAA
     // contrast (at least 7:1; 7.3 for all three), and a grey for "nothing to show".
