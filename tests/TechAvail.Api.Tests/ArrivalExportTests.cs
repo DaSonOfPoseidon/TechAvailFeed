@@ -81,7 +81,7 @@ public class ArrivalExportTests
         foreach (var (title, last) in new[] { ("Arrivals 8 AM", 13), ("Completed", 12) })
         {
             var style = wb.Worksheet(title).Cell(1, last).Style;
-            Assert.Equal(XLColor.FromHtml("#7030A0"), style.Fill.BackgroundColor);
+            Assert.Equal(XLColor.FromHtml("#5E35B1"), style.Fill.BackgroundColor);
             Assert.Equal(XLColor.FromHtml("#FFFFFF"), style.Font.FontColor);
         }
     }
