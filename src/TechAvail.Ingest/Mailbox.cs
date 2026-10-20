@@ -21,8 +21,8 @@ public interface IMailboxSession : IDisposable
     void EnsureLabels();
     int PurgeProcessed(DateOnly before);
 
-    // Feed mail Gmail filed as Spam since `since`, read-only. The poll only reads the inbox, so it
-    // never sees these.
+    // Feed mail Gmail filed as Spam since `since` that passes SenderCheck, read-only. The poll only
+    // reads the inbox, so it never sees these.
     int CountSpam(DateTimeOffset since);
 }
 
@@ -88,9 +88,11 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
                 folder.GetStream(uid, string.Empty).CopyTo(stream);
                 raw = stream.ToArray();
             }
-            var received = folder.Fetch([uid], MessageSummaryItems.InternalDate).FirstOrDefault()?.InternalDate;
+            var summary = folder.Fetch([uid], MessageSummaryItems.InternalDate | MessageSummaryItems.GMailMessageId).FirstOrDefault();
             var message = MimeMessage.Load(new MemoryStream(raw));
-            return (new FetchedMail(uid, raw, FeedMail.FromMime(message, uid.Id.ToString()), received), message);
+            // A UID is per folder, so it changes when FileAway moves the mail; Gmail's X-GM-MSGID doesn't.
+            var fallbackId = summary?.GMailMessageId is { } gm ? $"gm:{gm}" : $"uid:{uid.Id}";
+            return (new FetchedMail(uid, raw, FeedMail.FromMime(message, fallbackId), summary?.InternalDate), message);
         }
 
         // Gmail: copying to a label and expunging from INBOX archives the message under that label.
@@ -149,7 +151,15 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
                 .And(SearchQuery.SubjectContains(settings.MailSubject))
                 .And(SearchQuery.FromContains(settings.MailFrom));
             var uids = spam.Search(query);
-            return uids.Count == 0 ? 0 : spam.Fetch(uids, MessageSummaryItems.InternalDate).Count(m => m.InternalDate >= since);
+            if (uids.Count == 0)
+                return 0;
+            // Only mail the inbox would also accept, so a forged or look-alike sender doesn't raise the alert.
+            return spam.Fetch(uids, MessageSummaryItems.InternalDate | MessageSummaryItems.Headers)
+                .Count(m =>
+                    m.InternalDate >= since
+                    && m.Headers is { } headers
+                    && SenderCheck.Rejection(new MimeMessage(headers.ToArray<object>()), settings.MailFrom, settings.AuthservId) is null
+                );
         }
 
         public void Dispose()
