@@ -11,6 +11,12 @@ import { FilterState, noRegion } from './filter-state';
 
 export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
 
+// The options plus the active value when a newer snapshot dropped it, so the select still shows
+// what the view is filtered by (a bookmark can name a region that has no techs now).
+export function withActive(options: readonly string[], active: string | null): string[] {
+  return active === null || options.includes(active) ? [...options] : [...options, active];
+}
+
 // One row of filters above a view. Each view lists the fields its endpoint takes.
 @Component({
   selector: 'app-filter-bar',
@@ -25,7 +31,7 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
             @if (state.region() === noRegion) {
               <mat-option [value]="noRegion">No region</mat-option>
             }
-            @for (region of optionList()?.regions ?? []; track region) {
+            @for (region of regions(); track region) {
               <mat-option [value]="region">{{ region }}</mat-option>
             }
           </mat-select>
@@ -36,7 +42,7 @@ export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
           <mat-label>Skill</mat-label>
           <mat-select [value]="state.skill()" (valueChange)="state.set({ skill: $event })">
             <mat-option [value]="null">Any skill</mat-option>
-            @for (skill of optionList()?.skills ?? []; track skill) {
+            @for (skill of skills(); track skill) {
               <mat-option [value]="skill">{{ skill }}</mat-option>
             }
           </mat-select>
@@ -100,6 +106,13 @@ export class FilterBar {
     return '/api/v1/filters';
   });
   protected readonly optionList = lastValue(this.options);
+  protected readonly regions = computed(() => {
+    const region = this.state.region();
+    return withActive(this.optionList()?.regions ?? [], region === noRegion ? null : region);
+  });
+  protected readonly skills = computed(() =>
+    withActive(this.optionList()?.skills ?? [], this.state.skill()),
+  );
 
   protected has(field: Field): boolean {
     return this.fields().includes(field);
