@@ -2,11 +2,9 @@ using System.Globalization;
 
 namespace TechAvail.Core;
 
-// Free and bookable booking windows for one area, on one day or summed over the grid's days.
-public sealed record AvailabilityCell(int Free, int Bookable, string Status)
-{
-    public double? Share => Bookable > 0 ? (double)Free / Bookable : null;
-}
+// Free and bookable booking windows for one area, on one day or summed over the grid's days. Share is
+// null when no tech could take work (No Techs, Not Open); working techs with nothing bookable left are 0.
+public sealed record AvailabilityCell(int Free, int Bookable, double? Share, string Status);
 
 public sealed record AvailabilityRow(string Area, List<AvailabilityCell> Days, AvailabilityCell Total);
 
@@ -30,7 +28,12 @@ public static class InstallAvailability
     public const string Open = "Open";
     public const string Limited = "Limited";
     public const string Closed = "Closed";
-    public const string NoSlots = "No slots";
+
+    // Nothing bookable because every tech the area has that day is on time off.
+    public const string NoTechs = "No Techs";
+
+    // Nothing bookable because no tech is scheduled there, or it isn't a booking day (Sunday).
+    public const string NotOpen = "Not Open";
 
     // The VP's areas, as the feed's territories. A territory not listed is a row of its own.
     public static readonly (string Area, string[] Territories)[] Areas =
@@ -54,72 +57,91 @@ public static class InstallAvailability
 
     public static string AreaFor(string territory) => AreaOf.GetValueOrDefault(territory, territory);
 
-    // An area with nothing bookable is Closed (its techs are off or not scheduled), unless no area
-    // has slots that day, as on a Sunday.
-    public static string Status(int free, int bookable, bool daysHaveSlots) =>
-        bookable == 0 ? (daysHaveSlots ? Closed : NoSlots)
-        : (double)free / bookable < ClosedBelow ? Closed
-        : (double)free / bookable < LimitedBelow ? Limited
-        : Open;
+    // The sheet shows whole percents, so a share is classified as shown: 14.9% reads 15% and is Limited.
+    public static string Status(double share) =>
+        Math.Round(share * 100, MidpointRounding.AwayFromZero) switch
+        {
+            var p when p < ClosedBelow * 100 => Closed,
+            var p when p < LimitedBelow * 100 => Limited,
+            _ => Open,
+        };
+
+    static AvailabilityCell Cell(int free, int bookable, string? status = null)
+    {
+        if (status is not null)
+            return new(free, bookable, null, status);
+        double share = bookable > 0 ? (double)free / bookable : 0;
+        return new(free, bookable, share, Status(share));
+    }
+
+    // One area's day. A tech with available time or a bookable window is working, and their share
+    // counts even when nothing is left (all booked, or today's windows have started): 0%, Closed.
+    static AvailabilityCell DayCell(DateOnly date, List<TechDay> techs)
+    {
+        if (!Availability.BookingWindows(date).Any())
+            return Cell(0, 0, NotOpen);
+        if (techs.Any(t => t.AvailableHours > 0 || t.BookableWindows > 0))
+            return Cell(techs.Sum(t => t.FreeWindows), techs.Sum(t => t.BookableWindows));
+        return Cell(0, 0, techs.Any(t => t.OnTimeOff) ? NoTechs : NotOpen);
+    }
 
     // Every VP area is shown, even one with no techs in the grid's days. A region-filtered export shows
     // only that region's area (so it doesn't list the others as closed), even when it has no techs.
-    public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, int days = GridDays, string? region = null)
+    public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, DateOnly today, int days = GridDays, string? region = null)
     {
         List<DateOnly> dates = [.. Enumerable.Range(0, days).Select(start.AddDays)];
-        var counts = techDays
+        var byCell = techDays
             .Where(d => d.Region.Length > 0 && start <= d.WorkDate && d.WorkDate <= dates[^1])
             .GroupBy(d => (Area: AreaFor(d.Region), d.WorkDate))
-            .ToDictionary(g => g.Key, g => (Free: g.Sum(d => d.FreeWindows), Bookable: g.Sum(d => d.BookableWindows)));
-        var seen = counts.Keys.Select(k => k.Area).ToHashSet();
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var seen = byCell.Keys.Select(k => k.Area).ToHashSet();
         var known = Areas.Select(a => a.Area).ToHashSet();
         List<string> areas =
             region is not null
                 ? [AreaFor(region)]
                 : [.. Areas.Select(a => a.Area), .. seen.Where(a => !known.Contains(a)).Order(StringComparer.Ordinal)];
-        var withSlots = dates.ToDictionary(d => d, d => counts.Any(c => c.Key.WorkDate == d && c.Value.Bookable > 0));
-        var anySlots = withSlots.Values.Any(v => v);
 
         List<AvailabilityRow> rows =
         [
             .. areas.Select(area =>
             {
-                List<AvailabilityCell> cells =
-                [
-                    .. dates.Select(d =>
-                    {
-                        var (free, bookable) = counts.GetValueOrDefault((area, d));
-                        return new AvailabilityCell(free, bookable, Status(free, bookable, withSlots[d]));
-                    }),
-                ];
-                int free = cells.Sum(c => c.Free), bookable = cells.Sum(c => c.Bookable);
-                return new AvailabilityRow(area, cells, new AvailabilityCell(free, bookable, Status(free, bookable, anySlots)));
+                List<AvailabilityCell> cells = [.. dates.Select(d => DayCell(d, byCell.GetValueOrDefault((area, d), [])))];
+                var total = cells.Any(c => c.Share is not null)
+                    ? Cell(cells.Sum(c => c.Free), cells.Sum(c => c.Bookable))
+                    : Cell(0, 0, cells.Any(c => c.Status == NoTechs) ? NoTechs : NotOpen);
+                return new AvailabilityRow(area, cells, total);
             }),
         ];
-        return new InstallGrid(dates, rows, Exceptions(dates, rows));
+        return new InstallGrid(dates, rows, Exceptions(dates, today, rows));
     }
 
-    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has. A day no area can
-    // book (a Sunday) is an exception for every area, not availability.
-    static List<string> Exceptions(List<DateOnly> dates, List<AvailabilityRow> rows)
+    static readonly string[] Unavailable = [Closed, NoTechs, NotOpen];
+
+    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has, and one that doesn't
+    // start today names its dates instead of "same day/next day". A day every area is Not Open (a
+    // Sunday) is one exception for all areas.
+    static List<string> Exceptions(List<DateOnly> dates, DateOnly today, List<AvailabilityRow> rows)
     {
-        var when = dates.Count >= ExceptionDays ? "same day/next day" : "same day";
-        var notes = dates
-            .Take(ExceptionDays)
+        var first = dates.Take(ExceptionDays).ToList();
+        var availability =
+            dates[0] == today
+                ? $"{(first.Count >= ExceptionDays ? "same day/next day" : "same day")} availability"
+                : $"availability on {string.Join("/", first.Select(d => d.ToString("ddd M/d", CultureInfo.InvariantCulture)))}";
+        var notes = first
             .Select(
                 (date, i) =>
                     (
                         date,
-                        Lines: rows.Count > 0 && rows.All(r => r.Days[i].Status == NoSlots)
-                            ? [$"All areas - {NoSlots}"]
-                            : rows.Where(r => r.Days[i].Status == Closed).Select(r => $"{r.Area} - {Closed}").ToList()
+                        Lines: rows.Count > 0 && rows.All(r => r.Days[i].Status == NotOpen)
+                            ? [$"All areas - {NotOpen}"]
+                            : rows.Where(r => Unavailable.Contains(r.Days[i].Status)).Select(r => $"{r.Area} - {r.Days[i].Status}").ToList()
                     )
             )
             .Where(d => d.Lines.Count > 0)
             .ToList();
         if (notes.Count == 0)
-            return [$"All areas have {when} availability."];
-        List<string> lines = [$"All areas have {when} availability with the following notes/exceptions:"];
+            return [$"All areas have {availability}."];
+        List<string> lines = [$"All areas have {availability} with the following notes/exceptions:"];
         foreach (var (date, notesFor) in notes)
             lines.AddRange(["", date.ToString("dddd M/d", CultureInfo.InvariantCulture), .. notesFor]);
         return lines;

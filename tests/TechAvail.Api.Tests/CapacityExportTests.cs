@@ -90,16 +90,19 @@ public class CapacityExportTests
         var grid = InstallAvailability.Build(
             [Day(16, "Carrollton", 1, 10), Day(16, "Columbia Core", 2, 10), Day(17, "Columbia Core", 5, 10)],
             new DateOnly(2026, 10, 16),
+            new DateOnly(2026, 10, 16),
             days: 3
         );
         using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
         Assert.Equal(CapacityExport.InstallSheet, wb.Worksheets.First().Name);
         var ws = wb.Worksheet(CapacityExport.InstallSheet);
         Assert.Equal(InstallAvailability.Title, ws.Cell(1, 1).GetText());
-        var texts = ws.Column(1).CellsUsed().Select(c => c.GetString()).ToList();
-        Assert.Contains("Friday 10/16", texts);
-        Assert.Contains("Carrollton - Closed", texts);
-        Assert.Contains("Saturday 10/17", texts);
+        // No As-of row (the About sheet has the export time); the exceptions are one wrapped cell.
+        Assert.True(ws.Row(2).IsEmpty());
+        var text = ws.Cell(3, 1);
+        Assert.True(text.IsMerged() && text.Style.Alignment.WrapText);
+        Assert.Equal(string.Join("\n", grid.Exceptions), text.GetText());
+        Assert.Contains("Carrollton - Closed", grid.Exceptions);
 
         var header = ws.Column(1).CellsUsed().Single(c => c.GetString() == "Area").Address.RowNumber;
         Assert.Equal(["Area", "Fri 10/16", "Sat 10/17", "Sun 10/18", "3-Day Total"], ws.Row(header).CellsUsed().Select(c => c.GetString()));
@@ -108,8 +111,16 @@ public class CapacityExportTests
         Assert.Equal(0.2, central.Cell(2).GetDouble());
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Limited].Fill), central.Cell(2).Style.Fill.BackgroundColor);
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Open].Fill), central.Cell(3).Style.Fill.BackgroundColor);
-        Assert.Equal("No slots", central.Cell(4).GetText());
-        Assert.Equal("Closed", ws.Row(header + 1).Cell(3).GetText());
+        Assert.Equal(InstallAvailability.NotOpen, central.Cell(4).GetText());
+        Assert.Equal(InstallAvailability.NotOpen, ws.Row(header + 1).Cell(3).GetText());
+
+        // The legend follows the table directly, so the two copy as one block.
+        var last = header + grid.Rows.Count;
+        Assert.Equal("Legend", ws.Cell(last + 1, 1).GetText());
+        Assert.Equal(
+            [InstallAvailability.Closed, InstallAvailability.Limited, InstallAvailability.Open, InstallAvailability.NoTechs, InstallAvailability.NotOpen],
+            Enumerable.Range(last + 2, 5).Select(r => ws.Cell(r, 1).GetText())
+        );
     }
 
     [DbFact]
