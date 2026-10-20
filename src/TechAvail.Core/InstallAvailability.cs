@@ -57,21 +57,22 @@ public static class InstallAvailability
 
     public static string AreaFor(string territory) => AreaOf.GetValueOrDefault(territory, territory);
 
-    // The sheet shows whole percents, so a share is classified as shown: 14.9% reads 15% and is Limited.
-    public static string Status(double share) =>
-        Math.Round(share * 100, MidpointRounding.AwayFromZero) switch
-        {
-            var p when p < ClosedBelow * 100 => Closed,
-            var p when p < LimitedBelow * 100 => Limited,
-            _ => Open,
-        };
+    // The whole percent the sheet shows, rounded half up like Excel's "0%" format. Integer arithmetic,
+    // so 29/200 is exactly 14.5 and rounds to 15 (in doubles 0.145 * 100 falls just under 14.5).
+    public static int Percent(int free, int bookable) => bookable > 0 ? (200 * free + bookable) / (2 * bookable) : 0;
+
+    // A cell is classified as shown: 14.9% reads 15% and is Limited.
+    public static string Status(int percent) =>
+        percent < (int)Math.Round(ClosedBelow * 100) ? Closed
+        : percent < (int)Math.Round(LimitedBelow * 100) ? Limited
+        : Open;
 
     static AvailabilityCell Cell(int free, int bookable, string? status = null)
     {
         if (status is not null)
             return new(free, bookable, null, status);
         double share = bookable > 0 ? (double)free / bookable : 0;
-        return new(free, bookable, share, Status(share));
+        return new(free, bookable, share, Status(Percent(free, bookable)));
     }
 
     // One area's day. A tech with available time or a bookable window is working, and their share

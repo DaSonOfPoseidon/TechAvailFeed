@@ -15,16 +15,25 @@ public class InstallAvailabilityTests
     static AvailabilityRow Row(InstallGrid grid, string area) => grid.Rows.Single(r => r.Area == area);
 
     [Theory]
-    [InlineData(0.0, "Closed")]
-    [InlineData(0.144, "Closed")]
-    [InlineData(0.15, "Limited")]
-    [InlineData(0.294, "Limited")]
-    [InlineData(0.30, "Open")]
-    [InlineData(1.0, "Open")]
-    public void Status_follows_the_vps_thresholds(double share, string status) => Assert.Equal(status, InstallAvailability.Status(share));
+    [InlineData(0, "Closed")]
+    [InlineData(14, "Closed")]
+    [InlineData(15, "Limited")]
+    [InlineData(29, "Limited")]
+    [InlineData(30, "Open")]
+    [InlineData(100, "Open")]
+    public void Status_follows_the_vps_thresholds(int percent, string status) => Assert.Equal(status, InstallAvailability.Status(percent));
+
+    [Theory]
+    [InlineData(29, 200, 15)]
+    [InlineData(57, 200, 29)]
+    [InlineData(1, 8, 13)]
+    [InlineData(0, 0, 0)]
+    public void Percent_rounds_half_up_exactly(int free, int bookable, int percent) => Assert.Equal(percent, InstallAvailability.Percent(free, bookable));
 
     [Theory]
     [InlineData(149, 1000, "Limited")]
+    [InlineData(29, 200, "Limited")]
+    [InlineData(59, 200, "Open")]
     [InlineData(299, 1000, "Open")]
     public void Status_is_classified_on_the_shown_whole_percent(int free, int bookable, string status)
     {
