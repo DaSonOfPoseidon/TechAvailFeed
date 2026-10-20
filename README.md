@@ -54,7 +54,8 @@ I/O, not in SQL or in the API layer. That keeps them unit-testable without a dat
 ## Dashboard
 
 An Angular 22 app (`web/`, Angular Material, ECharts, Leaflet), built into the API image and served from the same
-origin, so it needs no CORS. It has four views:
+origin, so it needs no CORS. It is public at `https://techavail.actionjacksoninstalls.com`, behind Cloudflare
+Access; the LAN port (8097) skips Access. It has four views:
 
 - **Capacity**: free hours per region and day, shaded by utilisation. A day opens one timeline row per technician
   (shift, time off, booked work and free slots), with that day's unassigned work.

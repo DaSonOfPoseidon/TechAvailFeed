@@ -61,9 +61,11 @@ services:
     # The dashboard and its backend: calendar, KPIs and the Excel exports. Read-only on the ingest's tables.
     labels:
       wud.watch: "false"
-      # Like the ingest: no phone alerts until the dashboard goes live. Then drop the ignore.
-      monitoring.ignore: "true"
       monitoring.http.path: "/health"
+      # Public through the Cloudflare tunnel, behind Zero Trust Access (the server's reusable policy).
+      cloudflare-tunnel.enable: "true"
+      cloudflare-tunnel.subdomain: "techavail"
+      cloudflare-tunnel.access: "true"
     restart: unless-stopped
     ports:
       - "8097:8000"
