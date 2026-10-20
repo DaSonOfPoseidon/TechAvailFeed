@@ -25,6 +25,21 @@ public class SpaTests
         }
     }
 
+    // The exports end in .xlsx, which Cloudflare caches by default: without no-store the tunnel keeps
+    // serving an old workbook after an ingest or a deploy.
+    [DbFact]
+    public async Task Api_responses_are_never_cached()
+    {
+        using var db = new TestDatabase();
+        using var factory = new ApiFactory(db, Now, apiKey: "secret");
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", "secret");
+        foreach (var path in new[] { "/api/v1/capacity.xlsx", "/api/v1/filters", "/api/v1/nope", "/health" })
+            Assert.True((await client.GetAsync(path)).Headers.CacheControl?.NoStore, path);
+        // Unauthorised answers too, so a cache never keeps a 401 for a URL.
+        Assert.True((await factory.CreateClient().GetAsync("/api/v1/filters")).Headers.CacheControl?.NoStore);
+    }
+
     [DbFact]
     public async Task Unknown_api_paths_and_missing_files_stay_404()
     {
