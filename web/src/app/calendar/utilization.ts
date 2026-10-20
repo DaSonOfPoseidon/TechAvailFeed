@@ -1,4 +1,4 @@
-// The calendar's sequential scale: utilisation (booked / available) in five steps of one hue.
+// The calendar's utilisation scale (booked / available) in five steps, green (good) to red (bad).
 export const utilizationSteps = [
   { below: 0.3, label: 'under 30%' },
   { below: 0.5, label: '30–50%' },

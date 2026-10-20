@@ -1,7 +1,8 @@
 @use '@angular/material' as mat;
 
-// Field-ops palette: the dataviz reference instance (validated categorical, sequential and status
-// steps), with light/dark picked per token by light-dark(). Charts read these through cssColor().
+// Field-ops palette: the dataviz reference instance (validated categorical and status steps), with
+// light/dark picked per token by light-dark(), plus the calendar's xlsx-matched utilisation steps.
+// Charts read these through cssColor().
 :root {
   color-scheme: light dark;
   @include mat.theme(
@@ -30,12 +31,18 @@
   --ta-series-3: light-dark(#1baf7a, #199e70);
   --ta-series-4: light-dark(#eda100, #c98500);
 
-  // Sequential (utilisation), light to dark in both modes.
-  --ta-seq-1: #cde2fb;
-  --ta-seq-2: #9ec5f4;
-  --ta-seq-3: #6da7ec;
-  --ta-seq-4: #2a78d6;
-  --ta-seq-5: #184f95;
+  // Utilisation, green (lightly booked, good) to red (fully booked, bad): the install availability
+  // sheet's fills and text (Xlsx.Good/Neutral/Bad in src/TechAvail.Api/Xlsx.cs), with blends between.
+  --ta-seq-1: #c6efce;
+  --ta-seq-1-ink: #005400;
+  --ta-seq-2: #e3edb5;
+  --ta-seq-2-ink: #005400;
+  --ta-seq-3: #ffeb9c;
+  --ta-seq-3-ink: #703f00;
+  --ta-seq-4: #ffd9b5;
+  --ta-seq-4-ink: #830005;
+  --ta-seq-5: #ffc7ce;
+  --ta-seq-5-ink: #830005;
 
   // Status: always shown with an icon and a word.
   --ta-good: #0ca30c;
