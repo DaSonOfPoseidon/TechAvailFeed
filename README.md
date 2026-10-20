@@ -117,7 +117,7 @@ scripts/test-db.sh up                          # throwaway Postgres for the data
 scripts/dotnet.sh build
 scripts/dotnet.sh test TechAvailFeed.slnx -m:1 # one project at a time keeps the SDK container under 1 GiB
 scripts/dotnet.sh format TechAvailFeed.slnx --verify-no-changes
-docker compose up -d --build ingest api        # deploy a change; the source is baked into the images
+docker compose up -d --build ingest api        # deploy from main only; the source is baked into the images
 ```
 
 The dashboard needs Node 24, which also runs in Docker:
