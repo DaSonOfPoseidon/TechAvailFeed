@@ -50,6 +50,16 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 var settings = app.Services.GetRequiredService<ApiSettings>();
+// The data changes with every ingest, and Cloudflare caches .xlsx URLs by default, so nothing the API
+// answers (errors and 401s included) may be stored by the tunnel or a browser.
+app.Use(
+    (context, next) =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api") || context.Request.Path.StartsWithSegments("/health"))
+            context.Response.Headers.CacheControl = "no-store";
+        return next(context);
+    }
+);
 if (settings.CorsOrigins.Length > 0)
     app.UseCors(cors =>
         cors.WithOrigins(settings.CorsOrigins).WithMethods("GET").WithHeaders("X-API-Key").WithExposedHeaders("Content-Disposition")
