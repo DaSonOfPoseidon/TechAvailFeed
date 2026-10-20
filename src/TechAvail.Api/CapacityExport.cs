@@ -13,20 +13,24 @@ public static class CapacityExport
 {
     public const string InstallSheet = "Install availability";
 
+    const double MaxRowHeight = 409;
+
     public static readonly IReadOnlyDictionary<string, (string Fill, string Font)> StatusColors = new Dictionary<string, (string, string)>
     {
         [InstallAvailability.Open] = Xlsx.Good,
         [InstallAvailability.Limited] = Xlsx.Neutral,
         [InstallAvailability.Closed] = Xlsx.Bad,
-        [InstallAvailability.NoSlots] = Xlsx.Muted,
+        [InstallAvailability.NoTechs] = Xlsx.Bad,
+        [InstallAvailability.NotOpen] = Xlsx.Muted,
     };
 
     static readonly (string Status, string Meaning)[] Legend =
     [
-        (InstallAvailability.Closed, $"Under {InstallAvailability.ClosedBelow:0%} of booking windows free, or no tech working"),
+        (InstallAvailability.Closed, $"Under {InstallAvailability.ClosedBelow:0%} of booking windows free (0%: all booked)"),
         (InstallAvailability.Limited, $"{InstallAvailability.ClosedBelow:0%} to under {InstallAvailability.LimitedBelow:0%} free"),
         (InstallAvailability.Open, $"{InstallAvailability.LimitedBelow:0%} or more free"),
-        (InstallAvailability.NoSlots, "No area can book that day (e.g. Sunday)"),
+        (InstallAvailability.NoTechs, "Techs scheduled, but all on time off"),
+        (InstallAvailability.NotOpen, "No techs scheduled, or not a booking day (e.g. Sunday)"),
     ];
 
     internal static readonly (string Name, object? Text)[] Definitions =
@@ -64,8 +68,9 @@ public static class CapacityExport
         ),
         (
             "Status",
-            $"Closed: under {InstallAvailability.ClosedBelow:0%}, or nothing bookable while other areas can book. Limited: under "
-                + $"{InstallAvailability.LimitedBelow:0%}. Open: the rest. No slots: no area can book that day."
+            $"Closed: under {InstallAvailability.ClosedBelow:0%} as shown (whole percent), 0% when working techs have nothing left. "
+                + $"Limited: under {InstallAvailability.LimitedBelow:0%}. Open: the rest. No Techs: the area's techs are all on time off. "
+                + "Not Open: no tech scheduled, or no booking windows that day (Sunday)."
         ),
         .. InstallAvailability.Areas.Where(a => a.Territories is not [var t] || t != a.Area).Select(a => ($"  {a.Area}", (object?)string.Join(", ", a.Territories))),
         ("  Other territories", "Listed as rows of their own."),
@@ -218,23 +223,24 @@ public static class CapacityExport
         Xlsx.WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
     }
 
-    // The VP's update laid out to paste into an email: title, exceptions text, then the colour-coded grid.
-    static void WriteInstall(XLWorkbook wb, DateTime asOf, InstallGrid grid)
+    // The VP's update laid out to paste into an email: title, the exceptions text in one wrapped cell (it
+    // pastes as plain lines), then the colour-coded grid with its legend right under it, to copy as one block.
+    static void WriteInstall(XLWorkbook wb, InstallGrid grid)
     {
         var ws = wb.Worksheets.Add(InstallSheet);
         ws.Cell(1, 1).Value = InstallAvailability.Title;
         ws.Cell(1, 1).Style.Font.Bold = true;
         ws.Cell(1, 1).Style.Font.FontSize = 14;
-        ws.Cell(2, 1).Value = "As of";
-        ws.Cell(2, 2).Value = asOf;
-        ws.Cell(2, 2).Style.NumberFormat.Format = Xlsx.Stamp;
-        ws.Cell(2, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
-        var row = 3;
-        foreach (var line in grid.Exceptions)
-            ws.Cell(++row, 1).Value = line;
+        var columns = grid.Days.Count + 2;
+        var text = ws.Range(3, 1, 3, columns).Merge();
+        text.FirstCell().Value = string.Join("\n", grid.Exceptions);
+        text.Style.Alignment.WrapText = true;
+        text.Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        // Excel caps a row at 409 points; a longer list stays whole in the cell (and pastes whole).
+        ws.Row(3).Height = Math.Min(15 * grid.Exceptions.Count, MaxRowHeight);
 
-        row += 2;
+        var row = 5;
         var header = row;
         Xlsx.HeaderRow(
             ws,
@@ -263,11 +269,9 @@ public static class CapacityExport
                 Xlsx.Fill(target, StatusColors[cell.Status]);
             }
         }
-        var columns = grid.Days.Count + 2;
         Xlsx.Borders(ws, header, row, columns);
 
-        row += 2;
-        ws.Cell(row, 1).Value = "Legend";
+        ws.Cell(++row, 1).Value = "Legend";
         ws.Cell(row, 1).Style.Font.Bold = true;
         foreach (var (status, meaning) in Legend)
         {
@@ -276,7 +280,7 @@ public static class CapacityExport
             ws.Cell(row, 2).Value = meaning;
         }
         ws.Cell(++row, 1).Value =
-            "Availability = free 2-hour booking windows / bookable windows. Today counts only windows starting 30+ minutes after the time above.";
+            "Availability = free 2-hour booking windows / bookable windows. Today counts only windows starting 30+ minutes after the export (About sheet).";
 
         Xlsx.SetWidth(ws.Column(1), 28);
         for (var c = 2; c <= columns; c++)
@@ -298,10 +302,7 @@ public static class CapacityExport
     {
         using var wb = new XLWorkbook();
         if (install is not null)
-        {
-            var local = TimeZoneInfo.ConvertTime(now, tz).DateTime;
-            WriteInstall(wb, local.AddTicks(-(local.Ticks % TimeSpan.TicksPerMinute)), install);
-        }
+            WriteInstall(wb, install);
         WriteSheets(wb, entries, days, demand, schedule);
         new AboutSheet(wb)
             .ExportedAt(tz, now)

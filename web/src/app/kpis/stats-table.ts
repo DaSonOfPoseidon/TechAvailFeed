@@ -17,6 +17,17 @@ type Column = Exclude<keyof StatsRow, 'id'>;
 
 export type Measure = 'rate' | 'count';
 
+export interface Sort {
+  key: Column;
+  desc: boolean;
+}
+
+// The sort to apply: one on a column that's no longer shown (pulled, after switching to tickets)
+// falls back to planned, so rows never sort on a hidden column.
+export function visibleSort(sort: Sort, columns: readonly Column[]): Sort {
+  return columns.includes(sort.key) ? sort : { key: 'planned', desc: true };
+}
+
 // An outcome's rate or count; pulled is only counted for jobs.
 export function outcome(stats: KindStats, name: string, measure: Measure): number | null {
   if (name === 'pulled') {
@@ -49,11 +60,11 @@ export function statsRow(id: string, name: string, stats: KindStats, measure: Me
           @for (c of columns(); track c.key) {
             <th
               [attr.aria-sort]="
-                sort().key === c.key ? (sort().desc ? 'descending' : 'ascending') : null
+                active().key === c.key ? (active().desc ? 'descending' : 'ascending') : null
               "
             >
               <button class="sort" (click)="sortBy(c.key)">
-                {{ c.label }}{{ sort().key === c.key ? (sort().desc ? ' ↓' : ' ↑') : '' }}
+                {{ c.label }}{{ active().key === c.key ? (active().desc ? ' ↓' : ' ↑') : '' }}
               </button>
             </th>
           }
@@ -106,7 +117,7 @@ export class StatsTable {
   readonly jobs = input(true);
   // Outcome columns hold counts rather than rates.
   readonly count = input(false);
-  protected readonly sort = signal<{ key: Column; desc: boolean }>({ key: 'planned', desc: true });
+  protected readonly sort = signal<Sort>({ key: 'planned', desc: true });
 
   protected cell(row: StatsRow, key: Column): string | number {
     const value = row[key];
@@ -129,8 +140,15 @@ export class StatsTable {
       : columns;
   });
 
+  protected readonly active = computed(() =>
+    visibleSort(
+      this.sort(),
+      this.columns().map((c) => c.key),
+    ),
+  );
+
   protected readonly sorted = computed(() => {
-    const { key, desc } = this.sort();
+    const { key, desc } = this.active();
     const value = (row: StatsRow) => row[key] ?? -1;
     return [...this.rows()].sort((a, b) => {
       const order =
@@ -140,6 +158,7 @@ export class StatsTable {
   });
 
   protected sortBy(key: Column): void {
-    this.sort.update((s) => ({ key, desc: s.key === key ? !s.desc : key !== 'name' }));
+    const s = this.active();
+    this.sort.set({ key, desc: s.key === key ? !s.desc : key !== 'name' });
   }
 }

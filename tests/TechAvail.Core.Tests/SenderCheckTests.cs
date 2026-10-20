@@ -29,6 +29,15 @@ public class SenderCheckTests
     [Fact]
     public void Authenticated_sender_is_accepted() => Assert.Null(Check(Results(GoodResults)));
 
+    // CountSpam fetches only the headers and checks a message built from them.
+    [Fact]
+    public void A_message_built_from_fetched_headers_is_checked_the_same()
+    {
+        static MimeMessage FromHeaders(MimeMessage message) => new(message.Headers.ToArray<object>());
+        Assert.Null(Check(FromHeaders(Results(GoodResults))));
+        Assert.NotNull(Check(FromHeaders(Message("reports@v.example.evil", null, GoodResults))));
+    }
+
     [Fact]
     public void Gmails_real_header_shape_is_accepted()
     {
@@ -147,11 +156,11 @@ public class FeedMailTests
     }
 
     [Fact]
-    public void Ignores_non_csv_parts_and_falls_back_to_uid()
+    public void Ignores_non_csv_parts_and_falls_back_to_the_mailbox_id()
     {
-        var mail = FeedMail.FromMime(Build(messageId: false, attachments: ("report.html", "<html></html>"u8.ToArray())), "7");
+        var mail = FeedMail.FromMime(Build(messageId: false, attachments: ("report.html", "<html></html>"u8.ToArray())), "gm:7");
         Assert.Empty(mail.Attachments);
-        Assert.Equal("uid:7", mail.MessageId);
+        Assert.Equal("gm:7", mail.MessageId);
     }
 
     [Fact]

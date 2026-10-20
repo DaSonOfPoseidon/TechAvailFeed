@@ -12,10 +12,11 @@ public sealed record FeedMail(
     IReadOnlyList<(string FileName, byte[] Data)> Attachments
 )
 {
-    public static FeedMail FromMime(MimeMessage message, string uid) =>
+    // Some senders omit Message-ID; the mailbox's own id for the message stands in (fallbackId). It must
+    // stay the same when the mail moves between labels, so the backfill can find it again.
+    public static FeedMail FromMime(MimeMessage message, string fallbackId) =>
         new(
-            // Some senders omit Message-ID; the IMAP UID is stable enough within one mailbox.
-            (RawHeader(message, "Message-ID") ?? $"uid:{uid}").Trim(),
+            (RawHeader(message, "Message-ID") ?? fallbackId).Trim(),
             RawHeader(message, "Subject") ?? "",
             MailDate(RawHeader(message, "Date")),
             CsvAttachments(message)

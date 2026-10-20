@@ -1,5 +1,5 @@
 import { JobStats, KindStats } from '../api/models';
-import { statsRow } from './stats-table';
+import { statsRow, visibleSort } from './stats-table';
 
 describe('statsRow', () => {
   const ticket: KindStats = {
@@ -42,6 +42,22 @@ describe('statsRow', () => {
       canceled: 1,
       rescheduled: null,
       pulled: null,
+    });
+  });
+});
+
+describe('visibleSort', () => {
+  it('keeps a sort on a shown column', () => {
+    expect(visibleSort({ key: 'pulled', desc: false }, ['name', 'planned', 'pulled'])).toEqual({
+      key: 'pulled',
+      desc: false,
+    });
+  });
+
+  it('falls back to planned when the sorted column is hidden', () => {
+    expect(visibleSort({ key: 'pulled', desc: false }, ['name', 'planned'])).toEqual({
+      key: 'planned',
+      desc: true,
     });
   });
 });
