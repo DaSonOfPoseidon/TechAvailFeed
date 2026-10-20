@@ -91,30 +91,30 @@
   }
 }
 
-// The sequential steps; the two darkest carry light text.
+// The utilisation steps, green (good) to red (bad), like the install availability sheet.
 [data-step='0'] {
   background: var(--ta-grid);
   color: var(--ta-muted);
 }
 [data-step='1'] {
   background: var(--ta-seq-1);
-  color: #0b0b0b;
+  color: var(--ta-seq-1-ink);
 }
 [data-step='2'] {
   background: var(--ta-seq-2);
-  color: #0b0b0b;
+  color: var(--ta-seq-2-ink);
 }
 [data-step='3'] {
   background: var(--ta-seq-3);
-  color: #0b0b0b;
+  color: var(--ta-seq-3-ink);
 }
 [data-step='4'] {
   background: var(--ta-seq-4);
-  color: #fff;
+  color: var(--ta-seq-4-ink);
 }
 [data-step='5'] {
   background: var(--ta-seq-5);
-  color: #fff;
+  color: var(--ta-seq-5-ink);
 }
 
 .hour-slots {
