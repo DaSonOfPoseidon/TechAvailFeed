@@ -123,6 +123,22 @@ public class CapacityExportTests
         );
     }
 
+    [Fact]
+    public void A_long_exceptions_list_stays_within_excels_row_height()
+    {
+        // Every area plus extra territories unavailable on both days: more lines than a row can show.
+        List<TechDay> days =
+        [
+            .. Enumerable.Range(0, 30).Select(i => new TechDay(new DateOnly(2026, 10, 16), $"t{i}", "T", $"Territory {i}", "INS", [], [], [], [], 0, 0, 0, 0, 0, 0, 0, 0, true, 0, 0, 0)),
+        ];
+        var grid = InstallAvailability.Build(days, new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 16), days: 2);
+        Assert.True(grid.Exceptions.Count * 15 > 409);
+        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
+        var ws = wb.Worksheet(CapacityExport.InstallSheet);
+        Assert.Equal(string.Join("\n", grid.Exceptions), ws.Cell(3, 1).GetText());
+        Assert.True(ws.Row(3).Height <= 409);
+    }
+
     [DbFact]
     public async Task Only_the_install_calendar_gets_the_availability_sheet()
     {

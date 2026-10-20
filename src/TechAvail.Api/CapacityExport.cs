@@ -13,6 +13,8 @@ public static class CapacityExport
 {
     public const string InstallSheet = "Install availability";
 
+    const double MaxRowHeight = 409;
+
     public static readonly IReadOnlyDictionary<string, (string Fill, string Font)> StatusColors = new Dictionary<string, (string, string)>
     {
         [InstallAvailability.Open] = Xlsx.Good,
@@ -235,7 +237,8 @@ public static class CapacityExport
         text.FirstCell().Value = string.Join("\n", grid.Exceptions);
         text.Style.Alignment.WrapText = true;
         text.Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
-        ws.Row(3).Height = 15 * grid.Exceptions.Count;
+        // Excel caps a row at 409 points; a longer list stays whole in the cell (and pastes whole).
+        ws.Row(3).Height = Math.Min(15 * grid.Exceptions.Count, MaxRowHeight);
 
         var row = 5;
         var header = row;
