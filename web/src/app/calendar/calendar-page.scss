@@ -99,22 +99,45 @@
 [data-step='1'] {
   background: var(--ta-seq-1);
   color: var(--ta-seq-1-ink);
+  --step: 1;
 }
 [data-step='2'] {
   background: var(--ta-seq-2);
   color: var(--ta-seq-2-ink);
+  --step: 2;
 }
 [data-step='3'] {
   background: var(--ta-seq-3);
   color: var(--ta-seq-3-ink);
+  --step: 3;
 }
 [data-step='4'] {
   background: var(--ta-seq-4);
   color: var(--ta-seq-4-ink);
+  --step: 4;
 }
 [data-step='5'] {
   background: var(--ta-seq-5);
   color: var(--ta-seq-5-ink);
+  --step: 5;
+}
+
+// The pastels are close in lightness, so a bar along the bottom also grows a fifth per step: the level reads
+// without telling green from red.
+[data-step]:not([data-step='0']) {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: calc(var(--step) * 20%);
+    background: currentColor;
+    opacity: 0.55;
+  }
 }
 
 .hour-slots {
