@@ -123,10 +123,9 @@
 }
 
 // The pastels are close in lightness, so a bar along the bottom also grows a fifth per step: the level reads
-// without telling green from red.
+// without telling green from red. The bar rounds its own corners: clipping the tile would hide the focus ring.
 [data-step]:not([data-step='0']) {
   position: relative;
-  overflow: hidden;
 
   &::after {
     content: '';
@@ -135,9 +134,13 @@
     bottom: 0;
     height: 3px;
     width: calc(var(--step) * 20%);
+    border-radius: 0 0 0 3px;
     background: currentColor;
     opacity: 0.55;
   }
+}
+[data-step='5']::after {
+  border-bottom-right-radius: 3px;
 }
 
 .hour-slots {
