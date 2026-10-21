@@ -182,6 +182,17 @@ public class ApiTests
     }
 
     [DbFact]
+    public async Task Trend_series_leave_out_sundays()
+    {
+        using var api = new Api(Blocks);
+        // 2026-10-10 is a Saturday.
+        var capacity = await api.Get("/api/v1/kpis/capacity?start=2026-10-10&days=3");
+        Assert.Equal(["2026-10-10", "2026-10-12"], Strings(capacity["series"], "date"));
+        var outcomes = await api.Get("/api/v1/kpis/outcomes?start=2026-10-10&end=2026-10-12");
+        Assert.Equal(["2026-10-10", "2026-10-12"], Strings(outcomes["days"], "date"));
+    }
+
+    [DbFact]
     public async Task Outcome_kpis()
     {
         using var api = new Api(Blocks);
