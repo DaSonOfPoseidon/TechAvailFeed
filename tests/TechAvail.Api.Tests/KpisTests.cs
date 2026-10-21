@@ -32,6 +32,15 @@ public class KpisTests
         JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis(days, region, tech), Json)!;
 
     [Fact]
+    public void Only_an_empty_sunday_is_left_off_the_charts()
+    {
+        var (saturday, sunday) = (new DateOnly(2026, 10, 10), new DateOnly(2026, 10, 11));
+        Assert.True(Api.Kpis.Charted(saturday, empty: true));
+        Assert.False(Api.Kpis.Charted(sunday, empty: true));
+        Assert.True(Api.Kpis.Charted(sunday, empty: false));
+    }
+
+    [Fact]
     public void Rates_use_the_planned_count_and_the_latest_checkpoint()
     {
         var day = new DayOutcome(

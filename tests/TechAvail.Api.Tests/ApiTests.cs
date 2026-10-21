@@ -193,6 +193,26 @@ public class ApiTests
     }
 
     [DbFact]
+    public async Task A_sunday_with_work_stays_in_the_trend_series()
+    {
+        var sunday = new DateOnly(2026, 10, 11);
+        var shift = B("shift_tc", "08:00", "17:00", "t", "North", "TC");
+        using var api = new Api(
+            [
+                .. Blocks,
+                shift with
+                {
+                    WorkDate = sunday,
+                    StartsAt = sunday.ToDateTime(TimeOnly.Parse("08:00")),
+                    EndsAt = sunday.ToDateTime(TimeOnly.Parse("17:00")),
+                },
+            ]
+        );
+        var tc = await api.Get("/api/v1/kpis/capacity?start=2026-10-10&days=3&calendar=tc");
+        Assert.Equal(["2026-10-10", "2026-10-11", "2026-10-12"], Strings(tc["series"], "date"));
+    }
+
+    [DbFact]
     public async Task Outcome_kpis()
     {
         using var api = new Api(Blocks);

@@ -12,7 +12,7 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<RegionTotal> ByRegion
     );
 
-    // Daily capacity series (Sundays left out) plus totals per region.
+    // Daily capacity series (empty Sundays left out) plus totals per region.
     [HttpGet("kpis/capacity")]
     public CapacityResponse Capacity(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install")
     {
@@ -25,7 +25,11 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         return new CapacityResponse(
             Info(snapshot),
             new CalendarController.Filters(region, skill, calendar),
-            [.. entries.Where(e => Kpis.Charted(e.Date)).Select(e => e.Totals.ForDate(e.Date))],
+            [
+                .. entries
+                    .Where(e => Kpis.Charted(e.Date, e.Totals is { AvailableH: 0, BookedH: 0, UnassignedH: 0 }))
+                    .Select(e => e.Totals.ForDate(e.Date)),
+            ],
             CapacityRollup.RegionTotals(entries)
         );
     }
@@ -44,7 +48,7 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<TechOption> Techs
     );
 
-    // Completion, cancellation and reschedule rates per day (Sundays left out), region and technician.
+    // Completion, cancellation and reschedule rates per day (empty Sundays left out), region and technician.
     [HttpGet("kpis/outcomes")]
     public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
     {
@@ -55,7 +59,7 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
             new OutcomeFilters(region, tech),
             from,
             to,
-            [.. kpis.Days.Where(d => Kpis.Charted(d.Date))],
+            [.. kpis.Days.Where(d => Kpis.Charted(d.Date, (d.Job?.Planned ?? 0) + (d.Ticket?.Planned ?? 0) == 0))],
             kpis.Totals,
             kpis.ByRegion,
             kpis.ByTech,

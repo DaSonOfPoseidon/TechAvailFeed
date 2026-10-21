@@ -95,9 +95,9 @@ public static class Kpis
         return new ByKind(job, Stats([.. list.Where(i => i.Kind == "ticket")]));
     }
 
-    // The Trends charts skip Sundays: nothing is booked then, so they only dip the lines (#25). Totals and exports
-    // still count them.
-    public static bool Charted(DateOnly day) => day.DayOfWeek != DayOfWeek.Sunday;
+    // The Trends charts skip an empty Sunday: installs have no booking windows then, so it only dips the lines (#25).
+    // A Sunday with work (a TC shift, planned tickets) stays. Totals and exports count every day.
+    public static bool Charted(DateOnly day, bool empty) => !empty || day.DayOfWeek != DayOfWeek.Sunday;
 
     public static OutcomeKpis OutcomeKpis(IEnumerable<(DayOutcome Outcome, bool Provisional)> days, string? region = null, string? tech = null)
     {

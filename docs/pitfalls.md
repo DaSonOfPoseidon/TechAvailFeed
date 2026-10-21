@@ -13,3 +13,7 @@ Classes of bug that reviews have caught here. Check every change against them, a
 - **Clipping a container hides its focus ring.** `overflow: hidden` on an element whose link fills it cuts off the
   global `:focus-visible` outline, so keyboard users lose the focus indicator. Round or shape decorations themselves
   instead of clipping their container (calendar level bar, #32).
+
+- **Install rules applied to trouble calls.** Install has no Sunday booking windows, but TC shifts and tickets
+  run every day. A rule that drops or zeroes a day because nothing happens then has to hold for the TC calendar
+  and for tickets too, or depend on the data rather than the date (the Trends Sunday filter, #34).

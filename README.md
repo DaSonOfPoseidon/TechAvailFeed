@@ -81,8 +81,8 @@ header. Errors are `{"detail": "..."}`, with 422 for bad query values.
 | `GET /api/v1/filters` | Regions, skills, technicians and the VP regions (for `jeopardy.xlsx`) for filter dropdowns |
 | `GET /api/v1/calendar` | Capacity per day and region: available, booked, free and unassigned hours, utilisation |
 | `GET /api/v1/calendar/{date}` | One day per technician: shifts, time off, booked work, free slots |
-| `GET /api/v1/kpis/capacity` | Daily capacity series (no Sundays) plus totals per region |
-| `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day (no Sundays), region and technician |
+| `GET /api/v1/kpis/capacity` | Daily capacity series (empty Sundays left out) plus totals per region |
+| `GET /api/v1/kpis/outcomes` | Completion, cancellation and reschedule rates per day (empty Sundays left out), region and technician |
 | `GET /api/v1/diagnostics` | Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps, jobs with no skill or set in a region other than their address's |
 | `GET /api/v1/map` | Jobs and tickets as map points with rounded coordinates. Canceled work is left out; `completed=false` also hides completed work |
 | `GET /api/v1/capacity.xlsx` | The calendar as a workbook (same filters as `/calendar`). On the install calendar it opens with the VP's *Residential Install Availability* sheet: same day/next day exceptions text and a 7-day grid of free ÷ bookable booking windows per VP area, red under 15%, yellow under 30%. Rules and the area map: `src/TechAvail.Core/InstallAvailability.cs`. Then capacity per day and region, tech days, free slots, the schedule behind them and unassigned work |
