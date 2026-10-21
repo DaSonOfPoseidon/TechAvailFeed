@@ -63,9 +63,11 @@ services:
       wud.watch: "false"
       monitoring.http.path: "/health"
       # Public through the Cloudflare tunnel, behind Zero Trust Access (the server's reusable policy).
+      # access-bypass lets the office network in without a login (the server's bypass policy).
       cloudflare-tunnel.enable: "true"
       cloudflare-tunnel.subdomain: "techavail"
       cloudflare-tunnel.access: "true"
+      cloudflare-tunnel.access-bypass: "true"
     restart: unless-stopped
     ports:
       - "8097:8000"
