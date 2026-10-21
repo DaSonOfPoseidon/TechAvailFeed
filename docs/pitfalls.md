@@ -9,3 +9,7 @@ Classes of bug that reviews have caught here. Check every change against them, a
 - **Cloudflare caches by file extension.** A URL ending in `.xlsx` (or another static-looking extension) is cached
   at the edge unless the response says otherwise, so an export can go stale behind the tunnel while localhost looks
   fine. Everything under `/api` sends `Cache-Control: no-store`; keep it that way for new routes.
+
+- **Clipping a container hides its focus ring.** `overflow: hidden` on an element whose link fills it cuts off the
+  global `:focus-visible` outline, so keyboard users lose the focus indicator. Round or shape decorations themselves
+  instead of clipping their container (calendar level bar, #32).
