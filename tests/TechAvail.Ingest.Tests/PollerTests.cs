@@ -156,9 +156,9 @@ public class PollerTests
 
 public class PollWorkerTests
 {
-    // The first poll fails to connect. The second waits for Proceed, so the test can see the recorded
-    // error before it is cleared; later polls find an empty inbox.
-    sealed class FlakyMailbox : IMailbox, IMailboxSession
+    // The first poll fails with `failure` (a failed login by default). The second waits for Proceed, so the test can see
+    // the recorded error before it is cleared; later polls find an empty inbox.
+    sealed class FlakyMailbox(Exception? failure = null) : IMailbox, IMailboxSession
     {
         int opens;
 
@@ -170,7 +170,7 @@ public class PollWorkerTests
         {
             var n = Interlocked.Increment(ref opens);
             if (n == 1)
-                throw new InvalidOperationException("IMAP login failed");
+                throw failure ?? new InvalidOperationException("IMAP login failed");
             if (n == 2)
                 Proceed.Wait();
             return this;
@@ -237,6 +237,20 @@ public class PollWorkerTests
         mailbox.Proceed.Release();
         await Until(() => state.Get().Error is null);
         Assert.True(state.Get().At >= failedAt);
+        await worker.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task A_stalled_mailbox_fails_the_poll_and_the_worker_keeps_polling()
+    {
+        var (mailbox, state) = (new FlakyMailbox(new OperationCanceledException()), new PollState());
+        using var worker = Worker(mail: true, mailbox, state);
+        await worker.StartAsync(CancellationToken.None);
+
+        await Until(() => state.Get().Error is not null);
+        mailbox.Proceed.Release();
+        await Until(() => state.Get().Error is null);
+        Assert.False(worker.ExecuteTask!.IsCompleted);
         await worker.StopAsync(CancellationToken.None);
     }
 

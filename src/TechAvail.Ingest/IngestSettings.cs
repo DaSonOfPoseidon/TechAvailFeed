@@ -41,7 +41,7 @@ public sealed record IngestSettings(
             Get("FAILED_LABEL", "techavail-failed"),
             // The source's local time: block timestamps use it, as does the mail purge's "today".
             TimeZoneInfo.FindSystemTimeZoneById(Get("MAIL_TZ", "America/Chicago")),
-            int.Parse(Get("POLL_SECONDS", "60")),
+            int.Parse(Get("POLL_SECONDS", "15")),
             int.Parse(Get("HTTP_PORT", "8000")),
             // Optional: keep a raw copy of every processed mail (the local corpus).
             Get("ARCHIVE_DIR"),

@@ -93,7 +93,8 @@ public sealed class PollWorker(Poller poller, PollState state, IngestSettings se
             {
                 error = await Task.Run(poller.PollOnce, stoppingToken);
             }
-            catch (Exception exc) when (exc is not OperationCanceledException)
+            // A stalled mailbox ends in a cancellation too; only shutdown stops the loop.
+            catch (Exception exc) when (!stoppingToken.IsCancellationRequested)
             {
                 log.LogError(exc, "poll failed");
                 error = exc.Message;
