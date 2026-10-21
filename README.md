@@ -55,7 +55,8 @@ I/O, not in SQL or in the API layer. That keeps them unit-testable without a dat
 
 An Angular 22 app (`web/`, Angular Material, ECharts, Leaflet), built into the API image and served from the same
 origin, so it needs no CORS. It is public at `https://techavail.actionjacksoninstalls.com`, behind Cloudflare
-Access; the LAN port (8097) skips Access. It has four views:
+Access, except that the office network gets in without a login (the `access-bypass` label in `docker-compose.yml`).
+The LAN port (8097) skips Access too. It has four views:
 
 - **Capacity**: free hours per region and day, shaded by utilisation. A day opens one timeline row per technician
   (shift, time off, booked work and free slots), with that day's unassigned work.
