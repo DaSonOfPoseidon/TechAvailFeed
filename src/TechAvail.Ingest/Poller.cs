@@ -2,7 +2,6 @@ using TechAvail.Data;
 
 namespace TechAvail.Ingest;
 
-// The last poll's time and error, for /health.
 public sealed class PollState
 {
     readonly Lock gate = new();
@@ -22,9 +21,7 @@ public sealed class PollState
     }
 }
 
-// One poll: fetch new feed mail, ingest each once, file it as processed
-// or failed, purge processed mail from before today, then finalize the outcome history. Returns an
-// error for /health when feed mail landed in Spam, where the poll can't see it.
+// Returns an error for /health when feed mail landed in Spam, where the poll can't see it.
 public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings settings, TimeProvider clock, ILogger<Poller> log)
 {
     // Long enough to catch every run on a 15-minute schedule, short enough to clear soon after a fix.
@@ -75,7 +72,7 @@ public sealed class Poller(FeedStore store, IMailbox mailbox, IngestSettings set
     }
 }
 
-// The poll loop. Errors are logged and recorded, never fatal: the next poll tries again.
+// Errors are never fatal: the next poll tries again.
 public sealed class PollWorker(Poller poller, PollState state, IngestSettings settings, TimeProvider clock, ILogger<PollWorker> log)
     : BackgroundService
 {

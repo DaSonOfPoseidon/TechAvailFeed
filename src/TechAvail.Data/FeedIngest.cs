@@ -3,8 +3,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// One feed mail into the store. Returns true when the mail
-// should be filed as processed, false for the failed label.
+// Returns true when the mail should be filed as processed, false for the failed label.
 public static class FeedIngest
 {
     public static bool Ingest(FeedStore store, FeedMail mail, DateTimeOffset? mailboxReceivedAt)

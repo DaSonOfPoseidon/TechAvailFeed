@@ -3,10 +3,8 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// The reads the dashboard serves from. FeedStore answers them from Postgres; the API puts a cache in front.
 public interface IFeedReads
 {
-    // The served snapshot (see FeedStore.Latest), without its rows.
     SnapshotMeta? SnapshotMeta();
 
     LatestSnapshot? Latest();

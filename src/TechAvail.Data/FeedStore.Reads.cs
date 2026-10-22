@@ -49,7 +49,6 @@ public sealed record LatencySummary(
     decimal? TotalMaxMin
 );
 
-// The read side of the store.
 public sealed partial class FeedStore : IFeedReads
 {
     // Every Block field, with NULLs from older snapshots read as the parser's defaults.
@@ -62,7 +61,6 @@ public sealed partial class FeedStore : IFeedReads
         COALESCE(gps_precision, '') AS gps_precision, set_region
         """;
 
-    // Delivery latency per snapshot, split at the mailbox: source -> mailbox, then mailbox -> poller.
     const string RunsSql = """
         SELECT
             id, status, format, row_count, generated_at, mailbox_received_at, ingested_at,
@@ -171,7 +169,6 @@ public sealed partial class FeedStore : IFeedReads
     public LatestSnapshot? Latest() =>
         Query($"SELECT * FROM snapshots {ServedSnapshot}", ReadSnapshot).FirstOrDefault() is { } snapshot ? WithRows(snapshot) : null;
 
-    // One snapshot by id, with its rows, whether or not it is the served one.
     public LatestSnapshot? Snapshot(long id) =>
         Query("SELECT * FROM snapshots WHERE id = @id", ReadSnapshot, ("id", id)).FirstOrDefault() is { } snapshot
             ? WithRows(snapshot)
@@ -274,7 +271,6 @@ public sealed partial class FeedStore : IFeedReads
             ("day", day)
         ).ToDictionary(row => row.Item1, row => row.Item2);
 
-    // The snapshot Latest() would serve, without loading its rows.
     public SnapshotMeta? SnapshotMeta() =>
         Query(
             $"SELECT id, format, generated_at, ingested_at FROM snapshots {ServedSnapshot}",

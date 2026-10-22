@@ -7,11 +7,9 @@ using TechAvail.Data;
 
 namespace TechAvail.Ingest;
 
-// The ingest service's own JSON endpoints. /health is open; the rest need
-// API_KEY when one is set.
 public static class Endpoints
 {
-    // snake_case and indented, since people read these endpoints directly.
+    // Indented, since people read these endpoints directly.
     public static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
