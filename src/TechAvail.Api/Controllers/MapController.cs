@@ -41,9 +41,8 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
         List<Point> Unmapped
     );
 
-    // Jobs and tickets in [start, end], one point per job (a two-tech job lists both techs).
-    // Canceled work is left out, and completed work too unless `completed`. Work takes its address's region; without one, the tech's shift region that day. Points
-    // without coordinates are listed as unmapped, without the lat/lon keys.
+    // One point per job: a two-tech job lists both techs. Work takes its address's region; without one,
+    // the tech's shift region that day.
     internal static (List<Point> Points, List<Point> Unmapped) Points(
         List<Block> blocks,
         DateOnly start,
@@ -102,7 +101,6 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
         return ([.. found.Values.Where(Mapped)], [.. found.Values.Where(p => !Mapped(p))]);
     }
 
-    // Jobs as map points with rounded coordinates.
     [HttpGet("map")]
     public MapResponse Get(DateOnly? start, string? region, string? kind, int days = 1, bool completed = true)
     {

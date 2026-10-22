@@ -3,8 +3,7 @@ using TechAvail.Core;
 
 namespace TechAvail.Api;
 
-// The VP's status update as a workbook: the region and concern tables on one sheet, laid out to paste
-// into an email, with "Actions taking" left blank for the dispatcher. Job coordinates are never written.
+// "Actions taking" is left blank for the dispatcher.
 public static class JeopardyExport
 {
     public const string UpdateSheet = "Update";
@@ -49,7 +48,6 @@ public static class JeopardyExport
             StatusUpdate.RegionFor(r.Job.Region),
         ];
 
-    // "10 AM Update" for a requested time, "Update as of 10:47 AM" otherwise.
     public static string Title(TimeOnly? at, DateTime asOf) =>
         at is { } t ? $"{t.ToString(t.Minute == 0 ? "h tt" : "h:mm tt", System.Globalization.CultureInfo.InvariantCulture)} Update"
         : $"Update as of {asOf.ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture)}";

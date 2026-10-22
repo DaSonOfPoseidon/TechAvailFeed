@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace TechAvail.Api;
 
-// When API_KEY is set, requests must send it in X-API-Key (compared in constant time).
 public sealed class ApiKeyAttribute : Attribute, IAuthorizationFilter
 {
     public void OnAuthorization(AuthorizationFilterContext context)

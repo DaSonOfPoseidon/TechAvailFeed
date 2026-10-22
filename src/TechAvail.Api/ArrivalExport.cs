@@ -3,11 +3,9 @@ using TechAvail.Core;
 
 namespace TechAvail.Api;
 
-// One sheet of the arrival workbook. Missing replaces the rows when the snapshot never came.
+// Missing replaces the rows when the snapshot never came.
 public sealed record ArrivalSheet(string Title, DateTime? AsOf, List<ArrivalRow> Rows, bool Highlight, string? Missing = null);
 
-// The arrival report as a workbook. Highlighting is Excel conditional formatting on the State
-// column, so it follows the rows when they're sorted or filtered. Job coordinates are never written.
 public static class ArrivalExport
 {
     // Excel's built-in light red and yellow fills, with the text darkened from Excel's to reach WCAG

@@ -12,7 +12,6 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<RegionTotal> ByRegion
     );
 
-    // Daily capacity series (empty Sundays left out) plus totals per region.
     [HttpGet("kpis/capacity")]
     public CapacityResponse Capacity(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install")
     {
@@ -48,7 +47,6 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<TechOption> Techs
     );
 
-    // Completion, cancellation and reschedule rates per day (Sundays with nothing planned left out), region and technician.
     [HttpGet("kpis/outcomes")]
     public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
     {

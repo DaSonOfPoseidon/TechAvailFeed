@@ -4,8 +4,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Api;
 
-// Rollups of Availability's per-tech days for the calendar and the capacity KPIs. No scheduling
-// rules live here: hours come from TechDays, demand from the unassigned rows.
 public class Capacity
 {
     public int TechsOn { get; set; }
@@ -15,7 +13,6 @@ public class Capacity
     public double BookedH { get; set; }
     public double FreeH { get; set; }
 
-    // Free 2-hour booking windows, and windows with the other hour open to a 1-hour job.
     public int FreeSlots { get; set; }
     public int FreeHourSlots { get; set; }
     public int Jobs { get; set; }
@@ -178,8 +175,7 @@ public static class CapacityRollup
         ];
     }
 
-    // One entry per date in [start, end], totals plus a per-region breakdown. Pass days and
-    // demand already filtered.
+    // Pass days and demand already filtered.
     public static List<CalendarEntry> Entries(IEnumerable<TechDay> days, IEnumerable<Block> demand, DateOnly start, DateOnly end)
     {
         var totals = new Dictionary<DateOnly, Capacity>();
@@ -217,7 +213,6 @@ public static class CapacityRollup
         return result;
     }
 
-    // Sums a calendar's per-region rows over the whole range.
     public static List<RegionTotal> RegionTotals(IEnumerable<CalendarEntry> entries)
     {
         var totals = new Dictionary<string, Capacity>();

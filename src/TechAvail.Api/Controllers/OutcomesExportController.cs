@@ -5,7 +5,6 @@ namespace TechAvail.Api.Controllers;
 
 public sealed class OutcomesExportController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
-    // The outcome history (same filters as /kpis/outcomes) as a workbook.
     [HttpGet("outcomes.xlsx")]
     [Produces(Xlsx.ContentType)]
     public IActionResult Get(DateOnly? start, DateOnly? end, string? region, string? tech)

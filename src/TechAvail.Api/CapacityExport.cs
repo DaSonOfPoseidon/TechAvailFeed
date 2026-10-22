@@ -6,9 +6,6 @@ using Column = TechAvail.Api.Xlsx.Column;
 
 namespace TechAvail.Api;
 
-// The next business days as a workbook: the VP's install availability (install calendar only), the
-// techs left per booking window and area (MBSReporter's Q778), and the unassigned work behind it.
-// Job coordinates are never written.
 public static class CapacityExport
 {
     public const string InstallSheet = "Install availability";
@@ -98,7 +95,6 @@ public static class CapacityExport
     static object?[] BlockRow(Block b) =>
         [b.WorkDate, b.Kind, b.RefId, b.Status, b.TaskType, b.TechId, b.TechName, b.Region, b.StartsAt, b.EndsAt, b.AddressIssue];
 
-    // Summary (FULL rows in red, no stripes so they stand out) and Unassigned work.
     static void WriteSheets(XLWorkbook wb, List<WindowRow> windows, List<Block> demand)
     {
         var summary = Xlsx.WriteSheet(wb, "Summary", SummaryColumns, [.. windows.Select(SummaryRow)], stripes: false);
@@ -106,8 +102,8 @@ public static class CapacityExport
         Xlsx.WriteSheet(wb, "Unassigned work", BlockColumns, [.. demand.Select(BlockRow)]);
     }
 
-    // The VP's update laid out to paste into an email: title, the exceptions text in one wrapped cell (it
-    // pastes as plain lines), then the colour-coded grid with its legend right under it, to copy as one block.
+    // Laid out to paste into an email as one block; the exceptions text sits in one wrapped cell so it
+    // pastes as plain lines.
     static void WriteInstall(XLWorkbook wb, InstallGrid grid)
     {
         var ws = wb.Worksheets.Add(InstallSheet);

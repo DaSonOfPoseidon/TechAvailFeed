@@ -3,8 +3,6 @@ using ClosedXML.Excel;
 
 namespace TechAvail.Api;
 
-// The building blocks every workbook shares: column definitions, cell values, the purple header, table
-// sheets, highlights and saving. A new export is its columns, its rows and an AboutSheet.
 public static class Xlsx
 {
     public const string ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -35,7 +33,6 @@ public static class Xlsx
         cell.Style.Font.SetFontColor(XLColor.FromHtml(colors.Font));
     }
 
-    // A cell value as text, for column widths and diagnostic details.
     internal static string Text(object? value) =>
         value switch
         {
@@ -70,7 +67,6 @@ public static class Xlsx
             _ => throw new InvalidOperationException($"unexpected {value.GetType()} in a workbook"),
         };
 
-    // A header row in the shared purple, for sheets laid out by hand.
     public static void HeaderRow(IXLWorksheet ws, int row, params string[] headers)
     {
         for (var c = 0; c < headers.Length; c++)
@@ -88,7 +84,6 @@ public static class Xlsx
         range.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
     }
 
-    // One sheet as an Excel table: header, typed cells, number formats, widths and a frozen header row.
     // A sheet whose rows are coloured by Highlight goes without the grey stripes.
     public static IXLWorksheet WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows, bool stripes = true)
     {
@@ -114,8 +109,7 @@ public static class Xlsx
         return ws;
     }
 
-    // Colours whole data rows by the text in one column. It is conditional formatting, so the colours
-    // follow the rows when they're sorted or filtered.
+    // Conditional formatting, so the colours follow the rows when they're sorted or filtered.
     public static void Highlight(IXLWorksheet ws, int rows, int columns, int keyColumn, IEnumerable<(string Value, string Fill, string Font)> highlights)
     {
         if (rows == 0)

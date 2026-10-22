@@ -3,9 +3,8 @@ using TechAvail.Data;
 
 namespace TechAvail.Api;
 
-// Listens on FeedStore.ChangedChannel and keeps the served snapshot in memory, so requests don't
-// ask Postgres what's current. Generation counts the changes seen: cache keys built from it go
-// stale together. Current is null while the listener is down, and readers then go to Postgres.
+// Cache keys built from Generation go stale together. Current is null while the listener is down, and
+// readers then go to Postgres.
 public sealed class FeedChanges(FeedStore store, ApiSettings settings, TimeProvider clock, ILogger<FeedChanges> log)
     : BackgroundService
 {
