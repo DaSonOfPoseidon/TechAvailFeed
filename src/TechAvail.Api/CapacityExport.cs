@@ -30,7 +30,7 @@ public static class CapacityExport
         (InstallAvailability.Open, $"{InstallAvailability.LimitedBelow:0%} or more of booking windows free"),
         (InstallAvailability.Limited, $"Under {InstallAvailability.LimitedBelow:0%} free"),
         (InstallAvailability.Full, "Shows 0% free: no booking windows left, or under half a percent"),
-        (InstallAvailability.NoTechs, "Techs scheduled, but all on time off"),
+        (InstallAvailability.NoTechs, "The area's techs are all on time off (PTO)"),
         (InstallAvailability.Closed, "No techs scheduled, or not a booking day (Sunday)"),
     ];
 

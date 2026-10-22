@@ -27,7 +27,8 @@ public static class InstallAvailability
     public const string Limited = "Limited";
     public const string Full = "Full";
 
-    // Nothing bookable because every tech scheduled there is on time off.
+    // Nothing bookable because every tech the area has that day is on time off (TechDay.OnTimeOff, which
+    // includes a day off with no shift).
     public const string NoTechs = "No Techs";
 
     // Nothing bookable because no tech is scheduled there, or it isn't a booking day (Sunday).
