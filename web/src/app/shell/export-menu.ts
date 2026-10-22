@@ -108,7 +108,8 @@ export class ReportDialog {
   }
 }
 
-// The Excel exports. The capacity and diagnostics ones take the current view's filters.
+// The Excel exports. The capacity and diagnostics ones take the current view's filters (capacity
+// keeps its own window).
 @Component({
   selector: 'app-export-menu',
   imports: [MatButtonModule, MatIconModule, MatMenuModule],
@@ -118,8 +119,8 @@ export class ReportDialog {
       {{ busy() ? 'Downloading…' : 'Excel' }}
     </button>
     <mat-menu #menu="matMenu" xPosition="before">
-      <button mat-menu-item (click)="save('capacity.xlsx', state.capacity())">
-        Capacity, with current filters
+      <button mat-menu-item (click)="save('capacity.xlsx', capacityQuery())">
+        Capacity, next 5 business days
       </button>
       <button mat-menu-item (click)="save('outcomes.xlsx', outcomeQuery())">Outcome history</button>
       <button mat-menu-item (click)="save('diagnostics.xlsx', { group: state.get('group') })">
@@ -136,6 +137,11 @@ export class ExportMenu {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   protected readonly busy = signal(false);
+
+  // The workbook always covers the next 5 business days, whatever the calendar's day count.
+  protected capacityQuery(): Query {
+    return { ...this.state.capacity(), days: null };
+  }
 
   protected outcomeQuery(): Query {
     return {
