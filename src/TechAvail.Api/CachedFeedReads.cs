@@ -6,10 +6,8 @@ using TechAvail.Data;
 
 namespace TechAvail.Api;
 
-// IFeedReads with a cache in front. A snapshot's rows never change once committed (FeedStore.AtSnapshot),
-// so they're cached by snapshot id. What changes with each ingest (the snapshot list, finalized days)
-// is keyed on FeedChanges' generation, and isn't cached while the listener is down.
-// Cached values are shared between requests: callers must not modify them.
+// What changes with each ingest is keyed on FeedChanges' generation, and isn't cached while the listener
+// is down. Cached values are shared between requests: callers must not modify them.
 public sealed class CachedFeedReads(FeedStore store, FeedChanges changes, HybridCache cache) : IFeedReads
 {
     // Boxed in a type marked immutable, so the in-memory cache hands back the same instance

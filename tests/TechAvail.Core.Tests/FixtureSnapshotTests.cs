@@ -3,9 +3,7 @@ using System.Text.Json;
 
 namespace TechAvail.Core.Tests;
 
-// Each fake feed in tests/fixtures/*.csv against the parser output saved next to it as .json. After
-// an intended parser change, regenerate them with UPDATE_SNAPSHOTS=1 scripts/dotnet.sh test and
-// review the diff.
+// After an intended parser change, regenerate with UPDATE_SNAPSHOTS=1 scripts/dotnet.sh test and review the diff.
 public class FixtureSnapshotTests
 {
     static readonly string Fixtures = Path.Combine(FindRoot(), "tests", "fixtures");

@@ -4,8 +4,7 @@ namespace TechAvail.Data;
 
 public static class ConnectionStrings
 {
-    // DATABASE_URL is usually a postgresql:// URL (compose builds one); Npgsql takes key=value
-    // pairs. Either form is accepted.
+    // Compose builds a postgresql:// URL; Npgsql only takes key=value pairs.
     public static string FromUrl(string value)
     {
         if (!value.StartsWith("postgres://", StringComparison.Ordinal) && !value.StartsWith("postgresql://", StringComparison.Ordinal))

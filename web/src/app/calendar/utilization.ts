@@ -7,7 +7,6 @@ export const utilizationSteps = [
   { below: Infinity, label: '85% and over' },
 ];
 
-// 1–5, or 0 when nothing was available.
 export function utilizationStep(rate: number | null): number {
   if (rate === null) return 0;
   return utilizationSteps.findIndex((step) => rate < step.below) + 1;

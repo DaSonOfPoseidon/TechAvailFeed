@@ -82,7 +82,6 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
         List<WorkRow> Unassigned
     );
 
-    // The filtered tech days, the unassigned demand and the calendar entries for [start, end].
     internal (List<TechDay> Days, List<Block> Demand, List<CalendarEntry> Entries) CapacityFor(
         List<Block> blocks,
         DateOnly start,
@@ -98,7 +97,6 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
         return (days, demand, CapacityRollup.Entries(days, demand, start, end));
     }
 
-    // Capacity per day and region: available, booked, free and unassigned hours, utilisation.
     [HttpGet("calendar")]
     public RangeResponse Range(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install")
     {
@@ -110,7 +108,6 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
         return new RangeResponse(Info(snapshot), new Filters(region, skill, calendar), from, to, entries);
     }
 
-    // One day per technician: shifts, time off, booked work, free slots.
     [HttpGet("calendar/{day}")]
     public DayResponse Day(DateOnly day, string? region, string? skill, string calendar = "install")
     {

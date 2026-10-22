@@ -21,7 +21,6 @@ export interface Row {
   filter: string | null;
 }
 
-// The rows of the grid: one per region seen in the range, then the totals.
 export function rows(range: CalendarRange): Row[] {
   const regions = [...new Set(range.days.flatMap((d) => d.by_region.map((r) => r.region)))].sort();
   return [
@@ -34,8 +33,6 @@ export function rows(range: CalendarRange): Row[] {
   ];
 }
 
-// Free hours (or free booking windows) per region and day, shaded by utilisation. A column opens
-// that day.
 @Component({
   selector: 'app-calendar-page',
   imports: [

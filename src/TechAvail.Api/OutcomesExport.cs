@@ -4,7 +4,6 @@ using Column = TechAvail.Api.Xlsx.Column;
 
 namespace TechAvail.Api;
 
-// The outcome history as a workbook: what happened to each day's morning plan, per day and per job.
 public static class OutcomesExport
 {
     internal static readonly (string Name, object? Text)[] Definitions =
@@ -53,10 +52,8 @@ public static class OutcomesExport
         new("Prereqs open"),
     ];
 
-    // str.capitalize(): first character upper, the rest lower.
     static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
 
-    // One row per day and kind; a day without a usable plan gets one row with just its status.
     static List<object?[]> DayRows(OutcomeKpis kpis)
     {
         var rows = new List<object?[]>();
@@ -117,7 +114,7 @@ public static class OutcomesExport
             ),
     ];
 
-    // Outcomes by day (from kpis, already filtered) and Outcome items (filtered here).
+    // kpis is already filtered; the items are filtered here.
     internal static void WriteSheets(
         XLWorkbook wb,
         List<(DayOutcome Outcome, bool Provisional)> outcomes,

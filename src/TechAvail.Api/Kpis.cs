@@ -3,9 +3,7 @@ using TechAvail.Core;
 
 namespace TechAvail.Api;
 
-// Counts and rates for one kind of planned work. Rates are over the planned count, rounded to 3
-// places, and null when nothing was planned. Completed and its rate are keyed by checkpoint;
-// outcome and its rate by outcome name.
+// Rates are null when nothing was planned.
 public record KindStats(
     int Planned,
     Dictionary<string, int> Completed,
@@ -14,8 +12,6 @@ public record KindStats(
     Dictionary<string, double?> OutcomeRate
 );
 
-// Jobs also count the ones pulled on the plan day (canceled, unscheduled or rescheduled by d0),
-// split by how far the tech got.
 public sealed record JobStats(
     int Planned,
     Dictionary<string, int> Completed,
@@ -28,7 +24,6 @@ public sealed record JobStats(
 
 public sealed record ByKind(JobStats Job, KindStats Ticket);
 
-// A day without a morning plan is listed with its status but no stats.
 public sealed record DayKpis(
     DateOnly Date,
     string Status,
@@ -43,8 +38,7 @@ public sealed record TechKpis(string TechId, string TechName, JobStats Job, Kind
 
 public sealed record TechOption(string TechId, string TechName);
 
-// Techs: everyone with planned work in the range and region, whatever the tech filter, so a
-// technician picker can offer them (a former tech has history but no shift).
+// Techs ignore the tech filter, so a technician picker can offer them (a former tech has history but no shift).
 public sealed record OutcomeKpis(
     List<DayKpis> Days,
     ByKind Totals,
@@ -53,8 +47,6 @@ public sealed record OutcomeKpis(
     List<TechOption> Techs
 );
 
-// Rates over the outcome history's planned items. Each rate's denominator is the planned count of
-// that kind; a day without a morning plan is listed but adds nothing.
 public static class Kpis
 {
     // The latest checkpoint the item has: d2 once a day is final, the outcome so far before that.
@@ -95,12 +87,10 @@ public static class Kpis
         return new ByKind(job, Stats([.. list.Where(i => i.Kind == "ticket")]));
     }
 
-    // The Trends charts skip an empty Sunday: installs have no booking windows then, so it only dips the lines (#25).
-    // A Sunday with work (a TC shift, planned tickets) stays. Totals and exports count every day.
+    // An empty Sunday only dips the Trends lines (#25); totals and exports count every day.
     public static bool Charted(DateOnly day, bool empty) => !empty || day.DayOfWeek != DayOfWeek.Sunday;
 
-    // An outcome day is empty only when its morning plan is known and has nothing in it. A day without
-    // a morning plan (no_morning) is unknown, so it stays on the chart with its status (#38).
+    // A day without a morning plan is unknown, not empty, so it stays on the chart (#38).
     public static bool Charted(DayKpis day) =>
         Charted(day.Date, day.Status == "ok" && (day.Job?.Planned ?? 0) + (day.Ticket?.Planned ?? 0) == 0);
 

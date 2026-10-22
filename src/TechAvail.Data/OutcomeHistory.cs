@@ -13,11 +13,9 @@ public sealed record HistoryDay(
 
 public sealed record HistoryResult(DateTime? LatestSnapshotAt, List<HistoryDay> Days);
 
-// The outcome rules wired to the store. Days whose d2 has ended are
-// written once (outcome_days / job_outcomes) and never recomputed; later days are computed live.
+// Days whose d2 has ended are written once and never recomputed; later days are computed live.
 public sealed class OutcomeHistory(IFeedReads store, TimeZoneInfo tz, TimeProvider? clock = null)
 {
-    // A day is final once D+2 has ended: its d2 checkpoint can no longer change.
     static readonly TimeSpan FinalAfter = TimeSpan.FromDays(3);
     public const int HistoryDays = 60;
 
@@ -50,7 +48,7 @@ public sealed class OutcomeHistory(IFeedReads store, TimeZoneInfo tz, TimeProvid
 
     static bool IsFinal(DateOnly day, DateTime latest) => day.ToDateTime(TimeOnly.MinValue) + FinalAfter <= latest;
 
-    // Persist every day whose d2 has passed (save is FeedStore.SaveDay), so the history survives snapshot pruning.
+    // So the history survives snapshot pruning.
     public int Finalize(Action<DayOutcome> save)
     {
         var snaps = Snapshots();
@@ -70,8 +68,7 @@ public sealed class OutcomeHistory(IFeedReads store, TimeZoneInfo tz, TimeProvid
         return written;
     }
 
-    // Each day in [start, end], newest first, with whether it is still provisional (computed live
-    // because D+2 hasn't ended). Days before the first blocks snapshot are left out.
+    // Days before the first blocks snapshot are left out.
     public List<(DayOutcome Outcome, bool Provisional)> Range(DateOnly start, DateOnly end)
     {
         var snaps = Snapshots();

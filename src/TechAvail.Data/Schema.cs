@@ -2,8 +2,6 @@ using DbUp;
 
 namespace TechAvail.Data;
 
-// Applies the SQL migrations in Migrations/ (embedded, run in name order, each once; DbUp
-// records them in schemaversions).
 public static class Schema
 {
     public static void Migrate(string connectionString)

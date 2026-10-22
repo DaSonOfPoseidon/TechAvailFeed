@@ -6,7 +6,6 @@ namespace TechAvail.Api.Controllers;
 
 public sealed class CapacityExportController(IFeedReads store, ApiSettings settings, TimeProvider clock) : V1Controller(store, settings, clock)
 {
-    // The next business days (Availability.ExportDates) as a workbook, with /calendar's other filters.
     [HttpGet("capacity.xlsx")]
     [Produces(Xlsx.ContentType)]
     public IActionResult Get(DateOnly? start, string? region, string? skill, string calendar = "install")

@@ -2,9 +2,8 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// The content of one blocks row, as stored: text columns can be NULL in rows from older exports,
-// and NULL never equals "" (a row read back has to match exactly to stay open). Field order is
-// the table's column order.
+// Text columns can be NULL in rows from older exports, and NULL never equals "": a row read back has to
+// match exactly to stay open. Field order is the table's column order.
 public sealed record BlockKey(
     string Kind,
     DateOnly WorkDate,
@@ -59,8 +58,7 @@ public sealed record BlockKey(
 
 public static class BlockDiff
 {
-    // What turns the current rows into the new snapshot, as a multiset: the rows to insert (in
-    // snapshot order) and the ids to close (in current-row order). An unchanged row stays open.
+    // Compared as a multiset. Inserts come in snapshot order, closes in current-row order.
     public static (List<BlockKey> Insert, List<long> Close) Diff(
         IReadOnlyList<(long Id, BlockKey Key)> current,
         IReadOnlyList<BlockKey> next

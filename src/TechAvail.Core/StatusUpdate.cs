@@ -10,9 +10,7 @@ public sealed record RegionStatus(string Region, string Status, int Concerns);
 
 public sealed record StatusReport(List<RegionStatus> Regions, List<ConcernRow> Concerns, List<JeopardyRow> Jeopardy);
 
-// The VP's status update (sent at 10 AM, 1 PM, 3 PM and 5 PM): a Green/Yellow/Red status per region, and the
-// areas and techs behind it. The feed's region is the VP's area; Regions groups the areas the way
-// MBSReporter's multiregion rules do (notes/multiregion_limits.md there).
+// Rules: docs/business-rules.md#jeopardy-and-the-status-update
 public static class StatusUpdate
 {
     public const string Unmapped = "Unmapped";
@@ -38,7 +36,6 @@ public static class StatusUpdate
 
     public static readonly string[] RegionNames = [.. Regions.Select(r => r.Region), Unmapped];
 
-    // A region with no concern is Green, up to YellowMax is Yellow, more is Red.
     public const int YellowMax = 2;
 
     // The update for a requested time reads the first run in [at, at + Window), else the latest before.
@@ -61,7 +58,6 @@ public static class StatusUpdate
         return onDay.Where(s => from <= s.At && s.At < from + Window).MinBy(s => s.At) ?? onDay.Where(s => s.At < from).MaxBy(s => s.At);
     }
 
-    // "8AM", "10:30AM", "1PM".
     public static string Clock(DateTime at) => at.ToString(at.Minute == 0 ? "htt" : "h:mmtt", CultureInfo.InvariantCulture);
 
     static string Noun(Block job) => job.Kind == "ticket" ? "trouble call" : "job";
@@ -96,8 +92,6 @@ public static class StatusUpdate
         return new StatusReport(regions, concerns, jeopardy);
     }
 
-    // One row per tech and area: a job running past its end that holds up the tech's next one, then the
-    // jobs in jeopardy that reason doesn't already cover.
     static IEnumerable<ConcernRow> TechConcerns(List<Block> blocks, DateOnly day, DateTime asOf, List<JeopardyRow> jeopardy)
     {
         var scope = Arrivals.Scope(blocks, day);
@@ -137,8 +131,6 @@ public static class StatusUpdate
         return reasons.Select(p => new ConcernRow(RegionFor(p.Key.Area), p.Key.Area, p.Value.TechName, Join(p.Value.Reasons)));
     }
 
-    // An area's slot that isn't over yet holds more open jobs than techs assigned to them (an unassigned
-    // job brings no tech).
     static IEnumerable<ConcernRow> Overbooked(List<Block> blocks, DateOnly day, DateTime asOf)
     {
         var open = blocks

@@ -79,7 +79,6 @@ public class EndpointTests
         var body = JsonNode.Parse(await factory.CreateClient().GetStringAsync("/latest.json"))!.AsObject();
         Assert.Equal(["snapshot", "slots"], body.Select(p => p.Key));
         Assert.Equal("slots", (string)body["snapshot"]!["format"]!);
-        // Ordered by day, then tech name.
         var slots = body["slots"]!.AsArray();
         Assert.Equal(["Al", "Bea"], slots.Select(s => (string)s!["tech_name"]!));
         var bea = slots[1]!;

@@ -83,7 +83,6 @@ h2 {
   color: var(--ta-ink-2);
 }
 
-// A page: title row, then content, left-aligned on the page plane.
 .page {
   padding: 16px 24px 48px;
   display: grid;
@@ -131,7 +130,6 @@ table.mat-mdc-table {
   max-width: 320px;
 }
 
-// A light data table for the summary tables.
 table.plain {
   border-collapse: collapse;
   width: 100%;

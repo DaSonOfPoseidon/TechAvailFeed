@@ -5,7 +5,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Data;
 
-// The write side of the store: snapshots, legacy slots and the diff-only blocks table.
 public sealed partial class FeedStore(string connectionString)
 {
     // The blocks content columns, in table (and BlockKey) order.
@@ -14,7 +13,6 @@ public sealed partial class FeedStore(string connectionString)
         + "skills, task_type, modified_at, modified_by, enroute_at, inprogress_at, prereqs_status, "
         + "address_issue, latitude, longitude, gps_precision, set_region";
 
-    // The blocks rows of one snapshot, its id passed as @snapshot.
     public const string AtSnapshot =
         "first_snapshot_id <= @snapshot AND (closed_snapshot_id IS NULL OR closed_snapshot_id > @snapshot)";
 
@@ -35,12 +33,10 @@ public sealed partial class FeedStore(string connectionString)
         return connection;
     }
 
-    // Removes snapshot fromId and every later one, reopening the blocks they closed, so the store is as
-    // it was before fromId and runs can be replayed in order (a backfill of runs that arrived late).
-    // Returns the removed runs' ingested_at by message id, for SetIngestedAt once they are replayed.
-    // Finalized outcome history is never recomputed, so a rewind into it is refused: firstDay is the
-    // local date of the earliest run replayed, and a day's outcome reads snapshots through its last
-    // checkpoint (D+2), so any finalized day from firstDay - 2 on could change.
+    // Removes snapshot fromId and every later one, reopening the blocks they closed, so late runs can be
+    // replayed in order. Finalized outcome history is never recomputed, so a rewind into it is refused:
+    // firstDay is the local date of the earliest run replayed, and a day's outcome reads snapshots
+    // through D+2, so any finalized day from firstDay - 2 on could change.
     public Dictionary<string, DateTimeOffset> Rewind(long fromId, DateOnly firstDay)
     {
         using var connection = Open();
@@ -77,7 +73,7 @@ public sealed partial class FeedStore(string connectionString)
         return removed;
     }
 
-    // Puts back the ingest times Rewind returned, so replayed runs keep their real latency.
+    // So replayed runs keep their real latency.
     public void SetIngestedAt(IReadOnlyDictionary<string, DateTimeOffset> times)
     {
         using var connection = Open();
@@ -278,7 +274,6 @@ public sealed partial class FeedStore(string connectionString)
             copy.Write(value.Value, NpgsqlDbType.Double);
     }
 
-    // The BlockColumns starting at ordinal `first`, NULLs kept.
     public static BlockKey ReadKey(NpgsqlDataReader r, int first)
     {
         string? Text(int i) => r.IsDBNull(first + i) ? null : r.GetString(first + i);

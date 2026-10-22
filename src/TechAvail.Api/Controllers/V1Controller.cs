@@ -5,7 +5,6 @@ using TechAvail.Data;
 
 namespace TechAvail.Api.Controllers;
 
-// Shared plumbing for /api/v1: the key check, the served snapshot and local "now".
 [ApiController]
 [ApiKey]
 [Route("api/v1")]
@@ -27,7 +26,6 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
     public const int MaxDays = 62;
     public const int MaxHistoryDays = 366;
 
-    // Out-of-range or malformed query values are a 422.
     protected static void Check(bool valid, string detail)
     {
         if (!valid)
@@ -53,7 +51,6 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
         return File(data, Xlsx.ContentType);
     }
 
-    // An outcome history range: end defaults to today and start to 30 days before it.
     protected (DateOnly Start, DateOnly End) HistoryWindow(DateOnly? start, DateOnly? end)
     {
         var to = end ?? Today();
@@ -62,7 +59,6 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
         return (from, to);
     }
 
-    // The served blocks snapshot, or a 404 before there is one.
     protected (List<Block> Blocks, SnapshotRow Snapshot) Latest()
     {
         var found = Store.Latest();
@@ -72,7 +68,6 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
     }
 }
 
-// Thrown from an endpoint to answer with a {"detail": ...} body.
 public sealed class ApiException(int status, string detail) : Exception(detail)
 {
     public int Status { get; } = status;

@@ -16,7 +16,6 @@ import { addDays, dayLabel, hhmm, hours, percent, regionName } from '../shared/t
 import { techLabels } from '../shared/techs';
 import { bars, windowFor } from './timeline';
 
-// One day per technician: shift, time off, booked work and free slots on a shared time axis.
 @Component({
   selector: 'app-day-page',
   imports: [
@@ -43,7 +42,6 @@ export class DayPage {
   });
   private readonly refreshing = refreshEvery(this.day);
 
-  // Working techs first (by region, then name); those off all day at the end.
   protected readonly names = computed(() => techLabels(this.day.value()?.techs ?? []));
   protected readonly techs = computed(() => {
     const techs = [...(this.day.value()?.techs ?? [])];

@@ -1,11 +1,9 @@
-// Formatting for the API's naive local timestamps ("2026-10-10T08:30:00") and dates ("2026-10-10").
-// They are sliced, never parsed into a Date with a timezone.
+// The API's timestamps are naive local times: slice them, never parse them into a Date with a timezone.
 
 export function hhmm(stamp: string): string {
   return stamp.slice(11, 16);
 }
 
-// Minutes since midnight of the stamp's own day.
 export function minutes(stamp: string): number {
   return Number(stamp.slice(11, 13)) * 60 + Number(stamp.slice(14, 16));
 }
@@ -13,12 +11,11 @@ export function minutes(stamp: string): number {
 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// A calendar date's weekday, from its parts (UTC, so the browser's zone can't shift it).
+// UTC, so the browser's zone can't shift it.
 export function weekday(date: string): string {
   return days[new Date(`${date}T00:00:00Z`).getUTCDay()];
 }
 
-// "Sat 10 Oct"
 export function dayLabel(date: string): string {
   if (!isDay(date)) return date;
   return `${weekday(date)} ${Number(date.slice(8, 10))} ${months[Number(date.slice(5, 7)) - 1]}`;
@@ -36,14 +33,13 @@ export function today(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-// Whether date is a real YYYY-MM-DD day (a route can carry anything, e.g. /calendar/2026-02-31).
+// A route can carry anything, e.g. /calendar/2026-02-31.
 export function isDay(date: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const day = new Date(`${date}T00:00:00Z`);
   return !isNaN(day.getTime()) && day.toISOString().slice(0, 10) === date;
 }
 
-// date plus count days, or null when date isn't a real day.
 export function addDays(date: string, count: number): string | null {
   if (!isDay(date)) return null;
   const day = new Date(`${date}T00:00:00Z`);

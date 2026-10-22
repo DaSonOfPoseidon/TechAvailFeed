@@ -4,7 +4,6 @@ using Column = TechAvail.Api.Xlsx.Column;
 
 namespace TechAvail.Api;
 
-// The data-quality checks as a workbook: one row per finding, with the check-specific fields in Detail.
 public static class DiagnosticsExport
 {
     static readonly Column[] Columns =
@@ -25,7 +24,6 @@ public static class DiagnosticsExport
 
     static readonly string[] Fields = ["ref_id", "kind", "status", "work_date", "starts_at", "ends_at", "tech_id", "tech_name", "region"];
 
-    // Fixed columns for the job or tech, and whatever else a check reports as "name: value".
     static List<object?[]> Rows(IEnumerable<Check> checks) =>
     [
         .. checks.SelectMany(check =>
@@ -42,7 +40,6 @@ public static class DiagnosticsExport
 
     internal static void WriteSheet(XLWorkbook wb, List<Check> checks) => Xlsx.WriteSheet(wb, "Diagnostics", Columns, Rows(checks));
 
-    // Rows per check, or "not in feed yet" for a check whose columns the feed doesn't send.
     internal static IEnumerable<(string, object?)> Counts(List<Check> checks) =>
         checks.Select(c => (c.Title, (object?)(c.Available ? c.Rows.Count : "not in feed yet")));
 

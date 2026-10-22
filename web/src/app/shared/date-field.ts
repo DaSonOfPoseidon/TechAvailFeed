@@ -11,9 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 
 const isoDay = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-// The query string's "2026-10-10" as a local-midnight Date, built from its parts. An impossible
-// day (2026-02-31, month 13) is null rather than rolled over into another date. setFullYear keeps
-// years below 100 from being read as 19xx.
+// An impossible day is null rather than rolled over. setFullYear keeps years below 100 from being read as 19xx.
 export function fromDay(day: string | null): Date | null {
   const match = day?.match(isoDay);
   if (!match) return null;
@@ -48,7 +46,6 @@ export class LocalDateAdapter extends NativeDateAdapter {
   }
 }
 
-// A date filter that opens a calendar on click and still takes typing. Emits null when cleared.
 @Component({
   selector: 'app-date-field',
   imports: [MatDatepickerModule, MatFormFieldModule, MatInputModule],

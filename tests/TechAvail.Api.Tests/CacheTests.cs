@@ -32,7 +32,6 @@ public class CacheTests
         return store.Save(id, "email", null, null, null, Now, feed);
     }
 
-    // The listener runs in the background: wait for it to reach a state.
     static async Task Until(Func<bool> done)
     {
         for (var waited = 0; !done(); waited += 20)

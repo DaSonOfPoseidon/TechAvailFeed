@@ -87,7 +87,6 @@ public class FeedParserTests
         "\"2026-09-29T09:15:02-05\",\"job\",\"2026-09-29\",\"jdoe0170\",\"Jane Doe\","
         + "\"2026-09-29 09:00\",\"2026-09-29 11:00\",\"123456\",\"A\",\"FIELD\",\"\",\"\"\n";
 
-    // JobRow with its trailing region and skills swapped for tail.
     static string Job(string tail) => JobRow.Replace("\"\",\"\"\n", tail);
 
     [Fact]

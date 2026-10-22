@@ -12,12 +12,13 @@ Codex's PR review and the pre-push review gate both follow this section. Rate ev
 - **P1**: wrong behaviour on a real path (wrong availability, counts or export rows), a feed row that can be
   misparsed, or a broken project invariant (below).
 - **P2**: an edge case that breaks (empty feed, missing optional column, day boundaries, error paths), a doc
-  or comment promise the code doesn't keep, a test that can pass while the code is wrong, or CI/script
-  behaviour that differs from its description.
+  or comment promise the code doesn't keep, a test that can pass while the code is wrong, CI/script
+  behaviour that differs from its description, or a comment that breaks [Comments](#comments).
 - **P3**: a minor issue a strict reviewer might still flag. P3s are filed as follow-up issues, not fixed in
   the PR that found them.
 
-Every finding needs a concrete failure scenario (input or state → wrong result). Don't flag style, naming,
+Every finding needs a concrete failure scenario (input or state → wrong result); for a comment, name the
+comment and which rule it breaks. Apart from comments, don't flag style, naming,
 or anything CI already checks (build, tests, `dotnet format`, the web lint/format/build).
 
 ### Project invariants
@@ -38,6 +39,19 @@ or anything CI already checks (build, tests, `dotnet format`, the web lint/forma
 - Never commit `.env` or any credential.
 - Commit subjects and PR titles: one-line Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `ci:`,
   `chore:`, `refactor:`), lower-case imperative.
+
+### Comments
+
+Code should explain itself. A comment earns its place only when the code can't say it:
+
+- a non-obvious *why*: where a business rule comes from, an MBS or feed quirk, a precondition the caller
+  must meet ("both inputs must be merged and sorted");
+- a fact a reader would otherwise have to trace through several files.
+
+A one- or two-line summary is fine on a type or member that other files use. Don't restate what the code
+does, narrate its history ("ported from", "as before X"), give examples a name already conveys, or label
+obvious sections. Background longer than a few lines goes in `docs/` (an existing file if one fits, else a
+new one), and the code links it.
 
 ### Known pitfalls
 

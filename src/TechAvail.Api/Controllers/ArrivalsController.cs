@@ -23,8 +23,7 @@ public sealed class ArrivalsController(IFeedReads store, ApiSettings settings, T
         return Workbook(data, $"arrivals_{day:yyyy-MM-dd}.xlsx");
     }
 
-    // The regions the day's report can be filtered to. They come from that day's snapshots, so a
-    // past day can list a region the latest snapshot no longer has.
+    // From that day's snapshots, so a past day can list a region the latest snapshot no longer has.
     [HttpGet("arrivals/regions")]
     public RegionsResponse Regions(DateOnly? date)
     {
@@ -35,7 +34,6 @@ public sealed class ArrivalsController(IFeedReads store, ApiSettings settings, T
         );
     }
 
-    // The report's sheets for date (default today), every region.
     (DateOnly Day, ArrivalSheet[] Sheets) Sheets(DateOnly? date)
     {
         var today = Today();

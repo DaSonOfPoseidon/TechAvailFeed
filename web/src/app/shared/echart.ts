@@ -30,7 +30,7 @@ echarts.use([
 
 export type ChartOptions = echarts.EChartsCoreOption;
 
-// A CSS colour token resolved to rgb(), for ECharts (which can't read var() or light-dark()).
+// ECharts can't read var() or light-dark().
 export function cssColor(token: string): string {
   const probe = document.createElement('span');
   probe.style.color = `var(${token})`;
@@ -42,9 +42,8 @@ export function cssColor(token: string): string {
 
 const scheme = window.matchMedia('(prefers-color-scheme: dark)');
 
-// Whether the OS/browser is in dark mode, updating live. Anything that bakes cssColor() values
-// into a canvas or inline styles reads it, so it redraws when the scheme changes. Call it in an
-// injection context.
+// Anything that bakes cssColor() values into a canvas or inline styles reads it, so it redraws when
+// the scheme changes. Call it in an injection context.
 export function darkMode(): Signal<boolean> {
   const dark = signal(scheme.matches);
   const onScheme = () => dark.set(scheme.matches);
@@ -53,7 +52,6 @@ export function darkMode(): Signal<boolean> {
   return dark.asReadonly();
 }
 
-// The chart chrome shared by every chart: recessive axes, hairline grid, text in ink tokens.
 export function chrome() {
   const muted = cssColor('--ta-muted');
   const grid = cssColor('--ta-grid');
@@ -91,8 +89,7 @@ export function chrome() {
   };
 }
 
-// <div [appEchart]="options"> renders an ECharts chart, resizing with its box and re-rendering
-// when the colour scheme changes. Options are a function, so the colours are read at render time.
+// Options are a function, so the colours are read at render time.
 @Directive({ selector: '[appEchart]' })
 export class EChart {
   readonly appEchart = input.required<() => ChartOptions>();

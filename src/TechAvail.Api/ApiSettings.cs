@@ -2,7 +2,6 @@ using TechAvail.Data;
 
 namespace TechAvail.Api;
 
-// The API's settings, from the environment (see .env.example).
 public sealed record ApiSettings(
     string ConnectionString,
     TimeZoneInfo Tz,

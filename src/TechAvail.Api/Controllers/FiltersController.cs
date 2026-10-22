@@ -11,8 +11,7 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
     // VpRegions are the jeopardy update's regions (StatusUpdate), not the feed's.
     public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Skills, List<Tech> Techs, string[] VpRegions);
 
-    // Regions, skills, technicians and VP regions for filter dropdowns. Skills are the techs' plus
-    // those unassigned work needs, so demand no rostered tech covers can still be filtered to.
+    // Skills include those unassigned work needs, so demand no rostered tech covers can still be filtered to.
     [HttpGet("filters")]
     public FiltersResponse Get()
     {

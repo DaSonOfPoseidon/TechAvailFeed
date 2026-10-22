@@ -22,7 +22,6 @@ public sealed class DiagnosticsController(IFeedReads store, ApiSettings settings
 
     public sealed record DiagnosticsResponse(SnapshotInfo? Snapshot, List<Summary> Summary, List<Detail> Checks);
 
-    // The checks in group and/or with id check; an unknown group or check is a 422.
     internal static List<Check> Select(List<Check> found, string? group, string? check)
     {
         Check(
@@ -33,7 +32,6 @@ public sealed class DiagnosticsController(IFeedReads store, ApiSettings settings
         return [.. found.Where(c => (group is null || c.Group == group) && (check is null || c.Id == check))];
     }
 
-    // Data-quality checks: double bookings, work outside shifts, stale open work, setup gaps.
     [HttpGet("diagnostics")]
     public DiagnosticsResponse Get(string? group, string? check)
     {

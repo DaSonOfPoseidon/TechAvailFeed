@@ -6,8 +6,7 @@ using System.Text.Json.Nodes;
 
 namespace TechAvail.Ingest;
 
-// Keeps the raw mail for replays and the IMAP check, since Gmail only holds today's. Named by a hash
-// of the Message-ID so a re-run skips mail it already has.
+// Gmail only holds today's mail. Named by a hash of the Message-ID so a re-run skips mail it already has.
 public static class MailArchive
 {
     // "<" and ">" in the Message-ID are left as they are.
@@ -23,7 +22,6 @@ public static class MailArchive
         var meta = new JsonObject
         {
             ["message_id"] = messageId,
-            // The IMAP internal date, in UTC.
             ["mailbox_received_at"] = mailboxReceivedAt?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:sszzz"),
         };
         File.WriteAllText(Path.ChangeExtension(path, ".json"), meta.ToJsonString(Json));

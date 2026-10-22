@@ -4,8 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 export type Query = Record<string, string | number | null | undefined>;
 
-// A resource's latest loaded value, kept while it refetches (each new snapshot refetches it) or
-// after a failed refetch, so dropdowns built from it don't empty for a moment.
+// Kept while it refetches or after a failed refetch, so dropdowns built from it don't empty for a moment.
 export function lastValue<T>(resource: HttpResourceRef<T | undefined>): Signal<T | undefined> {
   return linkedSignal<T | undefined, T | undefined>({
     source: () => (resource.hasValue() ? resource.value() : undefined),
@@ -13,7 +12,6 @@ export function lastValue<T>(resource: HttpResourceRef<T | undefined>): Signal<T
   });
 }
 
-// The query string for an API call, without the unset values.
 export function params(query: Query): HttpParams {
   let result = new HttpParams();
   for (const [key, value] of Object.entries(query)) {
@@ -22,7 +20,7 @@ export function params(query: Query): HttpParams {
   return result;
 }
 
-// The filename from a Content-Disposition header (the API sends filename="...").
+// The API sends filename="...".
 export function filenameFrom(header: string | null, fallback: string): string {
   const match = header?.match(/filename="?([^";]+)"?/);
   return match ? match[1] : fallback;
@@ -32,7 +30,7 @@ export function filenameFrom(header: string | null, fallback: string): string {
 export class FeedApi {
   private readonly http = inject(HttpClient);
 
-  // Fetches a workbook (through HttpClient, so the API key is sent) and saves it.
+  // Through HttpClient, so the API key is sent.
   async download(path: string, query: Query): Promise<void> {
     const response: HttpResponse<Blob> = await firstValueFrom(
       this.http.get(`/api/v1/${path}`, {
@@ -49,7 +47,7 @@ export class FeedApi {
   }
 }
 
-// The {"detail": ...} of an API error, also when it came back as a Blob (a failed download).
+// A failed download's error comes back as a Blob.
 export async function errorDetail(error: unknown): Promise<string> {
   const body = (error as { error?: unknown })?.error;
   if (body instanceof Blob) {

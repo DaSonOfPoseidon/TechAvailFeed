@@ -13,10 +13,6 @@ public sealed record FreeSlot(
     string Skills
 );
 
-// One tech's day. available = shift - lunch - time off; booked is the jobs and tickets inside it;
-// free is the usable slots (FreeSlots' rules, so today's are clipped to now + lead time).
-// booked + free <= available: gaps shorter than MinMinutes are neither. FreeWindows and HourOpenings
-// count the booking windows a job could still go in, out of BookableWindows (Windows' rules).
 public sealed record TechDay(
     DateOnly WorkDate,
     string TechId,
@@ -43,30 +39,26 @@ public sealed record TechDay(
 
 public sealed record UnassignedDemand(DateOnly WorkDate, string Region, int Jobs, int Tickets, double Hours);
 
-// Free time from the raw calendar blocks.
+// Rules: docs/business-rules.md#availability
 public static class Availability
 {
-    // Ported from the feed query: a slot must be at least this long, and can't start sooner than
-    // this after "now". Unlike the query, a gap starting too soon is clipped, not dropped.
+    // From the feed query, except that a gap starting too soon is clipped, not dropped.
     public const int MinMinutes = 60;
     public const int LeadMinutes = 30;
 
-    // Saturdays from this date run the weekday schedule: lunch at 12:00 and the weekday booking windows.
-    // Earlier Saturdays keep the old one, so past days don't change.
+    // Earlier Saturdays keep the old schedule, so past days don't change.
     public static readonly DateOnly NewSaturdaysFrom = new(2026, 10, 17);
 
     public static bool OldSaturday(DateOnly workDate) =>
         workDate.DayOfWeek == DayOfWeek.Saturday && workDate < NewSaturdaysFrom;
 
-    // The canonical booking windows (MBSReporter's multiregion rules), as starts; each is 2 hours long.
-    // Saturdays use the weekday windows without 5pm; before NewSaturdaysFrom they were 9, 11, 2, 4.
+    // Start hours, from MBSReporter's multiregion rules.
     static readonly int[] WeekdayWindows = [8, 10, 13, 15, 17];
     static readonly int[] SaturdayWindows = [8, 10, 13, 15];
     static readonly int[] OldSaturdayWindows = [9, 11, 14, 16];
     public static readonly TimeSpan WindowLength = TimeSpan.FromHours(2);
 
-    // The 1-hour jobs (voice install, equipment install, MDU), by skill code. One of them leaves the
-    // other hour of its window open to another 1-hour job.
+    // Voice install, equipment install and MDU.
     public static readonly string[] OneHourSkills = ["VOI", "INH", "MDU"];
 
     public static IEnumerable<DateTime> BookingWindows(DateOnly workDate) =>
@@ -79,8 +71,7 @@ public static class Availability
             }
         ).Select(hour => workDate.ToDateTime(new TimeOnly(hour, 0)));
 
-    // The capacity export's days: from start through the given number of business days (Monday to
-    // Saturday). A Sunday in between is kept only when someone works that day (time left after time off).
+    // Business days are Monday to Saturday; a Sunday in between is kept only when someone works it.
     public static List<DateOnly> ExportDates(DateOnly start, IEnumerable<TechDay> days, int businessDays = 5)
     {
         var worked = days.Where(d => d.AvailableHours > 0).Select(d => d.WorkDate).ToHashSet();
@@ -96,13 +87,11 @@ public static class Availability
         return dates;
     }
 
-    // The feed query's assumed lunch hour: 12:00-13:00, old Saturdays 13:00-14:00.
+    // The feed query's assumed lunch hour.
     static readonly TimeOnly LunchStart = new(12, 0);
     static readonly TimeOnly OldSaturdayLunchStart = new(13, 0);
     static readonly TimeSpan LunchLength = TimeSpan.FromHours(1);
 
-    // A schedule comes as "shift" on the install calendar and "shift_tc" on the TC (trouble call)
-    // calendar; a dual tech's comes as both. Capacity is computed for one calendar at a time.
     public static readonly IReadOnlyDictionary<string, string> Calendars = new Dictionary<string, string>
     {
         ["install"] = "shift",
@@ -116,8 +105,8 @@ public static class Availability
         ["tc"] = ["ticket", "time_off"],
     };
 
-    // Statuses that don't occupy a tech's time: Unnecessary/Canceled tasks; Closed/Deleted/Hold/
-    // Cleared tickets. A held task stays busy while a held ticket is free, a documented asymmetry.
+    // Unnecessary/Canceled tasks; Closed/Deleted/Hold/Cleared tickets. A held task stays busy while a
+    // held ticket is free, a documented asymmetry.
     public static readonly IReadOnlyDictionary<string, string[]> NotBusy = new Dictionary<string, string[]>
     {
         ["job"] = ["U", "X"],
@@ -180,9 +169,8 @@ public static class Availability
         BusyOn[calendar].Contains(block.Kind)
         && !(NotBusy.TryGetValue(block.Kind, out var statuses) && statuses.Contains(block.Status));
 
-    // One calendar's shift segments per tech and day, and every busy block per tech (time off can
-    // span days), in first-seen order. A shift with no region is a data issue (Diagnostics'
-    // tech_no_region), not capacity: no region could book it.
+    // Busy blocks are per tech, not per day: time off can span days. A shift with no region is a data
+    // issue (Diagnostics' tech_no_region), not capacity: no region could book it.
     static (OrderedDictionary<(string, DateOnly), List<Block>>, OrderedDictionary<string, List<Block>>) Group(
         IEnumerable<Block> blocks,
         string calendar
@@ -261,8 +249,7 @@ public static class Availability
         ];
     }
 
-    // The first time new work can start: now plus the lead time, rounded up to the whole minute so
-    // clipped slots don't start at 17:00:51.
+    // Rounded up to the whole minute so clipped slots don't start at 17:00:51.
     public static DateTime Earliest(DateTime now, int leadMinutes = LeadMinutes)
     {
         var earliest = new DateTime(now.Ticks - now.Ticks % TimeSpan.TicksPerMinute).AddMinutes(leadMinutes);
@@ -272,10 +259,6 @@ public static class Availability
     public static bool HasAnySkill(string skills, string[] codes) =>
         skills.Split(',').Any(s => codes.Contains(s.Trim().ToUpperInvariant()));
 
-    // A booking window that hasn't started (by the lead time) is free when it lies wholly inside the
-    // available time with no work in it. One holding a single 1-hour job, with the other hour still
-    // available and free, is an opening for another 1-hour job, if the tech can do one. A window that
-    // hasn't started and lies wholly inside the available time is bookable, booked or not.
     // available must be merged and sorted.
     public static (int Free, int Openings, int Bookable) Windows(
         DateOnly workDate,
@@ -318,10 +301,6 @@ public static class Availability
         return (start, start.AddDays(1));
     }
 
-    // Every tech and date in [start, end] with a shift on this calendar, or time off. The range
-    // defaults to the shift dates. A day off counts on every calendar the tech has shifts on; a
-    // tech with no shifts at all stays on install, as before TC shifts were sent. One whose only
-    // shifts have no region is on no calendar.
     public static List<TechDay> TechDays(
         IReadOnlyList<Block> blocks,
         DateTime now,
@@ -364,7 +343,6 @@ public static class Availability
                     keys.Add((techId, day));
             }
         }
-        // A day off still belongs to the region the tech usually works in.
         var home = new Dictionary<string, Block>();
         foreach (var key in shifts.Keys.OrderBy(k => k.Item1, StringComparer.Ordinal).ThenBy(k => k.Item2))
             home.TryAdd(key.Item1, shifts[key][0]);
@@ -425,8 +403,6 @@ public static class Availability
         ];
     }
 
-    // Scheduled work with no tech yet, per day and the work's region. It will take a rostered
-    // tech's time, so a dashboard nets it against free capacity.
     public static List<UnassignedDemand> Unassigned(IEnumerable<Block> blocks, DateOnly today)
     {
         var totals = new Dictionary<(DateOnly, string), (int Jobs, int Tickets, double Hours)>();

@@ -2,9 +2,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core;
 
-// Job coordinates locate a customer's home as precisely as the street
-// address. Postgres keeps them exact; anything served rounds them unless explicitly configured
-// not to. 3 decimals is ~110 m: enough for a dashboard map, not enough to pick out a house.
+// Job coordinates locate a customer's home. 3 decimals is ~110 m: enough for a map, not to pick out a house.
 public static class Coords
 {
     public const int Decimals = 3;

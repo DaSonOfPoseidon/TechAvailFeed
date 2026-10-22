@@ -1,8 +1,6 @@
 using TechAvail.Data;
 using TechAvail.Ingest;
 
-// Ingest service: polls the mailbox for the scheduled feed, writes snapshots to Postgres and serves
-// its own status endpoints.
 if (args.Contains("--healthcheck"))
 {
     // For the container healthcheck: the aspnet image has no curl.

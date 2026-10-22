@@ -17,7 +17,6 @@ export function withActive(options: readonly string[], active: string | null): s
   return active === null || options.includes(active) ? [...options] : [...options, active];
 }
 
-// One row of filters above a view. Each view lists the fields its endpoint takes.
 @Component({
   selector: 'app-filter-bar',
   imports: [DateField, MatButtonToggleModule, MatFormFieldModule, MatSelectModule],

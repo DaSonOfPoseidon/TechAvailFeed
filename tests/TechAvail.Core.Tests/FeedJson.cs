@@ -5,7 +5,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Tests;
 
-// What the parser makes of a feed file, as JSON: the rows with every field, or the error message.
 public static class FeedJson
 {
     public static JsonObject Feed(byte[] data)

@@ -2,7 +2,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
-// A failed request, in words: the API's own detail when it sent one.
 @Component({
   selector: 'app-error-panel',
   imports: [MatButtonModule],

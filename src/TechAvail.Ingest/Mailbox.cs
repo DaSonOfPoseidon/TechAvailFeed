@@ -6,23 +6,19 @@ using TechAvail.Core.Mail;
 
 namespace TechAvail.Ingest;
 
-// A fetched feed mail: its IMAP uid, raw bytes, parsed form and when the mailbox received it.
 public sealed record FetchedMail(UniqueId Uid, byte[] Raw, FeedMail Mail, DateTimeOffset? ReceivedAt);
 
-// One poll's connection to the mailbox; an interface so the poll
-// loop can be tested without Gmail.
 public interface IMailboxSession : IDisposable
 {
     IReadOnlyList<FetchedMail> FetchNew();
 
-    // Every mail under a label, read-only (EXAMINE, BODY.PEEK): nothing is flagged or moved.
+    // Read-only (EXAMINE, BODY.PEEK): nothing is flagged or moved.
     IReadOnlyList<FetchedMail> Peek(string label);
     void FileAway(UniqueId uid, string label);
     void EnsureLabels();
     int PurgeProcessed(DateOnly before);
 
-    // Feed mail Gmail filed as Spam since `since` that passes SenderCheck, read-only. The poll only
-    // reads the inbox, so it never sees these.
+    // The poll only reads the inbox, so it never sees these.
     int CountSpam(DateTimeOffset since);
 }
 
@@ -80,7 +76,6 @@ public sealed class ImapMailbox(IngestSettings settings, ILogger<ImapMailbox> lo
                 var (fetched, message) = Fetch(inbox, uid, Token);
                 if (SenderCheck.Rejection(message, settings.MailFrom, settings.AuthservId) is { } rejection)
                 {
-                    // Filed away, so it leaves the inbox and stays there for inspection.
                     log.LogWarning("rejected uid {Uid}: {Rejection}", uid, rejection);
                     FileAway(uid, settings.FailedLabel);
                     continue;
