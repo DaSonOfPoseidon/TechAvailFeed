@@ -26,7 +26,8 @@ public static class StatusUpdate
             "West",
             ["Clinton-Butler", "Harrisonville-Pleasant Hill", "Oak Grove-Odessa", "Sedalia-La Monte", "Warrensburg-Knob Noster", "Carrollton"]
         ),
-        ("Southwest", ["Nevada-Lamar", "Joplin Area", "Hermitage-Humansville", "Springfield Area"]),
+        // Lamar-Webb City is Nevada-Lamar's name before 2026-10-21, kept for reports on older snapshots.
+        ("Southwest", ["Nevada-Lamar", "Joplin Area", "Hermitage-Humansville", "Springfield Area", "Lamar-Webb City"]),
         ("South", ["Lebanon-Rolla"]),
         ("North", ["Kirksville-Chillicothe"]),
     ];
