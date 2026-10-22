@@ -97,6 +97,20 @@ public class WindowSummaryTests
     }
 
     [Fact]
+    public void An_mdu_slot_starting_off_the_hour_still_fits_an_hour_in_the_window()
+    {
+        var rows = Summary([B("shift", "07:45", "09:00", "a", skills: "MDU"), B("shift", "08:00", "10:00", "b")]);
+        Assert.True(Row(rows, "Carrollton", "08:00").Mdu);
+    }
+
+    [Fact]
+    public void Unassigned_work_in_a_started_window_gets_no_row()
+    {
+        var rows = Summary([B("job_unassigned", "08:00", "10:00", tech: "")], now: At(Thursday, "09:00"));
+        Assert.Empty(rows);
+    }
+
+    [Fact]
     public void Territories_roll_up_into_the_vps_areas()
     {
         var rows = Summary([B("shift", "08:00", "10:00", "a", "Columbia Core"), B("shift", "08:00", "10:00", "b", "Jefferson City Area")]);
@@ -123,6 +137,13 @@ public class WindowSummaryTests
             [Thursday, Thursday.AddDays(1), Thursday.AddDays(2), Thursday.AddDays(4), Thursday.AddDays(5)],
             Availability.ExportDates(Thursday, [Shift(Thursday)])
         );
+
+    [Fact]
+    public void Export_dates_skip_a_sunday_everyone_has_off()
+    {
+        var off = Availability.TechDays([B("shift", "08:00", "17:00", day: Sunday), B("time_off", "00:00", "23:59", day: Sunday)], Early, Sunday, Sunday).Single();
+        Assert.DoesNotContain(Sunday, Availability.ExportDates(Thursday, [off]));
+    }
 
     [Fact]
     public void Export_dates_keep_a_sunday_someone_works() =>

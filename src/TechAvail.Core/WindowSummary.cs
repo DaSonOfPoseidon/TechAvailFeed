@@ -21,20 +21,19 @@ public static class WindowSummary
     static TimeSpan Overlap(DateTime start, DateTime end, DateTime from, DateTime until) =>
         (end < until ? end : until) - (start > from ? start : from);
 
-    // Trouble calls run every day, so the TC calendar's Sunday uses the weekday windows.
-    static IEnumerable<DateTime> Windows(DateOnly date, string calendar) =>
-        calendar == "tc" && date.DayOfWeek == DayOfWeek.Sunday
-            ? Availability.BookingWindows(date.AddDays(1)).Select(w => w.AddDays(-1))
-            : Availability.BookingWindows(date);
-
-    // The window a job starting then is booked into, if any.
-    static DateTime? WindowOf(List<DateTime> windows, DateTime start) =>
-        windows.Where(w => w <= start && start < w + Availability.WindowLength).Select(w => (DateTime?)w).FirstOrDefault();
+    // The windows that still have an hour left after the lead time. Trouble calls run every day, so the
+    // TC calendar's Sunday uses the weekday windows.
+    static IEnumerable<DateTime> Windows(DateOnly date, string calendar, DateTime earliest) =>
+        (
+            calendar == "tc" && date.DayOfWeek == DayOfWeek.Sunday
+                ? Availability.BookingWindows(date.AddDays(1)).Select(w => w.AddDays(-1))
+                : Availability.BookingWindows(date)
+        ).Where(w => w + Availability.WindowLength - (w > earliest ? w : earliest) >= MinOverlap);
 
     // Pass days and demand already filtered. A tech is scheduled in a window when their shift covers an
     // hour of it that hasn't started (by the lead time), and available when a free slot covers an hour of
-    // it. Unassigned work counts once (the feed can repeat a row), in the first window it overlaps. An MDU-skilled tech's free slots
-    // hold back-to-back 1-hour jobs, each in the window it starts in.
+    // it. Unassigned work counts once (the feed can repeat a row), in the first window it overlaps. An
+    // MDU-skilled tech has an MDU opening when a free hour starts in the window.
     public static List<WindowRow> Build(
         IEnumerable<TechDay> days,
         IEnumerable<Block> demand,
@@ -53,8 +52,8 @@ public static class WindowSummary
         foreach (var day in days.Where(d => d.Region.Length > 0 && wanted.Contains(d.WorkDate)))
         {
             var area = InstallAvailability.AreaFor(day.Region);
-            List<DateTime> windows = [.. Windows(day.WorkDate, calendar)];
-            foreach (var window in windows)
+            var hourJobs = Availability.HasAnySkill(day.Skills, MduSkills);
+            foreach (var window in Windows(day.WorkDate, calendar, earliest))
             {
                 var key = (day.WorkDate, area, window);
                 var end = window + Availability.WindowLength;
@@ -67,13 +66,12 @@ public static class WindowSummary
                         available[key] = techs = [];
                     techs.Add(day.TechId);
                 }
+                if (
+                    hourJobs
+                    && day.Free.Any(f => (f.OpenFrom > window ? f.OpenFrom : window) is var start && start < end && start + MduJob <= f.OpenUntil)
+                )
+                    mdu.Add(key);
             }
-            if (!Availability.HasAnySkill(day.Skills, MduSkills))
-                continue;
-            foreach (var slot in day.Free)
-                for (var start = slot.OpenFrom; start + MduJob <= slot.OpenUntil; start += MduJob)
-                    if (WindowOf(windows, start) is { } window)
-                        mdu.Add((day.WorkDate, area, window));
         }
 
         var work = demand
@@ -81,7 +79,7 @@ public static class WindowSummary
             .DistinctBy(b => (b.Kind, b.RefId, b.StartsAt, b.EndsAt));
         foreach (var block in work)
         {
-            var window = Windows(block.WorkDate, calendar)
+            var window = Windows(block.WorkDate, calendar, earliest)
                 .Where(w => w < block.EndsAt && w + Availability.WindowLength > block.StartsAt)
                 .Select(w => (DateTime?)w)
                 .FirstOrDefault();

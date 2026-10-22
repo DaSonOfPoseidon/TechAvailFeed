@@ -80,10 +80,10 @@ public static class Availability
         ).Select(hour => workDate.ToDateTime(new TimeOnly(hour, 0)));
 
     // The capacity export's days: from start through the given number of business days (Monday to
-    // Saturday). A Sunday in between is kept only when someone has a shift that day.
+    // Saturday). A Sunday in between is kept only when someone works that day (time left after time off).
     public static List<DateOnly> ExportDates(DateOnly start, IEnumerable<TechDay> days, int businessDays = 5)
     {
-        var worked = days.Where(d => d.Shifts.Count > 0).Select(d => d.WorkDate).ToHashSet();
+        var worked = days.Where(d => d.AvailableHours > 0).Select(d => d.WorkDate).ToHashSet();
         var dates = new List<DateOnly>();
         for (var (date, counted) = (start, 0); counted < businessDays; date = date.AddDays(1))
         {
