@@ -29,7 +29,7 @@ public static class CapacityExport
     [
         (InstallAvailability.Open, $"{InstallAvailability.LimitedBelow:0%} or more of booking windows free"),
         (InstallAvailability.Limited, $"Under {InstallAvailability.LimitedBelow:0%} free"),
-        (InstallAvailability.Full, "0% free: every booking window is taken"),
+        (InstallAvailability.Full, "Shows 0% free: no booking windows left, or under half a percent"),
         (InstallAvailability.NoTechs, "No techs scheduled, or all on time off"),
         (InstallAvailability.Closed, "Not a booking day (Sunday)"),
     ];
@@ -49,7 +49,7 @@ public static class CapacityExport
         (
             "Status",
             $"Open: {InstallAvailability.LimitedBelow:0%} or more, as shown (whole percent). Limited: under "
-                + $"{InstallAvailability.LimitedBelow:0%}. Full: 0%, working techs have nothing left. No Techs: no tech "
+                + $"{InstallAvailability.LimitedBelow:0%}. Full: shows 0% (under half a percent free, or nothing left). No Techs: no tech "
                 + "scheduled, or all on time off. Closed: no booking windows that day (Sunday)."
         ),
         (
