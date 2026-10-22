@@ -89,7 +89,8 @@ public static class Xlsx
     }
 
     // One sheet as an Excel table: header, typed cells, number formats, widths and a frozen header row.
-    public static IXLWorksheet WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows)
+    // A sheet whose rows are coloured by Highlight goes without the grey stripes.
+    public static IXLWorksheet WriteSheet(XLWorkbook wb, string title, IReadOnlyList<Column> columns, List<object?[]> rows, bool stripes = true)
     {
         var ws = wb.Worksheets.Add(title);
         HeaderRow(ws, 1, [.. columns.Select(c => c.Header)]);
@@ -108,7 +109,7 @@ public static class Xlsx
             // Excel rejects a table with no data rows; an empty sheet keeps just its header.
             var table = ws.Range(1, 1, rows.Count + 1, columns.Count).CreateTable(title.Replace(" ", ""));
             table.Theme = XLTableTheme.TableStyleLight1;
-            table.ShowRowStripes = true;
+            table.ShowRowStripes = stripes;
         }
         return ws;
     }
