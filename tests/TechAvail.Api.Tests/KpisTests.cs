@@ -41,6 +41,16 @@ public class KpisTests
     }
 
     [Fact]
+    public void A_sunday_without_a_morning_plan_is_charted()
+    {
+        var sunday = new DateOnly(2026, 10, 11);
+        var empty = new DayOutcome(sunday, "ok", new Snapshot(1, sunday.ToDateTime(new TimeOnly(6, 0))), []);
+        var days = Api.Kpis.OutcomeKpis([(empty, false), (new DayOutcome(sunday, "no_morning"), false)]).Days;
+        Assert.False(Api.Kpis.Charted(days[0]));
+        Assert.True(Api.Kpis.Charted(days[1]));
+    }
+
+    [Fact]
     public void Rates_use_the_planned_count_and_the_latest_checkpoint()
     {
         var day = new DayOutcome(

@@ -188,8 +188,16 @@ public class ApiTests
         // 2026-10-10 is a Saturday.
         var capacity = await api.Get("/api/v1/kpis/capacity?start=2026-10-10&days=3");
         Assert.Equal(["2026-10-10", "2026-10-12"], Strings(capacity["series"], "date"));
+    }
+
+    [DbFact]
+    public async Task A_sunday_without_a_morning_plan_stays_in_the_outcome_series()
+    {
+        using var api = new Api(Blocks);
+        // The only snapshot is 10/06, so Sunday 10/11 has no morning plan: unknown, not empty.
         var outcomes = await api.Get("/api/v1/kpis/outcomes?start=2026-10-10&end=2026-10-12");
-        Assert.Equal(["2026-10-10", "2026-10-12"], Strings(outcomes["days"], "date"));
+        Assert.Equal(["2026-10-10", "2026-10-11", "2026-10-12"], Strings(outcomes["days"], "date"));
+        Assert.Equal("no_morning", outcomes["days"]![1]!["status"]!.GetValue<string>());
     }
 
     [DbFact]
