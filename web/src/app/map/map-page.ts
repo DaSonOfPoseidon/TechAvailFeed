@@ -40,7 +40,6 @@ export function popup(p: MapPoint): string {
   ].join('<br>');
 }
 
-// One day's jobs and tickets: filled dots are assigned, rings unassigned.
 @Component({
   selector: 'app-map-page',
   imports: [
@@ -59,7 +58,6 @@ export class MapPage {
   private readonly freshness = inject(Freshness);
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('map');
   protected readonly kind = computed(() => this.state.get('kind'));
-  // Completed work is shown unless the query string says completed=hide.
   protected readonly completed = computed(() => this.state.get('completed') !== 'hide');
   protected readonly result = httpResource<MapResponse>(() => {
     this.freshness.snapshotId();

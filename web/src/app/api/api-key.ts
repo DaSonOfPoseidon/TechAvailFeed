@@ -6,8 +6,6 @@ import { ApiKeyDialog } from './api-key-dialog';
 
 const storageKey = 'techavail.apiKey';
 
-// The API key (when the API has API_KEY set), kept in this browser's localStorage, and in memory
-// for this page when storage is unavailable.
 @Injectable({ providedIn: 'root' })
 export class ApiKey {
   private readonly dialog = inject(MatDialog);
@@ -35,7 +33,6 @@ export class ApiKey {
     }
   }
 
-  // Asks once for a key, however many requests were refused meanwhile.
   ask(): Promise<string | null> {
     this.pending ??= new Promise<string | null>((resolve) =>
       this.dialog
@@ -51,7 +48,6 @@ export class ApiKey {
   }
 }
 
-// Sends X-API-Key on /api calls; a 401 asks for the key and retries once.
 export const apiKeyInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith('/api/')) return next(request);
   const keys = inject(ApiKey);

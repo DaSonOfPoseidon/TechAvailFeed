@@ -16,7 +16,6 @@ import { today } from '../shared/time';
 
 type Report = 'arrivals' | 'jeopardy';
 
-// Date, time and VP region for the arrival and jeopardy workbooks.
 @Component({
   selector: 'app-report-dialog',
   imports: [
@@ -87,7 +86,6 @@ export class ReportDialog {
     return null;
   });
 
-  // An arrival report's regions come from its own day, which can predate the latest snapshot.
   private readonly arrivalRegions = httpResource<{ regions: string[] }>(() =>
     this.report === 'arrivals' && this.date()
       ? { url: '/api/v1/arrivals/regions', params: params({ date: this.date() }) }
@@ -108,8 +106,6 @@ export class ReportDialog {
   }
 }
 
-// The Excel exports. The capacity and diagnostics ones take the current view's filters (capacity
-// keeps its own window).
 @Component({
   selector: 'app-export-menu',
   imports: [MatButtonModule, MatIconModule, MatMenuModule],

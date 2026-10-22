@@ -17,7 +17,6 @@ import { dayLabel, hours, percent, regionName } from '../shared/time';
 import { StatsTable, outcome, statsRow } from './stats-table';
 import { techLabels } from '../shared/techs';
 
-// The outcome lines, in the categorical order (slot 1 first).
 const outcomeLines = [
   { name: 'Completed', key: 'completed' },
   { name: 'Canceled', key: 'canceled' },
@@ -25,7 +24,6 @@ const outcomeLines = [
   { name: 'Pulled on the day', key: 'pulled' },
 ];
 
-// Capacity over the coming days, and what happened to the work planned on past days.
 @Component({
   selector: 'app-kpis-page',
   imports: [
@@ -197,7 +195,6 @@ export class KpisPage {
             const stats = d[kind];
             return stats ? outcome(stats, line.key, measure) : null;
           }),
-          // Days whose outcome can still change are shaded behind the lines.
           markArea:
             i === 0 && provisional.length
               ? {
@@ -232,9 +229,7 @@ export class KpisPage {
     );
   });
   private readonly lastOutcomes = lastValue(this.outcomes);
-  // Labels for every technician the page can show: today's roster, anyone with planned work in
-  // the range (a former tech has history but no shift) and the selected one, with ids added where
-  // names repeat. The picker and the trend table share them.
+  // Includes anyone with planned work in the range: a former tech has history but no shift.
   private readonly techNames = computed(() => {
     const byId = new Map<string, string>();
     for (const t of this.techOptions()?.techs ?? []) byId.set(t.tech_id, t.tech_name);

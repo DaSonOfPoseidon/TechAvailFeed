@@ -3,10 +3,8 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { HttpResourceRef } from '@angular/common/http';
 import { Health, SnapshotInfo } from '../api/models';
 
-// The served snapshot, from /health once a minute. Pages read snapshotId() in their requests so
-// they refetch when a new snapshot is served, and call refreshEvery() so they also refetch every few
-// minutes: some answers move with the clock on an unchanged snapshot (today's free time is clipped
-// to now, a default start date rolls over at midnight).
+// Pages also call refreshEvery(): some answers move with the clock on an unchanged snapshot (today's
+// free time is clipped to now, a default start date rolls over at midnight).
 export const refreshMs = 5 * 60_000;
 
 @Injectable({ providedIn: 'root' })
@@ -32,9 +30,8 @@ export class Freshness {
   }
 }
 
-// Reloads the resources on each refresh tick. reload() keeps the current value on screen while it
-// refetches; changing the request instead would drop it and blank the page. Call it in an injection
-// context.
+// reload() keeps the current value on screen while it refetches; changing the request instead would
+// drop it and blank the page. Call it in an injection context.
 export function refreshEvery(...resources: HttpResourceRef<unknown>[]): void {
   const freshness = inject(Freshness);
   effect(() => {

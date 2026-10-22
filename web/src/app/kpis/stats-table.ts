@@ -3,7 +3,7 @@ import { JobStats, KindStats } from '../api/models';
 import { percent } from '../shared/time';
 
 export interface StatsRow {
-  id: string; // stable row key: the region, or the tech's id
+  id: string;
   name: string;
   planned: number;
   completed: number | null;
@@ -28,7 +28,6 @@ export function visibleSort(sort: Sort, columns: readonly Column[]): Sort {
   return columns.includes(sort.key) ? sort : { key: 'planned', desc: true };
 }
 
-// An outcome's rate or count; pulled is only counted for jobs.
 export function outcome(stats: KindStats, name: string, measure: Measure): number | null {
   if (name === 'pulled') {
     const job = stats as JobStats;
@@ -50,7 +49,6 @@ export function statsRow(id: string, name: string, stats: KindStats, measure: Me
   };
 }
 
-// Outcome rates (or counts) per region or technician; click a heading to sort by it.
 @Component({
   selector: 'app-stats-table',
   template: `
@@ -115,7 +113,6 @@ export class StatsTable {
   readonly rows = input.required<StatsRow[]>();
   readonly totals = input<StatsRow | null>(null);
   readonly jobs = input(true);
-  // Outcome columns hold counts rather than rates.
   readonly count = input(false);
   protected readonly sort = signal<Sort>({ key: 'planned', desc: true });
 

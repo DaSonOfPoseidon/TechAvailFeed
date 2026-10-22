@@ -1,7 +1,7 @@
 import { Interval, TechDetail, WorkRow } from '../api/models';
 import { hhmm, minutes } from '../shared/time';
 
-// A bar on a tech's day, positioned in percent of the visible window.
+// Positioned in percent of the visible window.
 export interface Bar {
   left: number;
   width: number;
@@ -14,8 +14,7 @@ export interface Window {
   to: number;
 }
 
-// Whole hours from the earliest shift or work start to the latest end, at least 8:00 to 18:00,
-// so work booked outside every shift still shows.
+// Spans work as well as shifts, so work booked outside every shift still shows.
 export function windowFor(techs: TechDetail[], date: string): Window {
   let from = 8 * 60;
   let to = 18 * 60;
@@ -32,7 +31,7 @@ export function windowFor(techs: TechDetail[], date: string): Window {
   return { from: Math.floor(from / 60) * 60, to: Math.ceil(to / 60) * 60 };
 }
 
-// Minutes since midnight of date, clamped to that day (time off can span days).
+// Time off can span days.
 function clamp(stamp: string, date: string): number {
   const day = stamp.slice(0, 10);
   return day < date ? 0 : day > date ? 24 * 60 : minutes(stamp);
@@ -62,7 +61,7 @@ function workLabel(w: WorkRow): string {
   return `${w.kind === 'ticket' ? 'Ticket' : 'Job'} ${w.ref_id}: ${w.status}, ${hhmm(w.starts_at)}–${hhmm(w.ends_at)}`;
 }
 
-// A tech's bars, back to front: shifts, time off, free slots, then work.
+// Back to front.
 export function bars(tech: TechDetail, date: string, window: Window): Bar[] {
   const span = (i: Interval) => `${hhmm(i.start)}–${hhmm(i.end)}`;
   return [

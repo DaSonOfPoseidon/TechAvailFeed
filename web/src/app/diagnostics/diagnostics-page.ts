@@ -17,7 +17,6 @@ export const groups: { id: string; label: string }[] = [
   { id: 'address', label: 'Addresses' },
 ];
 
-// A check's table columns: the keys of its rows, in first-seen order.
 export function columns(check: DiagnosticCheck): string[] {
   return [...new Set(check.rows.flatMap((row) => Object.keys(row)))];
 }
@@ -35,7 +34,6 @@ export function cell(value: unknown): string {
   return String(value);
 }
 
-// The data-quality checks, findings first; each opens to its rows.
 @Component({
   selector: 'app-diagnostics-page',
   imports: [
@@ -58,7 +56,7 @@ export class DiagnosticsPage {
     return { url: '/api/v1/diagnostics', params: params({ group: this.group() }) };
   });
   private readonly refreshing = refreshEvery(this.result);
-  // Each check with its table columns worked out once, not per rendered row.
+  // Worked out once, not per rendered row.
   protected readonly checks = computed(() =>
     [...(this.result.value()?.checks ?? [])]
       .sort(

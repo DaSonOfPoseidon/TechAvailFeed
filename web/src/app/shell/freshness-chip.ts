@@ -3,7 +3,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Freshness } from '../shared/freshness';
 
-// How old the served snapshot is. Stale (no delivery for 45 minutes) is shown with an icon and words.
 @Component({
   selector: 'app-freshness-chip',
   imports: [MatIconModule, MatTooltipModule],

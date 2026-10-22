@@ -1,5 +1,3 @@
-// Display names for technicians, with the id added where two share a name (names aren't
-// unique; ids are).
 export function techLabels(techs: { tech_id: string; tech_name: string }[]): Map<string, string> {
   const counts = new Map<string, number>();
   for (const t of techs) counts.set(t.tech_name, (counts.get(t.tech_name) ?? 0) + 1);

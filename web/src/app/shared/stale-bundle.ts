@@ -11,7 +11,6 @@ export function isStaleBundle(error: unknown): boolean {
 // missing), not another deploy.
 const loopWindowMs = 30_000;
 
-// Loads the page fresh instead, unless this URL was just reloaded for the same reason.
 export function reloadOnStaleBundle(event: NavigationError): void {
   if (!isStaleBundle(event.error)) return;
   const marker = `techavail.reloaded:${event.url}`;

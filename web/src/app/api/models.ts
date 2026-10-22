@@ -30,7 +30,6 @@ export interface Capacity {
   available_h: number;
   booked_h: number;
   free_h: number;
-  // Free 2-hour booking windows, and windows with the other hour open to a 1-hour job.
   free_slots: number;
   free_hour_slots: number;
   jobs: number;
@@ -173,7 +172,7 @@ export interface OutcomeKpis {
   totals: { job: JobStats; ticket: KindStats };
   by_region: { region: string; job: JobStats; ticket: KindStats }[];
   by_tech: { tech_id: string; tech_name: string; job: JobStats; ticket: KindStats }[];
-  // Everyone with planned work in the range and region, whatever the tech filter.
+  // Ignores the tech filter.
   techs: { tech_id: string; tech_name: string }[];
 }
 

@@ -10,9 +10,7 @@ export type Patch = Record<string, string | number | null>;
 // empty value would mean no filter.
 export const noRegion = '(none)';
 
-// The dashboard's filters live in the URL's query string, so a view can be bookmarked or shared.
-// Unset values fall back to the API's own defaults (start today, 30 days, install calendar). unit and
-// measure are display choices: free hours or booking windows, rates or counts.
+// Unset values fall back to the API's own defaults. unit and measure are display choices only.
 @Injectable({ providedIn: 'root' })
 export class FilterState {
   private readonly router = inject(Router);
@@ -45,7 +43,6 @@ export class FilterState {
     return Number.isInteger(days) && days >= 1 && days <= 62 ? days : 30;
   });
 
-  // The capacity filters as API query values.
   readonly capacity = computed(() => ({
     region: this.region(),
     skill: this.skill(),
