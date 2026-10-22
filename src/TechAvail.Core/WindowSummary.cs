@@ -2,16 +2,12 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core;
 
-// One booking window in one area: the techs who could still take a job in it, the unassigned work
-// that will need one of them, and whether a 1-hour MDU job still fits.
 public sealed record WindowRow(DateOnly Date, string Area, DateTime Window, int Available, int Unassigned, bool Mdu)
 {
     public int Net => Available - Unassigned;
 }
 
-// MBSReporter's Q778 (region_availability_summary.sql) on the feed's tech days. A window gets a row
-// when a tech is scheduled in it, has free time in it or unassigned work falls in it; one with no tech
-// left over once the unassigned work is placed reads FULL.
+// Rules: docs/business-rules.md#window-summary-q778
 public static class WindowSummary
 {
     static readonly TimeSpan MinOverlap = TimeSpan.FromMinutes(Availability.MinMinutes);
@@ -21,8 +17,7 @@ public static class WindowSummary
     static TimeSpan Overlap(DateTime start, DateTime end, DateTime from, DateTime until) =>
         (end < until ? end : until) - (start > from ? start : from);
 
-    // The windows that still have an hour left after the lead time. Trouble calls run every day, so the
-    // TC calendar's Sunday uses the weekday windows.
+    // Trouble calls run every day, so the TC calendar's Sunday uses the weekday windows.
     static IEnumerable<DateTime> Windows(DateOnly date, string calendar, DateTime earliest) =>
         (
             calendar == "tc" && date.DayOfWeek == DayOfWeek.Sunday
@@ -30,10 +25,7 @@ public static class WindowSummary
                 : Availability.BookingWindows(date)
         ).Where(w => w + Availability.WindowLength - (w > earliest ? w : earliest) >= MinOverlap);
 
-    // Pass days and demand already filtered. A tech is scheduled in a window when their shift covers an
-    // hour of it that hasn't started (by the lead time), and available when a free slot covers an hour of
-    // it. Unassigned work counts once (the feed can repeat a row), in the first window it overlaps. An
-    // MDU-skilled tech has an MDU opening when a free hour starts in the window.
+    // Pass days and demand already filtered.
     public static List<WindowRow> Build(
         IEnumerable<TechDay> days,
         IEnumerable<Block> demand,

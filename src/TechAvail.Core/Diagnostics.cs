@@ -11,12 +11,10 @@ public sealed class Check(string id, string group, string title, string severity
     public string Description { get; } = description;
     public bool Available { get; init; } = true;
 
-    // Each row's fields in display order; values are strings, numbers, dates and timestamps.
     public List<OrderedDictionary<string, object?>> Rows { get; set; } = [];
 }
 
-// Data-quality checks over one snapshot's blocks. Rows name the job
-// or tech to fix; they never carry coordinates.
+// Rows never carry coordinates.
 public static class Diagnostics
 {
     public static readonly string[] Groups = ["tech_setup", "scheduling", "stale", "address"];
@@ -24,11 +22,9 @@ public static class Diagnostics
     static readonly string[] UnassignedKinds = ["job_unassigned", "ticket_unassigned"];
     static readonly string[] ShiftKinds = [.. Availability.Calendars.Values];
 
-    // Trouble tickets may share a slot two at a time, as long as both are in the same region.
-    // Any overlap involving a job is a conflict.
+    // Same-region tickets only; any overlap involving a job is a conflict.
     const int TicketsPerSlot = 2;
 
-    // "install", "tc", or "both" for a dual tech whose schedules are on both calendars.
     public static string CalendarOf(IEnumerable<string> shiftKinds)
     {
         var kinds = shiftKinds.ToHashSet();
@@ -191,7 +187,7 @@ public static class Diagnostics
         ];
     }
 
-    // first starts no later than second, and they overlap. null means the overlap is allowed.
+    // first starts no later than second, and they overlap.
     static string? OverlapReason(Block first, Block second, List<Block> tickets)
     {
         if (first.Kind != "ticket" || second.Kind != "ticket")
@@ -470,7 +466,6 @@ public static class Diagnostics
         };
     }
 
-    // today is local. Scheduling and address checks look from today on; stale ones before it.
     public static List<Check> Diagnose(IReadOnlyList<Block> blocks, DateOnly today)
     {
         var shifts = blocks.Where(b => ShiftKinds.Contains(b.Kind)).ToList();

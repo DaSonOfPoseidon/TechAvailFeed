@@ -2,7 +2,6 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core;
 
-// A blocks snapshot and when it was generated, as naive local time.
 public sealed record Snapshot(long Id, DateTime At);
 
 public sealed class Planned(string kind, string refId, string techId, string techName, DateTime plannedStart)
@@ -13,7 +12,6 @@ public sealed class Planned(string kind, string refId, string techId, string tec
     public string TechName { get; } = techName;
     public DateTime PlannedStart { get; } = plannedStart;
 
-    // Checkpoint name -> outcome, in checkpoint order.
     public OrderedDictionary<string, string> Outcomes { get; init; } = [];
     public string Reached { get; set; } = "unknown";
     public bool? PrereqsOpen { get; set; }
@@ -33,7 +31,6 @@ public sealed record DayOutcome(
     public OrderedDictionary<string, int> AddedAfterMorning { get; init; } = AddedAfterMorning ?? [];
 }
 
-// Total, then one count per Outcomes.ReachedNames entry, then the pulled jobs whose prereqs were open.
 public sealed record PulledCounts(int Total, int InProgress, int EnRoute, int NotStarted, int Unknown, int PrereqsOpen)
 {
     public int Reached(string name) =>
@@ -61,15 +58,12 @@ public sealed record JobSummary(
 
 public sealed record DaySummary(JobSummary Job, KindSummary Ticket);
 
-// What happened to the work planned for each day.
+// Rules: docs/business-rules.md#outcomes
 public static class Outcomes
 {
-    // The morning plan is the first snapshot in [06:00, 07:00) local; without one, never guess.
     static readonly TimeOnly Morning = new(6, 0);
     static readonly TimeSpan MorningWindow = TimeSpan.FromHours(1);
 
-    // The last snapshot before the midnight ending the plan day (d0), the next day (d1) and the
-    // day after (d2).
     public static readonly string[] Checkpoints = ["d0", "d1", "d2"];
 
     const int SentinelYear = 9999;
@@ -96,10 +90,8 @@ public static class Outcomes
     ];
     public static readonly string[] Kinds = ["job", "ticket"];
 
-    // A job pulled from the plan day: the cases where it matters whether a tech had engaged.
     static readonly string[] Pulled = ["canceled", "unscheduled", "rescheduled"];
 
-    // How far the tech got on the plan day, from the status trace.
     public static readonly string[] ReachedNames = ["in_progress", "en_route", "not_started", "unknown"];
 
     // A pre-drop/pre-bury that isn't Completed or dropped can keep the install from going in.
@@ -114,7 +106,6 @@ public static class Outcomes
         return snapshots.Where(s => start <= s.At && s.At < start + MorningWindow).MinBy(s => s.At);
     }
 
-    // Before the boundary has passed this is simply the latest snapshot: the outcome so far.
     public static Snapshot? FindCheckpoint(IEnumerable<Snapshot> snapshots, Snapshot morning, DateOnly day, int offset)
     {
         var boundary = day.AddDays(offset + 1).ToDateTime(TimeOnly.MinValue);
@@ -250,7 +241,6 @@ public static class Outcomes
         );
     }
 
-    // The jobs pulled from the plan day by d0, split by how far the tech got.
     public static PulledCounts PulledCounts(IEnumerable<Planned> jobs)
     {
         var pulled = jobs.Where(i => Pulled.Contains(i.Outcomes.GetValueOrDefault("d0"))).ToList();
@@ -265,8 +255,6 @@ public static class Outcomes
         );
     }
 
-    // Per kind: planned count, completions per checkpoint, the d2 outcome counts and additions after
-    // the morning; for jobs also how far techs got on the ones pulled at d0.
     public static DaySummary Summarise(DayOutcome outcome)
     {
         KindSummary Kind(string kind)

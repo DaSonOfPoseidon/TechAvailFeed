@@ -14,7 +14,7 @@ public sealed record Slot(
     string Skills
 );
 
-// One raw calendar block. Timestamps are the scheduling system's local time, as in the feed.
+// Timestamps are the scheduling system's local time, as in the feed.
 public sealed record Block
 {
     public required string Kind { get; init; }

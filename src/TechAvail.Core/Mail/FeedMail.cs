@@ -4,7 +4,6 @@ using MimeKit.Utils;
 
 namespace TechAvail.Core.Mail;
 
-// The parts of a feed email the ingest stores.
 public sealed record FeedMail(
     string MessageId,
     string Subject,

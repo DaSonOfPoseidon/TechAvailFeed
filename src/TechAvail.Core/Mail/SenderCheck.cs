@@ -4,8 +4,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core.Mail;
 
-// A From header is trivially forged, so the receiving
-// server's DMARC verdict decides. Returns why a mail is rejected, or null when it is accepted.
+// A From header is trivially forged, so the receiving server's DMARC verdict decides.
 public static class SenderCheck
 {
     public static string? Rejection(MimeMessage message, string mailFrom, string authservId)
@@ -44,7 +43,7 @@ public static class SenderCheck
         return null;
     }
 
-    // getaddresses(): one entry per address; an unparsable header counts as one empty address.
+    // An unparsable header counts as one empty address.
     static IEnumerable<string> Addresses(string header) =>
         InternetAddressList.TryParse(header, out var list)
             ? list.SelectMany(Mailboxes).Select(m => m.Address)
@@ -58,7 +57,6 @@ public static class SenderCheck
             _ => [],
         };
 
-    // str.split(): runs of ASCII whitespace (the header is ASCII-only by then).
     static IEnumerable<string> Split(string text) =>
         text.Split([' ', '\t', '\n', '\r', '\v', '\f', '\x1c', '\x1d', '\x1e', '\x1f'], StringSplitOptions.RemoveEmptyEntries);
 

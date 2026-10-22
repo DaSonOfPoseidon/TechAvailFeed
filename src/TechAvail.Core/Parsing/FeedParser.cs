@@ -6,12 +6,10 @@ using Microsoft.VisualBasic.FileIO;
 
 namespace TechAvail.Core.Parsing;
 
-// Parses the scheduled feed CSV (docs/feed-format.md) into blocks, or slots for the legacy format.
-// Anything malformed rejects the whole file with a FeedParseException naming the line.
+// Anything malformed rejects the whole file.
 public static partial class FeedParser
 {
     // Legacy gap format, still emitted by the registered feed query until it is updated.
-    // Headers are matched case-insensitively (the scheduling system upper-cases them).
     public static readonly string[] RequiredColumns =
     [
         "generated_at",
@@ -25,7 +23,7 @@ public static partial class FeedParser
         "skills",
     ];
 
-    // Raw calendar blocks (docs/feed-format.md). A header with a "kind" column selects this format.
+    // A header with a "kind" column selects this format.
     public static readonly string[] BlockColumns =
     [
         "generated_at",
@@ -92,7 +90,7 @@ public static partial class FeedParser
         {
             throw new FeedParseException("file is not valid UTF-8");
         }
-        // utf-8-sig: one leading byte-order mark is dropped.
+        // A leading byte-order mark.
         if (text.StartsWith('﻿'))
             text = text[1..];
 
@@ -114,7 +112,6 @@ public static partial class FeedParser
         var index = required.Concat(parsed.Format == "blocks" ? OptionalBlockColumns.Where(columns.Contains) : [])
             .ToDictionary(name => name, columns.IndexOf);
 
-        // Blank lines are skipped by the reader.
         while (ReadRow(csv) is { } next)
         {
             var (line, row) = next;
@@ -132,7 +129,6 @@ public static partial class FeedParser
         return parsed;
     }
 
-    // The next record and the line it starts on, or null at the end of the file.
     static (long Line, string[] Fields)? ReadRow(TextFieldParser csv)
     {
         var line = csv.LineNumber;

@@ -2,8 +2,7 @@ using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core;
 
-// One job on the arrival report. State is how far the tech had got as of the snapshot:
-// "not_started", "en_route", "arrived", or "" for anything else.
+// State is "not_started", "en_route", "arrived", or "" for anything else.
 public sealed record ArrivalRow(
     string TechId,
     string TechName,
@@ -20,11 +19,9 @@ public sealed record ArrivalRow(
     string State
 );
 
-// The on-time arrival report (MBSReporter's first_job_arrival_Q851) rebuilt from feed snapshots:
-// the 8:00 jobs as of the 8:15 run, the day so far, and a past day's completed jobs.
+// Rules: docs/business-rules.md#arrivals-q851
 public static class Arrivals
 {
-    // The 8:15 run is read as the first snapshot generated in [08:15, 09:00).
     static readonly TimeOnly EightFifteen = new(8, 15);
     static readonly TimeOnly Nine = new(9, 0);
     static readonly TimeOnly Eight = new(8, 0);
@@ -59,7 +56,6 @@ public static class Arrivals
         return snapshots.Where(s => from <= s.At && s.At < until).MinBy(s => s.At);
     }
 
-    // The last snapshot on the day: the end-of-day state once the day is over, the latest before.
     public static Snapshot? FindLastOn(IEnumerable<Snapshot> snapshots, DateOnly day) =>
         snapshots.Where(s => DateOnly.FromDateTime(s.At) == day).MaxBy(s => s.At);
 
@@ -75,8 +71,7 @@ public static class Arrivals
     internal static List<Block> Scope(IEnumerable<Block> blocks, DateOnly day) =>
         [.. blocks.Where(b => InScope(b, day)).DistinctBy(b => (b.Kind, b.RefId, b.TechId))];
 
-    // A trace mark only counts on the report day and once it had happened: the feed sends the latest
-    // one in the last two days.
+    // The feed sends the latest mark from the last two days.
     static DateTime? Mark(DateTime? at, DateOnly day, DateTime asOf) => at is { } t && DateOnly.FromDateTime(t) == day && t <= asOf ? t : null;
 
     static int? Minutes(DateTime? to, DateTime? from) => to is { } t && from is { } f ? (int)Math.Floor((t - f).TotalMinutes) : null;
@@ -111,8 +106,7 @@ public static class Arrivals
         return Row(job, Mark(job.EnrouteAt, day, asOf), arrived, asOf, live);
     }
 
-    // Q851's ladder: least progressed first, newest arrival first among those in progress (a missing
-    // arrival sorts last there, since null is the smallest DateTime?).
+    // Q851's ladder. A missing arrival sorts last among those in progress: null is the smallest DateTime?.
     static int Tier(string status) =>
         status switch
         {
@@ -133,9 +127,6 @@ public static class Arrivals
             .ThenBy(r => r.RefId, StringComparer.Ordinal),
     ];
 
-    // One row per tech with an 8:00 job. As in Q851, the arrival is the tech's first In Progress mark
-    // on any of the day's jobs (techs swap job order), and its En Route mark is that job's. Without an
-    // arrival, the En Route mark is the 8:00 job's, else the latest on a job still En Route.
     public static List<ArrivalRow> EightAm(IEnumerable<Block> blocks, DateOnly day, DateTime asOf)
     {
         var rows = new List<ArrivalRow>();
@@ -156,7 +147,6 @@ public static class Arrivals
         return Ladder(rows);
     }
 
-    // The day so far: every job completed on it, and every job whose window has already started.
     public static List<ArrivalRow> SoFar(IEnumerable<Block> blocks, DateOnly day, DateTime asOf) =>
         Ladder(
             Scope(blocks, day)
@@ -164,7 +154,6 @@ public static class Arrivals
                 .Select(b => Own(b, day, asOf, live: true))
         );
 
-    // A past day's completed jobs per tech, in the order they were worked.
     public static List<ArrivalRow> Completed(IEnumerable<Block> blocks, DateOnly day, DateTime asOf) =>
     [
         .. Scope(blocks, day)
