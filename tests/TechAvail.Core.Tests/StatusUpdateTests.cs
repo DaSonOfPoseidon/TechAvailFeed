@@ -42,6 +42,10 @@ public class StatusUpdateTests
         Assert.Equal("STL East", StatusUpdate.RegionFor("Illinois Metro East"));
         Assert.Equal("West", StatusUpdate.RegionFor("Carrollton"));
         Assert.Equal("COMO", StatusUpdate.RegionFor("Columbia Core"));
+        Assert.Equal("Southwest", StatusUpdate.RegionFor("Nevada-Lamar"));
+        Assert.Equal("Southwest", StatusUpdate.RegionFor("Joplin Area"));
+        // Renamed in MBS on 2026-10-21; reports for earlier snapshots still carry the old name.
+        Assert.Equal("Southwest", StatusUpdate.RegionFor("Lamar-Webb City"));
         Assert.Equal(StatusUpdate.Unmapped, StatusUpdate.RegionFor("Atlantis"));
         Assert.Equal(StatusUpdate.Unmapped, StatusUpdate.RegionFor(""));
         var areas = StatusUpdate.Regions.SelectMany(r => r.Areas).ToList();

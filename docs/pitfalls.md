@@ -17,3 +17,7 @@ Classes of bug that reviews have caught here. Check every change against them, a
 - **Install rules applied to trouble calls.** Install has no Sunday booking windows, but TC shifts and tickets
   run every day. A rule that drops or zeroes a day because nothing happens then has to hold for the TC calendar
   and for tickets too, or depend on the data rather than the date (the Trends Sunday filter, #34).
+
+- **Dropping a renamed region from a mapping.** Reports serve past snapshots too, so an old region name still
+  arrives after MBS renames it. When a hardcoded grouping (`StatusUpdate.Regions`, `InstallAvailability.Areas`)
+  follows a rename, keep the old name as an alias beside the new one, or older reports fall into Unmapped (#39).

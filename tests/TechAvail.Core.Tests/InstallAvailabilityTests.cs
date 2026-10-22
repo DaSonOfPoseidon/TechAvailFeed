@@ -55,11 +55,22 @@ public class InstallAvailabilityTests
             Friday,
             days: 1
         );
-        Assert.Equal(InstallAvailability.Areas.Length + 1, grid.Rows.Count);
-        Assert.Equal("Springfield Area", grid.Rows[^1].Area);
+        Assert.Equal(["Central MO", "Springfield Area", "WKLS"], grid.Rows.Select(r => r.Area));
         Assert.Equal((4, 8, "Open"), (Row(grid, "Central MO").Days[0].Free, Row(grid, "Central MO").Days[0].Bookable, Row(grid, "Central MO").Days[0].Status));
         Assert.Equal((2, 5), (Row(grid, "WKLS").Days[0].Free, Row(grid, "WKLS").Days[0].Bookable));
-        // No tech scheduled in Carrollton: not open.
+    }
+
+    [Fact]
+    public void An_area_with_no_techs_in_the_grid_has_no_row()
+    {
+        // Lamar-Webb City was renamed Nevada-Lamar: its last tech day is before the grid.
+        var grid = InstallAvailability.Build(
+            [Day(Friday.AddDays(-1), "Lamar-Webb City", 1, 4, "a"), Day(Friday, "Nevada-Lamar", 1, 4, "a"), Day(Saturday, "Carrollton", 1, 4, "b")],
+            Friday,
+            Friday,
+            days: 2
+        );
+        Assert.Equal(["Carrollton", "Nevada-Lamar"], grid.Rows.Select(r => r.Area));
         Assert.Equal("Not Open", Row(grid, "Carrollton").Days[0].Status);
     }
 
@@ -150,10 +161,10 @@ public class InstallAvailabilityTests
         );
         var friday = grid.Exceptions.SkipWhile(l => l != "Friday 10/16").TakeWhile(l => l != "").ToList();
         Assert.Equal("All areas have same day/next day availability with the following notes/exceptions:", grid.Exceptions[0]);
-        Assert.Equal(["Friday 10/16", "Carrollton - Closed", "Central MO - Not Open"], friday.Take(3));
-        Assert.Contains("Lebanon-Rolla - No Techs", friday);
+        Assert.Equal(["Friday 10/16", "Carrollton - Closed", "Lebanon-Rolla - No Techs"], friday);
         Assert.DoesNotContain(friday, l => l.StartsWith("Clinton-Butler -"));
-        Assert.Contains("Saturday 10/17", grid.Exceptions);
+        // Every area is open on Saturday.
+        Assert.DoesNotContain("Saturday 10/17", grid.Exceptions);
         Assert.DoesNotContain(grid.Exceptions, l => l.StartsWith("Monday"));
     }
 
@@ -172,6 +183,14 @@ public class InstallAvailabilityTests
             ["All areas have same day/next day availability with the following notes/exceptions:", "", "Sunday 10/18", "All areas - Not Open"],
             grid.Exceptions
         );
+    }
+
+    [Fact]
+    public void A_grid_with_no_install_techs_is_not_open_everywhere()
+    {
+        var grid = InstallAvailability.Build([], Friday, Friday, days: 1);
+        Assert.Empty(grid.Rows);
+        Assert.Equal(["All areas have same day availability with the following notes/exceptions:", "", "Friday 10/16", "All areas - Not Open"], grid.Exceptions);
     }
 
     [Fact]
