@@ -112,8 +112,8 @@ public class CapacityExportTests
         var text = ws.Cell(3, 1);
         Assert.True(text.IsMerged() && text.Style.Alignment.WrapText);
         Assert.Equal(string.Join("\n", grid.Exceptions), text.GetText());
-        // Carrollton has no techs on Saturday; 10% on Friday is Limited, not an exception.
-        Assert.Contains("Carrollton - No Techs", grid.Exceptions);
+        // Carrollton has no techs scheduled on Saturday; 10% on Friday is Limited, not an exception.
+        Assert.Contains("Carrollton - Closed", grid.Exceptions);
         Assert.DoesNotContain("Carrollton - Limited", grid.Exceptions);
 
         var header = ws.Column(1).CellsUsed().Single(c => c.GetString() == "Area").Address.RowNumber;
@@ -124,7 +124,7 @@ public class CapacityExportTests
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Limited].Fill), central.Cell(2).Style.Fill.BackgroundColor);
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Open].Fill), central.Cell(3).Style.Fill.BackgroundColor);
         Assert.Equal(InstallAvailability.Closed, central.Cell(4).GetText());
-        Assert.Equal(InstallAvailability.NoTechs, ws.Row(header + 1).Cell(3).GetText());
+        Assert.Equal(InstallAvailability.Closed, ws.Row(header + 1).Cell(3).GetText());
 
         // The legend follows the table directly, so the two copy as one block.
         var last = header + grid.Rows.Count;

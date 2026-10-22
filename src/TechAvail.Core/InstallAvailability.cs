@@ -27,10 +27,11 @@ public static class InstallAvailability
     public const string Limited = "Limited";
     public const string Full = "Full";
 
-    // Nothing bookable because no tech is scheduled there, or every one is on time off.
+    // Nothing bookable because every tech the area has that day is on time off (TechDay.OnTimeOff, which
+    // includes a day off with no shift).
     public const string NoTechs = "No Techs";
 
-    // Not a booking day (Sunday).
+    // Nothing bookable because no tech is scheduled there, or it isn't a booking day (Sunday).
     public const string Closed = "Closed";
 
     // The VP's areas that group several of the feed's territories. Any other territory is an area of its
@@ -74,7 +75,7 @@ public static class InstallAvailability
             return Cell(0, 0, Closed);
         if (techs.Any(t => t.AvailableHours > 0 || t.BookableWindows > 0))
             return Cell(techs.Sum(t => t.FreeWindows), techs.Sum(t => t.BookableWindows));
-        return Cell(0, 0, NoTechs);
+        return Cell(0, 0, techs.Any(t => t.OnTimeOff) ? NoTechs : Closed);
     }
 
     // The areas are the ones with install techs in the grid's days, so a renamed region leaves no stale row.
@@ -106,8 +107,8 @@ public static class InstallAvailability
     static readonly string[] Unavailable = [Full, NoTechs, Closed];
 
     // A grid shorter than ExceptionDays speaks only for the days it has, and one that doesn't start today
-    // names its dates instead of "same day/next day". A day every area is Closed (Sunday) is one exception
-    // for all areas, and so is a day with no install techs anywhere (the grid has no rows).
+    // names its dates instead of "same day/next day". A day every area is Closed (a Sunday, or no install
+    // techs anywhere so the grid has no rows) is one exception for all areas.
     static List<string> Exceptions(List<DateOnly> dates, DateOnly today, List<AvailabilityRow> rows)
     {
         var first = dates.Take(ExceptionDays).ToList();
@@ -120,8 +121,8 @@ public static class InstallAvailability
                 (date, i) =>
                     (
                         date,
-                        Lines: rows.Count == 0 ? [$"All areas - {(Availability.BookingWindows(date).Any() ? NoTechs : Closed)}"]
-                            : rows.All(r => r.Days[i].Status == Closed) ? [$"All areas - {Closed}"]
+                        Lines: rows.All(r => r.Days[i].Status == Closed)
+                            ? [$"All areas - {Closed}"]
                             : rows.Where(r => Unavailable.Contains(r.Days[i].Status)).Select(r => $"{r.Area} - {r.Days[i].Status}").ToList()
                     )
             )
