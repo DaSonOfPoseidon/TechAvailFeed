@@ -3,37 +3,35 @@ using System.Globalization;
 namespace TechAvail.Core;
 
 // Free and bookable booking windows for one area, on one day or summed over the grid's days. Share is
-// null when no tech could take work (No Techs, Not Open); working techs with nothing bookable left are 0.
+// null when no tech could take work (No Techs, Closed); working techs with nothing bookable left are 0.
 public sealed record AvailabilityCell(int Free, int Bookable, double? Share, string Status);
 
 public sealed record AvailabilityRow(string Area, List<AvailabilityCell> Days, AvailabilityCell Total);
 
 public sealed record InstallGrid(List<DateOnly> Days, List<AvailabilityRow> Rows, List<string> Exceptions);
 
-// The VP's "Residential Install Availability" update: same day and the next days only, so it doesn't
-// promote scheduling out. Availability is the share of an area's bookable booking windows still free
-// (TechDay.FreeWindows / BookableWindows); today's windows count only if they haven't started.
+// The VP's "Residential Install Availability" update: same day and the next few business days only, so
+// it doesn't promote scheduling out. Availability is the share of an area's bookable booking windows still
+// free (TechDay.FreeWindows / BookableWindows); today's windows count only if they haven't started.
 public static class InstallAvailability
 {
     public const string Title = "Residential Install Availability";
-    public const int GridDays = 7;
 
     // Same day and next day get the written exceptions; the grid shows the rest.
     public const int ExceptionDays = 2;
 
-    // Below ClosedBelow is Closed (red), below LimitedBelow is Limited (yellow), else Open (green).
-    public const double ClosedBelow = 0.15;
+    // 0% is Full (red), below LimitedBelow is Limited (yellow), else Open (green).
     public const double LimitedBelow = 0.30;
 
     public const string Open = "Open";
     public const string Limited = "Limited";
-    public const string Closed = "Closed";
+    public const string Full = "Full";
 
-    // Nothing bookable because every tech the area has that day is on time off.
+    // Nothing bookable because no tech is scheduled there, or every one is on time off.
     public const string NoTechs = "No Techs";
 
-    // Nothing bookable because no tech is scheduled there, or it isn't a booking day (Sunday).
-    public const string NotOpen = "Not Open";
+    // Not a booking day (Sunday).
+    public const string Closed = "Closed";
 
     // The VP's areas that group several of the feed's territories. Any other territory is an area of its
     // own, so a region MBS renames or adds needs no change here.
@@ -54,9 +52,9 @@ public static class InstallAvailability
     // so 29/200 is exactly 14.5 and rounds to 15 (in doubles 0.145 * 100 falls just under 14.5).
     public static int Percent(int free, int bookable) => bookable > 0 ? (200 * free + bookable) / (2 * bookable) : 0;
 
-    // A cell is classified as shown: 14.9% reads 15% and is Limited.
+    // A cell is classified as shown: 0.4% reads 0% and is Full, 29.6% reads 30% and is Open.
     public static string Status(int percent) =>
-        percent < (int)Math.Round(ClosedBelow * 100) ? Closed
+        percent == 0 ? Full
         : percent < (int)Math.Round(LimitedBelow * 100) ? Limited
         : Open;
 
@@ -69,24 +67,24 @@ public static class InstallAvailability
     }
 
     // One area's day. A tech with available time or a bookable window is working, and their share
-    // counts even when nothing is left (all booked, or today's windows have started): 0%, Closed.
+    // counts even when nothing is left (all booked, or today's windows have started): 0%, Full.
     static AvailabilityCell DayCell(DateOnly date, List<TechDay> techs)
     {
         if (!Availability.BookingWindows(date).Any())
-            return Cell(0, 0, NotOpen);
+            return Cell(0, 0, Closed);
         if (techs.Any(t => t.AvailableHours > 0 || t.BookableWindows > 0))
             return Cell(techs.Sum(t => t.FreeWindows), techs.Sum(t => t.BookableWindows));
-        return Cell(0, 0, techs.Any(t => t.OnTimeOff) ? NoTechs : NotOpen);
+        return Cell(0, 0, NoTechs);
     }
 
     // The areas are the ones with install techs in the grid's days, so a renamed region leaves no stale row.
-    // A region-filtered export shows only that region's area (so it doesn't list the others as closed), even
-    // when it has no techs.
-    public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, DateOnly today, int days = GridDays, string? region = null)
+    // A region-filtered export shows only that region's area (so it doesn't list the others), even when it
+    // has no techs. dates are the grid's columns, in order (Availability.ExportDates).
+    public static InstallGrid Build(IEnumerable<TechDay> techDays, IReadOnlyList<DateOnly> dates, DateOnly today, string? region = null)
     {
-        List<DateOnly> dates = [.. Enumerable.Range(0, days).Select(start.AddDays)];
+        var wanted = dates.ToHashSet();
         var byCell = techDays
-            .Where(d => d.Region.Length > 0 && start <= d.WorkDate && d.WorkDate <= dates[^1])
+            .Where(d => d.Region.Length > 0 && wanted.Contains(d.WorkDate))
             .GroupBy(d => (Area: AreaFor(d.Region), d.WorkDate))
             .ToDictionary(g => g.Key, g => g.ToList());
         List<string> areas = region is not null ? [AreaFor(region)] : [.. byCell.Keys.Select(k => k.Area).Distinct().Order(StringComparer.Ordinal)];
@@ -98,18 +96,18 @@ public static class InstallAvailability
                 List<AvailabilityCell> cells = [.. dates.Select(d => DayCell(d, byCell.GetValueOrDefault((area, d), [])))];
                 var total = cells.Any(c => c.Share is not null)
                     ? Cell(cells.Sum(c => c.Free), cells.Sum(c => c.Bookable))
-                    : Cell(0, 0, cells.Any(c => c.Status == NoTechs) ? NoTechs : NotOpen);
+                    : Cell(0, 0, cells.Any(c => c.Status == NoTechs) ? NoTechs : Closed);
                 return new AvailabilityRow(area, cells, total);
             }),
         ];
-        return new InstallGrid(dates, rows, Exceptions(dates, today, rows));
+        return new InstallGrid([.. dates], rows, Exceptions([.. dates], today, rows));
     }
 
-    static readonly string[] Unavailable = [Closed, NoTechs, NotOpen];
+    static readonly string[] Unavailable = [Full, NoTechs, Closed];
 
-    // A grid shorter than ExceptionDays (days=1) speaks only for the days it has, and one that doesn't
-    // start today names its dates instead of "same day/next day". A day every area is Not Open (a
-    // Sunday, or no install techs anywhere so the grid has no rows) is one exception for all areas.
+    // A grid shorter than ExceptionDays speaks only for the days it has, and one that doesn't start today
+    // names its dates instead of "same day/next day". A day every area is Closed (Sunday) is one exception
+    // for all areas, and so is a day with no install techs anywhere (the grid has no rows).
     static List<string> Exceptions(List<DateOnly> dates, DateOnly today, List<AvailabilityRow> rows)
     {
         var first = dates.Take(ExceptionDays).ToList();
@@ -122,8 +120,8 @@ public static class InstallAvailability
                 (date, i) =>
                     (
                         date,
-                        Lines: rows.All(r => r.Days[i].Status == NotOpen)
-                            ? [$"All areas - {NotOpen}"]
+                        Lines: rows.Count == 0 ? [$"All areas - {(Availability.BookingWindows(date).Any() ? NoTechs : Closed)}"]
+                            : rows.All(r => r.Days[i].Status == Closed) ? [$"All areas - {Closed}"]
                             : rows.Where(r => Unavailable.Contains(r.Days[i].Status)).Select(r => $"{r.Area} - {r.Days[i].Status}").ToList()
                     )
             )

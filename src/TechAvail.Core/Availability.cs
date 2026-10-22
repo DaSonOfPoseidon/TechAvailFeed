@@ -79,6 +79,23 @@ public static class Availability
             }
         ).Select(hour => workDate.ToDateTime(new TimeOnly(hour, 0)));
 
+    // The capacity export's days: from start through the given number of business days (Monday to
+    // Saturday). A Sunday in between is kept only when someone has a shift that day.
+    public static List<DateOnly> ExportDates(DateOnly start, IEnumerable<TechDay> days, int businessDays = 5)
+    {
+        var worked = days.Where(d => d.Shifts.Count > 0).Select(d => d.WorkDate).ToHashSet();
+        var dates = new List<DateOnly>();
+        for (var (date, counted) = (start, 0); counted < businessDays; date = date.AddDays(1))
+        {
+            if (date.DayOfWeek != DayOfWeek.Sunday)
+                counted++;
+            else if (!worked.Contains(date))
+                continue;
+            dates.Add(date);
+        }
+        return dates;
+    }
+
     // The feed query's assumed lunch hour: 12:00-13:00, old Saturdays 13:00-14:00.
     static readonly TimeOnly LunchStart = new(12, 0);
     static readonly TimeOnly OldSaturdayLunchStart = new(13, 0);
@@ -246,13 +263,13 @@ public static class Availability
 
     // The first time new work can start: now plus the lead time, rounded up to the whole minute so
     // clipped slots don't start at 17:00:51.
-    static DateTime Earliest(DateTime now, int leadMinutes)
+    public static DateTime Earliest(DateTime now, int leadMinutes = LeadMinutes)
     {
         var earliest = new DateTime(now.Ticks - now.Ticks % TimeSpan.TicksPerMinute).AddMinutes(leadMinutes);
         return now.Ticks % TimeSpan.TicksPerMinute != 0 ? earliest.AddMinutes(1) : earliest;
     }
 
-    static bool HasAnySkill(string skills, string[] codes) =>
+    public static bool HasAnySkill(string skills, string[] codes) =>
         skills.Split(',').Any(s => codes.Contains(s.Trim().ToUpperInvariant()));
 
     // A booking window that hasn't started (by the lead time) is free when it lies wholly inside the

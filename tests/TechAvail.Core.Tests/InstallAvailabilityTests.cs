@@ -12,11 +12,14 @@ public class InstallAvailabilityTests
 
     static TechDay Off(DateOnly date, string region, string tech = "t1") => Day(date, region, 0, 0, tech, available: 0, onTimeOff: true);
 
+    static List<DateOnly> Dates(DateOnly start, int days) => [.. Enumerable.Range(0, days).Select(start.AddDays)];
+
     static AvailabilityRow Row(InstallGrid grid, string area) => grid.Rows.Single(r => r.Area == area);
 
     [Theory]
-    [InlineData(0, "Closed")]
-    [InlineData(14, "Closed")]
+    [InlineData(0, "Full")]
+    [InlineData(1, "Limited")]
+    [InlineData(14, "Limited")]
     [InlineData(15, "Limited")]
     [InlineData(29, "Limited")]
     [InlineData(30, "Open")]
@@ -31,13 +34,15 @@ public class InstallAvailabilityTests
     public void Percent_rounds_half_up_exactly(int free, int bookable, int percent) => Assert.Equal(percent, InstallAvailability.Percent(free, bookable));
 
     [Theory]
+    [InlineData(4, 1000, "Full")]
+    [InlineData(5, 1000, "Limited")]
     [InlineData(149, 1000, "Limited")]
     [InlineData(29, 200, "Limited")]
     [InlineData(59, 200, "Open")]
     [InlineData(299, 1000, "Open")]
     public void Status_is_classified_on_the_shown_whole_percent(int free, int bookable, string status)
     {
-        var cell = InstallAvailability.Build([Day(Friday, "Carrollton", free, bookable)], Friday, Friday, days: 1, region: "Carrollton").Rows[0].Days[0];
+        var cell = InstallAvailability.Build([Day(Friday, "Carrollton", free, bookable)], Dates(Friday, 1), Friday, region: "Carrollton").Rows[0].Days[0];
         Assert.Equal(status, cell.Status);
     }
 
@@ -51,9 +56,8 @@ public class InstallAvailabilityTests
                 Day(Friday, "Sedalia-La Monte", 2, 5, "c"),
                 Day(Friday, "Springfield Area", 5, 5, "d"),
             ],
-            Friday,
-            Friday,
-            days: 1
+            Dates(Friday, 1),
+            Friday
         );
         Assert.Equal(["Central MO", "Springfield Area", "WKLS"], grid.Rows.Select(r => r.Area));
         Assert.Equal((4, 8, "Open"), (Row(grid, "Central MO").Days[0].Free, Row(grid, "Central MO").Days[0].Bookable, Row(grid, "Central MO").Days[0].Status));
@@ -66,18 +70,17 @@ public class InstallAvailabilityTests
         // Lamar-Webb City was renamed Nevada-Lamar: its last tech day is before the grid.
         var grid = InstallAvailability.Build(
             [Day(Friday.AddDays(-1), "Lamar-Webb City", 1, 4, "a"), Day(Friday, "Nevada-Lamar", 1, 4, "a"), Day(Saturday, "Carrollton", 1, 4, "b")],
-            Friday,
-            Friday,
-            days: 2
+            Dates(Friday, 2),
+            Friday
         );
         Assert.Equal(["Carrollton", "Nevada-Lamar"], grid.Rows.Select(r => r.Area));
-        Assert.Equal("Not Open", Row(grid, "Carrollton").Days[0].Status);
+        Assert.Equal("No Techs", Row(grid, "Carrollton").Days[0].Status);
     }
 
     [Fact]
     public void Techs_all_on_time_off_are_no_techs()
     {
-        var grid = InstallAvailability.Build([Off(Friday, "Carrollton", "a"), Off(Friday, "Carrollton", "b")], Friday, Friday, days: 1, region: "Carrollton");
+        var grid = InstallAvailability.Build([Off(Friday, "Carrollton", "a"), Off(Friday, "Carrollton", "b")], Dates(Friday, 1), Friday, region: "Carrollton");
         var cell = Row(grid, "Carrollton").Days[0];
         Assert.Equal(("No Techs", null), (cell.Status, cell.Share));
         Assert.Equal("No Techs", Row(grid, "Carrollton").Total.Status);
@@ -86,59 +89,58 @@ public class InstallAvailabilityTests
     [Fact]
     public void One_working_tech_beside_time_off_counts_their_windows()
     {
-        var grid = InstallAvailability.Build([Off(Friday, "Carrollton", "a"), Day(Friday, "Carrollton", 2, 4, "b")], Friday, Friday, days: 1, region: "Carrollton");
+        var grid = InstallAvailability.Build([Off(Friday, "Carrollton", "a"), Day(Friday, "Carrollton", 2, 4, "b")], Dates(Friday, 1), Friday, region: "Carrollton");
         Assert.Equal((2, 4, "Open"), (Row(grid, "Carrollton").Days[0].Free, Row(grid, "Carrollton").Days[0].Bookable, Row(grid, "Carrollton").Days[0].Status));
     }
 
     [Fact]
-    public void Working_techs_with_nothing_bookable_left_are_closed_at_zero()
+    public void Working_techs_with_nothing_bookable_left_are_full_at_zero()
     {
         // Today after the last window started: the techs work, but no window can be booked.
-        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 0, 0)], Friday, Friday, days: 1, region: "Carrollton");
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 0, 0)], Dates(Friday, 1), Friday, region: "Carrollton");
         var cell = Row(grid, "Carrollton").Days[0];
-        Assert.Equal(("Closed", 0.0), (cell.Status, cell.Share));
+        Assert.Equal(("Full", 0.0), (cell.Status, cell.Share));
     }
 
     [Fact]
-    public void A_sunday_is_not_open_even_with_time_off()
+    public void A_sunday_is_closed_even_with_time_off()
     {
-        var grid = InstallAvailability.Build([Off(Sunday, "Carrollton")], Sunday, Sunday, days: 1, region: "Carrollton");
-        Assert.Equal("Not Open", Row(grid, "Carrollton").Days[0].Status);
+        var grid = InstallAvailability.Build([Off(Sunday, "Carrollton")], Dates(Sunday, 1), Sunday, region: "Carrollton");
+        Assert.Equal("Closed", Row(grid, "Carrollton").Days[0].Status);
     }
 
     [Fact]
     public void A_region_shows_only_its_area()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Columbia Core", 1, 4)], Friday, Friday, days: 1, region: "Columbia Core");
+        var grid = InstallAvailability.Build([Day(Friday, "Columbia Core", 1, 4)], Dates(Friday, 1), Friday, region: "Columbia Core");
         Assert.Equal(["Central MO"], grid.Rows.Select(r => r.Area));
     }
 
     [Fact]
-    public void A_region_with_no_techs_still_shows_its_area()
+    public void A_region_with_no_techs_still_shows_its_area_as_no_techs()
     {
-        var grid = InstallAvailability.Build([], Friday, Friday, days: 1, region: "Lebanon-Rolla");
-        Assert.Equal((0, 0, "Not Open"), (Row(grid, "Lebanon-Rolla").Days[0].Free, Row(grid, "Lebanon-Rolla").Days[0].Bookable, Row(grid, "Lebanon-Rolla").Days[0].Status));
+        var grid = InstallAvailability.Build([], Dates(Friday, 1), Friday, region: "Lebanon-Rolla");
+        Assert.Equal((0, 0, "No Techs"), (Row(grid, "Lebanon-Rolla").Days[0].Free, Row(grid, "Lebanon-Rolla").Days[0].Bookable, Row(grid, "Lebanon-Rolla").Days[0].Status));
     }
 
     [Fact]
     public void A_grid_ending_on_the_last_date_builds()
     {
-        var grid = InstallAvailability.Build([Day(DateOnly.MaxValue, "Carrollton", 1, 4)], DateOnly.MaxValue, DateOnly.MaxValue, days: 1);
+        var grid = InstallAvailability.Build([Day(DateOnly.MaxValue, "Carrollton", 1, 4)], Dates(DateOnly.MaxValue, 1), DateOnly.MaxValue);
         Assert.Equal(1, Row(grid, "Carrollton").Days[0].Free);
     }
 
     [Fact]
-    public void A_sunday_is_not_open_and_the_total_sums_the_week()
+    public void A_sunday_is_closed_and_the_total_sums_the_week()
     {
         var grid = InstallAvailability.Build(
             [Day(Saturday, "Carrollton", 1, 4), Day(Sunday, "Carrollton", 0, 0), Day(Friday, "Carrollton", 0, 6)],
-            Friday,
-            Friday,
-            days: 3
+            Dates(Friday, 3),
+            Friday
         );
         var row = Row(grid, "Carrollton");
-        Assert.Equal(["Closed", "Limited", "Not Open"], row.Days.Select(c => c.Status));
-        Assert.Equal((1, 10, "Closed"), (row.Total.Free, row.Total.Bookable, row.Total.Status));
+        Assert.Equal(["Full", "Limited", "Closed"], row.Days.Select(c => c.Status));
+        Assert.Equal((1, 10, "Limited"), (row.Total.Free, row.Total.Bookable, row.Total.Status));
         Assert.Equal([Friday, Saturday, Sunday], grid.Days);
     }
 
@@ -155,13 +157,12 @@ public class InstallAvailabilityTests
                 Day(Saturday, "Clinton-Butler", 4, 4, "c"),
                 Day(Monday, "Carrollton", 0, 4, "a"),
             ],
-            Friday,
-            Friday,
-            days: 3
+            Dates(Friday, 3),
+            Friday
         );
         var friday = grid.Exceptions.SkipWhile(l => l != "Friday 10/16").TakeWhile(l => l != "").ToList();
         Assert.Equal("All areas have same day/next day availability with the following notes/exceptions:", grid.Exceptions[0]);
-        Assert.Equal(["Friday 10/16", "Carrollton - Closed", "Lebanon-Rolla - No Techs"], friday);
+        Assert.Equal(["Friday 10/16", "Carrollton - Full", "Lebanon-Rolla - No Techs"], friday);
         Assert.DoesNotContain(friday, l => l.StartsWith("Clinton-Butler -"));
         // Every area is open on Saturday.
         Assert.DoesNotContain("Saturday 10/17", grid.Exceptions);
@@ -171,39 +172,62 @@ public class InstallAvailabilityTests
     [Fact]
     public void Exceptions_say_so_when_nothing_is_closed()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Friday, Friday, days: 2, region: "Carrollton");
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Dates(Friday, 2), Friday, region: "Carrollton");
         Assert.Equal(["All areas have same day/next day availability."], grid.Exceptions);
     }
 
     [Fact]
-    public void A_day_every_area_is_not_open_is_one_exception_for_all_areas()
+    public void A_day_every_area_is_closed_is_one_exception_for_all_areas()
     {
-        var grid = InstallAvailability.Build([Day(Saturday, "Carrollton", 4, 4), Day(Sunday, "Carrollton", 0, 0)], Saturday, Saturday, days: 2, region: "Carrollton");
+        var grid = InstallAvailability.Build([Day(Saturday, "Carrollton", 4, 4), Day(Sunday, "Carrollton", 0, 0)], Dates(Saturday, 2), Saturday, region: "Carrollton");
         Assert.Equal(
-            ["All areas have same day/next day availability with the following notes/exceptions:", "", "Sunday 10/18", "All areas - Not Open"],
+            ["All areas have same day/next day availability with the following notes/exceptions:", "", "Sunday 10/18", "All areas - Closed"],
             grid.Exceptions
         );
     }
 
     [Fact]
-    public void A_grid_with_no_install_techs_is_not_open_everywhere()
+    public void A_grid_with_no_install_techs_has_no_techs_everywhere_and_closes_on_sunday()
     {
-        var grid = InstallAvailability.Build([], Friday, Friday, days: 1);
+        var grid = InstallAvailability.Build([], [Saturday, Sunday], Saturday);
         Assert.Empty(grid.Rows);
-        Assert.Equal(["All areas have same day availability with the following notes/exceptions:", "", "Friday 10/16", "All areas - Not Open"], grid.Exceptions);
+        Assert.Equal(
+            [
+                "All areas have same day/next day availability with the following notes/exceptions:",
+                "",
+                "Saturday 10/17",
+                "All areas - No Techs",
+                "",
+                "Sunday 10/18",
+                "All areas - Closed",
+            ],
+            grid.Exceptions
+        );
+    }
+
+    [Fact]
+    public void Next_day_is_the_next_date_in_the_grid()
+    {
+        // An empty Sunday is left out of the export, so Saturday's next day is Monday.
+        var grid = InstallAvailability.Build([Day(Saturday, "Carrollton", 4, 4), Day(Monday, "Carrollton", 0, 4)], [Saturday, Monday], Saturday);
+        Assert.Equal([Saturday, Monday], grid.Days);
+        Assert.Equal(
+            ["All areas have same day/next day availability with the following notes/exceptions:", "", "Monday 10/19", "Carrollton - Full"],
+            grid.Exceptions
+        );
     }
 
     [Fact]
     public void A_one_day_grid_speaks_only_for_same_day()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4)], Friday, Friday, days: 1, region: "Carrollton");
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4)], Dates(Friday, 1), Friday, region: "Carrollton");
         Assert.Equal(["All areas have same day availability."], grid.Exceptions);
     }
 
     [Fact]
     public void A_grid_not_starting_today_names_its_dates()
     {
-        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Friday, Friday.AddDays(-3), days: 2, region: "Carrollton");
+        var grid = InstallAvailability.Build([Day(Friday, "Carrollton", 4, 4), Day(Saturday, "Carrollton", 4, 4)], Dates(Friday, 2), Friday.AddDays(-3), region: "Carrollton");
         Assert.Equal(["All areas have availability on Fri 10/16/Sat 10/17."], grid.Exceptions);
     }
 }

@@ -50,15 +50,15 @@ public class CapacityExportTests
     }
 
     [Fact]
-    public void Empty_workbook_still_opens_with_headers_and_capacity_definitions()
+    public void Empty_workbook_still_opens_with_headers_and_definitions()
     {
-        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, new() { ["region"] = "North" }, [], [], [], []));
-        Assert.Equal(["Summary", "Tech days", "Free slots", "Schedule", "Unassigned work", "About"], wb.Worksheets.Select(ws => ws.Name));
+        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, new() { ["region"] = "North" }, [], []));
+        Assert.Equal(["Summary", "Unassigned work", "About"], wb.Worksheets.Select(ws => ws.Name));
         Assert.Equal(1, wb.Worksheet("Summary").LastRowUsed()!.RowNumber());
         var about = About(wb);
         Assert.Equal("North", about["Filter: region"].GetText());
-        Assert.True(about.ContainsKey("Net h"));
-        Assert.False(about.ContainsKey("Planned"));
+        Assert.True(about.ContainsKey("Techs Available"));
+        Assert.False(about.ContainsKey("Net h"));
     }
 
     [DbFact]
@@ -67,14 +67,25 @@ public class CapacityExportTests
         using var db = new TestDatabase();
         Seed(db);
         using var factory = new ApiFactory(db, Now);
-        var response = await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx?days=2");
+        var response = await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx");
         Assert.True(response.IsSuccessStatusCode);
         Assert.Equal("attachment; filename=\"capacity_2026-10-06.xlsx\"", response.Content.Headers.GetValues("Content-Disposition").Single());
         using var wb = Open(await response.Content.ReadAsByteArrayAsync());
+        Assert.Equal([CapacityExport.InstallSheet, "Summary", "Unassigned work", "About"], wb.Worksheets.Select(ws => ws.Name));
         var summary = wb.Worksheet("Summary");
-        Assert.Equal(("Date", "Region", "Techs on"), (summary.Cell(1, 1).GetText(), summary.Cell(1, 2).GetText(), summary.Cell(1, 3).GetText()));
-        Assert.Equal((new DateTime(2026, 10, 6), "(all)", 2.0), (summary.Cell(2, 1).GetDateTime(), summary.Cell(2, 2).GetText(), summary.Cell(2, 3).GetDouble()));
-        Assert.Equal(1 + 3, wb.Worksheet("Schedule").LastRowUsed()!.RowNumber());
+        Assert.Equal(
+            ["Date", "Area", "Timeframe", "Techs Available", "MDU Available"],
+            summary.Row(1).CellsUsed().Select(c => c.GetString())
+        );
+        // North's 8 AM: a's job fills it and u1 needs a tech too. South's b is free all morning.
+        Assert.Equal(
+            (new DateTime(2026, 10, 6), "North", "8 AM", "FULL", "No"),
+            (summary.Cell(2, 1).GetDateTime(), summary.Cell(2, 2).GetText(), summary.Cell(2, 3).GetText(), summary.Cell(2, 4).GetText(), summary.Cell(2, 5).GetText())
+        );
+        var south = summary.RowsUsed().First(r => r.Cell(2).GetString() == "South");
+        Assert.Equal(("8 AM", 1.0), (south.Cell(3).GetText(), south.Cell(4).GetDouble()));
+        Assert.False(summary.Tables.Single().ShowRowStripes);
+        Assert.Equal(new DateTime(2026, 10, 10), About(wb)["Filter: to"].GetDateTime());
         Assert.Equal("u1", wb.Worksheet("Unassigned work").Cell(2, 3).GetText());
         var headers = wb.Worksheets.SelectMany(ws => ws.Row(1).CellsUsed()).Select(c => c.GetString()).ToHashSet();
         Assert.DoesNotContain(headers, h => h.Contains("lat", StringComparison.OrdinalIgnoreCase) || h.Contains("lon", StringComparison.OrdinalIgnoreCase));
@@ -89,11 +100,10 @@ public class CapacityExportTests
 
         var grid = InstallAvailability.Build(
             [Day(16, "Carrollton", 1, 10), Day(16, "Columbia Core", 2, 10), Day(17, "Columbia Core", 5, 10)],
-            new DateOnly(2026, 10, 16),
-            new DateOnly(2026, 10, 16),
-            days: 3
+            [new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 17), new DateOnly(2026, 10, 18)],
+            new DateOnly(2026, 10, 16)
         );
-        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
+        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], grid));
         Assert.Equal(CapacityExport.InstallSheet, wb.Worksheets.First().Name);
         var ws = wb.Worksheet(CapacityExport.InstallSheet);
         Assert.Equal(InstallAvailability.Title, ws.Cell(1, 1).GetText());
@@ -102,7 +112,9 @@ public class CapacityExportTests
         var text = ws.Cell(3, 1);
         Assert.True(text.IsMerged() && text.Style.Alignment.WrapText);
         Assert.Equal(string.Join("\n", grid.Exceptions), text.GetText());
-        Assert.Contains("Carrollton - Closed", grid.Exceptions);
+        // Carrollton has no techs on Saturday; 10% on Friday is Limited, not an exception.
+        Assert.Contains("Carrollton - No Techs", grid.Exceptions);
+        Assert.DoesNotContain("Carrollton - Limited", grid.Exceptions);
 
         var header = ws.Column(1).CellsUsed().Single(c => c.GetString() == "Area").Address.RowNumber;
         Assert.Equal(["Area", "Fri 10/16", "Sat 10/17", "Sun 10/18", "3-Day Total"], ws.Row(header).CellsUsed().Select(c => c.GetString()));
@@ -111,16 +123,18 @@ public class CapacityExportTests
         Assert.Equal(0.2, central.Cell(2).GetDouble());
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Limited].Fill), central.Cell(2).Style.Fill.BackgroundColor);
         Assert.Equal(XLColor.FromHtml(CapacityExport.StatusColors[InstallAvailability.Open].Fill), central.Cell(3).Style.Fill.BackgroundColor);
-        Assert.Equal(InstallAvailability.NotOpen, central.Cell(4).GetText());
-        Assert.Equal(InstallAvailability.NotOpen, ws.Row(header + 1).Cell(3).GetText());
+        Assert.Equal(InstallAvailability.Closed, central.Cell(4).GetText());
+        Assert.Equal(InstallAvailability.NoTechs, ws.Row(header + 1).Cell(3).GetText());
 
         // The legend follows the table directly, so the two copy as one block.
         var last = header + grid.Rows.Count;
         Assert.Equal("Legend", ws.Cell(last + 1, 1).GetText());
         Assert.Equal(
-            [InstallAvailability.Closed, InstallAvailability.Limited, InstallAvailability.Open, InstallAvailability.NoTechs, InstallAvailability.NotOpen],
+            [InstallAvailability.Open, InstallAvailability.Limited, InstallAvailability.Full, InstallAvailability.NoTechs, InstallAvailability.Closed],
             Enumerable.Range(last + 2, 5).Select(r => ws.Cell(r, 1).GetText())
         );
+        Assert.Equal(CapacityExport.AvailabilityNote, ws.Cell(last + 7, 1).GetText());
+        Assert.DoesNotContain("About", CapacityExport.AvailabilityNote);
     }
 
     [Fact]
@@ -131,9 +145,9 @@ public class CapacityExportTests
         [
             .. Enumerable.Range(0, 30).Select(i => new TechDay(new DateOnly(2026, 10, 16), $"t{i}", "T", $"Territory {i}", "INS", [], [], [], [], 0, 0, 0, 0, 0, 0, 0, 0, true, 0, 0, 0)),
         ];
-        var grid = InstallAvailability.Build(days, new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 16), days: 2);
+        var grid = InstallAvailability.Build(days, [new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 17)], new DateOnly(2026, 10, 16));
         Assert.True(grid.Exceptions.Count * 15 > 409);
-        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], [], [], grid));
+        using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], grid));
         var ws = wb.Worksheet(CapacityExport.InstallSheet);
         Assert.Equal(string.Join("\n", grid.Exceptions), ws.Cell(3, 1).GetText());
         Assert.True(ws.Row(3).Height <= 409);
@@ -159,7 +173,6 @@ public class CapacityExportTests
         Seed(db);
         using var factory = new ApiFactory(db, Now);
         var client = factory.CreateClient();
-        Assert.Equal((HttpStatusCode)422, (await client.GetAsync("/api/v1/capacity.xlsx?days=0")).StatusCode);
         Assert.Equal((HttpStatusCode)422, (await client.GetAsync("/api/v1/capacity.xlsx?calendar=both")).StatusCode);
     }
 }
