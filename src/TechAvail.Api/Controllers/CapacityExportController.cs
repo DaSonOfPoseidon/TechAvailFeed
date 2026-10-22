@@ -32,7 +32,7 @@ public sealed class CapacityExportController(IFeedReads store, ApiSettings setti
                 ["to"] = to,
             },
             WindowSummary.Build(techDays, demand, dates, LocalNow(), calendar),
-            [.. demand.Where(b => b.WorkDate <= to)],
+            [.. demand.Where(b => dates.Contains(b.WorkDate))],
             calendar == "install" ? InstallAvailability.Build(techDays, dates, Today(), region) : null
         );
         return Workbook(data, $"capacity_{Today():yyyy-MM-dd}.xlsx");

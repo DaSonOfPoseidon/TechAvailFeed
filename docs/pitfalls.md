@@ -21,3 +21,10 @@ Classes of bug that reviews have caught here. Check every change against them, a
 - **Dropping a renamed region from a mapping.** Reports serve past snapshots too, so an old region name still
   arrives after MBS renames it. When a hardcoded grouping (`StatusUpdate.Regions`, `InstallAvailability.Areas`)
   follows a rename, keep the old name as an alias beside the new one, or older reports fall into Unmapped (#39).
+
+- **Counting a repeated feed row twice.** The feed can send the same row more than once. Anything that counts
+  work (jobs, tickets, unassigned demand) dedupes by `(Kind, RefId, StartsAt, EndsAt)` first, as
+  `Availability.Windows` does, or one job reads as two (#45).
+
+- **Filtering by range when the dates have gaps.** The capacity export skips an unworked Sunday, so
+  `WorkDate <= to` still lets that Sunday's rows in. Filter by the export's date list, not its bounds (#45).

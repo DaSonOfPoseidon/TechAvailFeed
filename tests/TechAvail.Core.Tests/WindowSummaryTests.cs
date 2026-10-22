@@ -82,6 +82,21 @@ public class WindowSummaryTests
     }
 
     [Fact]
+    public void An_mdu_hour_before_the_first_window_doesnt_mark_it()
+    {
+        var rows = Summary([B("shift", "07:00", "08:00", "a", skills: "MDU"), B("shift", "08:00", "10:00", "b")]);
+        Assert.False(Row(rows, "Carrollton", "08:00").Mdu);
+    }
+
+    [Fact]
+    public void A_repeated_unassigned_row_is_one_piece_of_work()
+    {
+        var job = B("job_unassigned", "08:00", "10:00", tech: "");
+        var rows = Summary([B("shift", "08:00", "10:00", "a"), B("shift", "08:00", "10:00", "b"), job, job]);
+        Assert.Equal(1, Row(rows, "Carrollton", "08:00").Net);
+    }
+
+    [Fact]
     public void Territories_roll_up_into_the_vps_areas()
     {
         var rows = Summary([B("shift", "08:00", "10:00", "a", "Columbia Core"), B("shift", "08:00", "10:00", "b", "Jefferson City Area")]);

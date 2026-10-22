@@ -27,13 +27,13 @@ public static class WindowSummary
             ? Availability.BookingWindows(date.AddDays(1)).Select(w => w.AddDays(-1))
             : Availability.BookingWindows(date);
 
-    // The window a job starting then is booked into: the first that hasn't ended.
+    // The window a job starting then is booked into, if any.
     static DateTime? WindowOf(List<DateTime> windows, DateTime start) =>
-        windows.Where(w => start < w + Availability.WindowLength).Select(w => (DateTime?)w).FirstOrDefault();
+        windows.Where(w => w <= start && start < w + Availability.WindowLength).Select(w => (DateTime?)w).FirstOrDefault();
 
     // Pass days and demand already filtered. A tech is scheduled in a window when their shift covers an
     // hour of it that hasn't started (by the lead time), and available when a free slot covers an hour of
-    // it. Unassigned work counts once, in the first window it overlaps. An MDU-skilled tech's free slots
+    // it. Unassigned work counts once (the feed can repeat a row), in the first window it overlaps. An MDU-skilled tech's free slots
     // hold back-to-back 1-hour jobs, each in the window it starts in.
     public static List<WindowRow> Build(
         IEnumerable<TechDay> days,
@@ -76,7 +76,10 @@ public static class WindowSummary
                         mdu.Add((day.WorkDate, area, window));
         }
 
-        foreach (var block in demand.Where(b => b.Region.Length > 0 && wanted.Contains(b.WorkDate)))
+        var work = demand
+            .Where(b => b.Region.Length > 0 && wanted.Contains(b.WorkDate))
+            .DistinctBy(b => (b.Kind, b.RefId, b.StartsAt, b.EndsAt));
+        foreach (var block in work)
         {
             var window = Windows(block.WorkDate, calendar)
                 .Where(w => w < block.EndsAt && w + Availability.WindowLength > block.StartsAt)

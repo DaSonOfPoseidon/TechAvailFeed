@@ -154,6 +154,29 @@ public class CapacityExportTests
     }
 
     [DbFact]
+    public async Task Unassigned_work_on_a_skipped_sunday_is_left_out()
+    {
+        using var db = new TestDatabase();
+        var generated = new DateTimeOffset(2026, 10, 6, 11, 5, 0, TimeSpan.Zero);
+        var feed = new ParsedFeed { Sha256 = "x", Format = "blocks", GeneratedAt = generated };
+        static Block On(DateOnly day, string reference) =>
+            B("job_unassigned", "09:00", "11:00", "", "North", reference: reference) with
+            {
+                WorkDate = day,
+                StartsAt = day.ToDateTime(new TimeOnly(9, 0)),
+                EndsAt = day.ToDateTime(new TimeOnly(11, 0)),
+            };
+        // From Saturday 10/10, the window is 10/10 and 10/12-10/15: nobody works Sunday 10/11.
+        feed.Blocks.AddRange([On(new DateOnly(2026, 10, 10), "sat"), On(new DateOnly(2026, 10, 11), "sun")]);
+        new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, generated, feed);
+        using var factory = new ApiFactory(db, Now);
+        var response = await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx?start=2026-10-10");
+        using var wb = Open(await response.Content.ReadAsByteArrayAsync());
+        var refs = wb.Worksheet("Unassigned work").Column(3).CellsUsed().Skip(1).Select(c => c.GetString()).ToList();
+        Assert.Equal(["sat"], refs);
+    }
+
+    [DbFact]
     public async Task Only_the_install_calendar_gets_the_availability_sheet()
     {
         using var db = new TestDatabase();
