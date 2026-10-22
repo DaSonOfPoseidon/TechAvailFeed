@@ -72,8 +72,8 @@ public static class CapacityExport
                 + $"Limited: under {InstallAvailability.LimitedBelow:0%}. Open: the rest. No Techs: the area's techs are all on time off. "
                 + "Not Open: no tech scheduled, or no booking windows that day (Sunday)."
         ),
-        .. InstallAvailability.Areas.Where(a => a.Territories is not [var t] || t != a.Area).Select(a => ($"  {a.Area}", (object?)string.Join(", ", a.Territories))),
-        ("  Other territories", "Listed as rows of their own."),
+        .. InstallAvailability.Areas.Select(a => ($"  {a.Area}", (object?)string.Join(", ", a.Territories))),
+        ("  Other territories", "Rows of their own, listed when they have install techs in the sheet's days."),
     ];
 
     static readonly Column[] CapacityColumns =

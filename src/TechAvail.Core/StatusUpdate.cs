@@ -26,7 +26,7 @@ public static class StatusUpdate
             "West",
             ["Clinton-Butler", "Harrisonville-Pleasant Hill", "Oak Grove-Odessa", "Sedalia-La Monte", "Warrensburg-Knob Noster", "Carrollton"]
         ),
-        ("Southwest", ["Lamar-Webb City", "Hermitage-Humansville", "Springfield Area"]),
+        ("Southwest", ["Nevada-Lamar", "Joplin Area", "Hermitage-Humansville", "Springfield Area"]),
         ("South", ["Lebanon-Rolla"]),
         ("North", ["Kirksville-Chillicothe"]),
     ];

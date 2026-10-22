@@ -35,18 +35,11 @@ public static class InstallAvailability
     // Nothing bookable because no tech is scheduled there, or it isn't a booking day (Sunday).
     public const string NotOpen = "Not Open";
 
-    // The VP's areas, as the feed's territories. A territory not listed is a row of its own.
+    // The VP's areas that group several of the feed's territories. Any other territory is an area of its
+    // own, so a region MBS renames or adds needs no change here.
     public static readonly (string Area, string[] Territories)[] Areas =
     [
-        ("Carrollton", ["Carrollton"]),
         ("Central MO", ["Columbia Core", "Jefferson City Area", "Boonville-Fayette", "Moberly-Mexico Corridor", "Lake Ozark Area"]),
-        ("Clinton-Butler", ["Clinton-Butler"]),
-        ("Hannibal-Bowling Green", ["Hannibal-Bowling Green"]),
-        ("Harrisonville-Pleasant Hill", ["Harrisonville-Pleasant Hill"]),
-        ("Kirksville-Chillicothe", ["Kirksville-Chillicothe"]),
-        ("Lamar-Webb City", ["Lamar-Webb City"]),
-        ("Lebanon-Rolla", ["Lebanon-Rolla"]),
-        ("Oak Grove-Odessa", ["Oak Grove-Odessa"]),
         ("STL Area", ["St Louis West", "Illinois Metro East", "Illinois South", "Troy-Wentzville"]),
         ("WKLS", ["Warrensburg-Knob Noster", "Sedalia-La Monte"]),
     ];
@@ -86,8 +79,9 @@ public static class InstallAvailability
         return Cell(0, 0, techs.Any(t => t.OnTimeOff) ? NoTechs : NotOpen);
     }
 
-    // Every VP area is shown, even one with no techs in the grid's days. A region-filtered export shows
-    // only that region's area (so it doesn't list the others as closed), even when it has no techs.
+    // The areas are the ones with install techs in the grid's days, so a renamed region leaves no stale row.
+    // A region-filtered export shows only that region's area (so it doesn't list the others as closed), even
+    // when it has no techs.
     public static InstallGrid Build(IEnumerable<TechDay> techDays, DateOnly start, DateOnly today, int days = GridDays, string? region = null)
     {
         List<DateOnly> dates = [.. Enumerable.Range(0, days).Select(start.AddDays)];
@@ -95,12 +89,7 @@ public static class InstallAvailability
             .Where(d => d.Region.Length > 0 && start <= d.WorkDate && d.WorkDate <= dates[^1])
             .GroupBy(d => (Area: AreaFor(d.Region), d.WorkDate))
             .ToDictionary(g => g.Key, g => g.ToList());
-        var seen = byCell.Keys.Select(k => k.Area).ToHashSet();
-        var known = Areas.Select(a => a.Area).ToHashSet();
-        List<string> areas =
-            region is not null
-                ? [AreaFor(region)]
-                : [.. Areas.Select(a => a.Area), .. seen.Where(a => !known.Contains(a)).Order(StringComparer.Ordinal)];
+        List<string> areas = region is not null ? [AreaFor(region)] : [.. byCell.Keys.Select(k => k.Area).Distinct().Order(StringComparer.Ordinal)];
 
         List<AvailabilityRow> rows =
         [
@@ -120,7 +109,7 @@ public static class InstallAvailability
 
     // A grid shorter than ExceptionDays (days=1) speaks only for the days it has, and one that doesn't
     // start today names its dates instead of "same day/next day". A day every area is Not Open (a
-    // Sunday) is one exception for all areas.
+    // Sunday, or no install techs anywhere so the grid has no rows) is one exception for all areas.
     static List<string> Exceptions(List<DateOnly> dates, DateOnly today, List<AvailabilityRow> rows)
     {
         var first = dates.Take(ExceptionDays).ToList();
@@ -133,7 +122,7 @@ public static class InstallAvailability
                 (date, i) =>
                     (
                         date,
-                        Lines: rows.Count > 0 && rows.All(r => r.Days[i].Status == NotOpen)
+                        Lines: rows.All(r => r.Days[i].Status == NotOpen)
                             ? [$"All areas - {NotOpen}"]
                             : rows.Where(r => Unavailable.Contains(r.Days[i].Status)).Select(r => $"{r.Area} - {r.Days[i].Status}").ToList()
                     )
