@@ -348,7 +348,7 @@ public class ApiTests
         using var api = new Api(blocks);
         var install = (await api.Get("/api/v1/calendar?days=1"))["days"]![0]!["totals"]!;
         var tc = (await api.Get("/api/v1/calendar?days=1&calendar=tc"))["days"]![0]!["totals"]!;
-        Assert.Equal(2, install["techs_on"]!.GetValue<int>()); // a and b only
+        Assert.Equal(2, install["techs_on"]!.GetValue<int>());
         Assert.Equal((2, 1), (tc["techs_on"]!.GetValue<int>(), tc["tickets"]!.GetValue<int>()));
         Assert.Equal(["b", "t"], Strings((await api.Get("/api/v1/calendar/2026-10-06?calendar=tc"))["techs"], "tech_id"));
         Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/calendar?calendar=bogus"));

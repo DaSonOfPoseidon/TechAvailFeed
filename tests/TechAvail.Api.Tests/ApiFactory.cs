@@ -7,7 +7,6 @@ using TechAvail.Data.Tests;
 
 namespace TechAvail.Api.Tests;
 
-// The API over a fresh test database, with a fake clock and optional settings.
 public sealed class ApiFactory(TestDatabase db, DateTimeOffset now, string apiKey = "", bool exact = false) : WebApplicationFactory<Program>
 {
     public FakeTimeProvider Clock { get; } = new(now);

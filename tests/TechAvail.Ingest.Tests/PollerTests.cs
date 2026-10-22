@@ -11,7 +11,6 @@ using TechAvail.Data.Tests;
 
 namespace TechAvail.Ingest.Tests;
 
-// The poll loop against an in-memory mailbox.
 public class PollerTests
 {
     const string Csv =

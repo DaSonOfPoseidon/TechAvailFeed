@@ -2,8 +2,7 @@ using Npgsql;
 
 namespace TechAvail.Data.Tests;
 
-// A fresh, migrated database per test in the Postgres named by TEST_DATABASE_URL
-// (scripts/test-db.sh locally, a service container in CI), dropped afterwards.
+// TEST_DATABASE_URL comes from scripts/test-db.sh locally and a service container in CI.
 public sealed class TestDatabase : IDisposable
 {
     public static readonly string? Server = Environment.GetEnvironmentVariable("TEST_DATABASE_URL");
