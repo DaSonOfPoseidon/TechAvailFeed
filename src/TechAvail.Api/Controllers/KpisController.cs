@@ -48,7 +48,7 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
         List<TechOption> Techs
     );
 
-    // Completion, cancellation and reschedule rates per day (empty Sundays left out), region and technician.
+    // Completion, cancellation and reschedule rates per day (Sundays with nothing planned left out), region and technician.
     [HttpGet("kpis/outcomes")]
     public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
     {
@@ -59,7 +59,7 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
             new OutcomeFilters(region, tech),
             from,
             to,
-            [.. kpis.Days.Where(d => Kpis.Charted(d.Date, (d.Job?.Planned ?? 0) + (d.Ticket?.Planned ?? 0) == 0))],
+            [.. kpis.Days.Where(Kpis.Charted)],
             kpis.Totals,
             kpis.ByRegion,
             kpis.ByTech,

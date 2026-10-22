@@ -99,6 +99,11 @@ public static class Kpis
     // A Sunday with work (a TC shift, planned tickets) stays. Totals and exports count every day.
     public static bool Charted(DateOnly day, bool empty) => !empty || day.DayOfWeek != DayOfWeek.Sunday;
 
+    // An outcome day is empty only when its morning plan is known and has nothing in it. A day without
+    // a morning plan (no_morning) is unknown, so it stays on the chart with its status (#38).
+    public static bool Charted(DayKpis day) =>
+        Charted(day.Date, day.Status == "ok" && (day.Job?.Planned ?? 0) + (day.Ticket?.Planned ?? 0) == 0);
+
     public static OutcomeKpis OutcomeKpis(IEnumerable<(DayOutcome Outcome, bool Provisional)> days, string? region = null, string? tech = null)
     {
         var series = new List<DayKpis>();

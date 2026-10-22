@@ -28,3 +28,7 @@ Classes of bug that reviews have caught here. Check every change against them, a
 
 - **Filtering by range when the dates have gaps.** The capacity export skips an unworked Sunday, so
   `WorkDate <= to` still lets that Sunday's rows in. Filter by the export's date list, not its bounds (#45).
+
+- **Reading missing stats as zero.** A day without a morning plan (`no_morning`) has no `Job`/`Ticket` stats,
+  so `?? 0` makes it look empty. Check the status before calling a day empty, or a missing snapshot is
+  filtered out instead of shown (#38).
