@@ -154,7 +154,7 @@ public class CapacityExportTests
     }
 
     [DbFact]
-    public async Task Unassigned_work_on_a_skipped_sunday_is_left_out()
+    public async Task Unassigned_work_is_listed_once_and_not_for_a_skipped_sunday()
     {
         using var db = new TestDatabase();
         var generated = new DateTimeOffset(2026, 10, 6, 11, 5, 0, TimeSpan.Zero);
@@ -167,7 +167,8 @@ public class CapacityExportTests
                 EndsAt = day.ToDateTime(new TimeOnly(11, 0)),
             };
         // From Saturday 10/10, the window is 10/10 and 10/12-10/15: nobody works Sunday 10/11.
-        feed.Blocks.AddRange([On(new DateOnly(2026, 10, 10), "sat"), On(new DateOnly(2026, 10, 11), "sun")]);
+        // "sat" is sent twice; it is one piece of work.
+        feed.Blocks.AddRange([On(new DateOnly(2026, 10, 10), "sat"), On(new DateOnly(2026, 10, 10), "sat"), On(new DateOnly(2026, 10, 11), "sun")]);
         new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, generated, feed);
         using var factory = new ApiFactory(db, Now);
         var response = await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx?start=2026-10-10");
