@@ -259,6 +259,8 @@ public class OutcomesTests
     {
         Assert.Equal("handed_off", Outcomes.Classify("job", Day, Work("1", "A", department: "OTHER", reason: "CR_REQUEST")));
         Assert.Equal("rescheduled", Outcomes.Classify("job", Day, Work("1", "N", department: "OTHER", reason: "CR_REQUEST")));
+        // No start doesn't make a handed-off job unscheduled, so its code is ignored.
+        Assert.Equal("handed_off", Outcomes.Classify("job", Day, Work("1", "A", "9999-12-31 00:00", department: "OTHER", reason: "CR_REQUEST")));
     }
 
     [Fact]
