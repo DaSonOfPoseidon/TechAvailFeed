@@ -1,4 +1,5 @@
 using System.Globalization;
+using TechAvail.Core.Parsing;
 
 namespace TechAvail.Core;
 
@@ -58,30 +59,79 @@ public static class InstallAvailability
         return new(free, bookable, share, Status(Percent(free, bookable)));
     }
 
-    static AvailabilityCell DayCell(DateOnly date, List<TechDay> techs)
+    static AvailabilityCell DayCell(DateOnly date, List<TechDay> techs, int used)
     {
         if (!Availability.BookingWindows(date).Any())
             return Cell(0, 0, Closed);
         if (techs.Any(t => t.AvailableHours > 0 || t.BookableWindows > 0))
-            return Cell(techs.Sum(t => t.FreeWindows), techs.Sum(t => t.BookableWindows));
+            return Cell(Math.Max(0, techs.Sum(t => t.FreeWindows) - used), techs.Sum(t => t.BookableWindows));
         return Cell(0, 0, techs.Any(t => t.OnTimeOff) ? NoTechs : Closed);
     }
 
+    sealed record OpenTech(string TechId, HashSet<DateTime> Open);
+
+    // Unassigned work will land in an open slot if one exists, so each job or ticket takes the free windows it is
+    // scheduled in from one tech in its area. Longest first, so a short job doesn't break up a tech a longer one
+    // needs. Returns the windows taken per area and day. Pass demand already filtered (CapacityRollup.UnassignedWork).
+    static Dictionary<(string Area, DateOnly Date), int> Place(
+        Dictionary<(string Area, DateOnly Date), List<TechDay>> byCell,
+        IEnumerable<Block> demand,
+        HashSet<DateOnly> wanted
+    )
+    {
+        var open = byCell.ToDictionary(c => c.Key, c => c.Value.Select(t => new OpenTech(t.TechId, [.. t.FreeWindowStarts])).ToList());
+        var used = new Dictionary<(string Area, DateOnly Date), int>();
+        var work = demand
+            .Where(b => b.Region.Length > 0 && wanted.Contains(b.WorkDate))
+            .DistinctBy(b => (b.Kind, b.RefId, b.StartsAt, b.EndsAt))
+            .Select(b => (Block: b, Windows: Availability.BookingWindows(b.WorkDate).Where(w => w < b.EndsAt && w + Availability.WindowLength > b.StartsAt).ToList()))
+            .Where(w => w.Windows.Count > 0)
+            .OrderByDescending(w => w.Block.EndsAt - w.Block.StartsAt)
+            .ThenBy(w => w.Block.StartsAt)
+            .ThenBy(w => w.Block.RefId, StringComparer.Ordinal)
+            .ThenBy(w => w.Block.Kind, StringComparer.Ordinal);
+        foreach (var (block, windows) in work)
+        {
+            var cell = (AreaFor(block.Region), block.WorkDate);
+            if (!open.TryGetValue(cell, out var techs))
+                continue;
+            var best = techs
+                .Select(t => new { Tech = t, Hits = windows.Count(t.Open.Contains) })
+                .Where(t => t.Hits > 0)
+                .OrderByDescending(t => t.Hits)
+                .ThenBy(t => t.Tech.Open.Count)
+                .ThenBy(t => t.Tech.TechId, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (best is null)
+                continue;
+            best.Tech.Open.ExceptWith(windows);
+            used[cell] = used.GetValueOrDefault(cell) + best.Hits;
+        }
+        return used;
+    }
+
     // dates are the grid's columns, in order (Availability.ExportDates).
-    public static InstallGrid Build(IEnumerable<TechDay> techDays, IReadOnlyList<DateOnly> dates, DateOnly today, string? region = null)
+    public static InstallGrid Build(
+        IEnumerable<TechDay> techDays,
+        IEnumerable<Block> demand,
+        IReadOnlyList<DateOnly> dates,
+        DateOnly today,
+        string? region = null
+    )
     {
         var wanted = dates.ToHashSet();
         var byCell = techDays
             .Where(d => d.Region.Length > 0 && wanted.Contains(d.WorkDate))
             .GroupBy(d => (Area: AreaFor(d.Region), d.WorkDate))
             .ToDictionary(g => g.Key, g => g.ToList());
+        var used = Place(byCell, demand, wanted);
         List<string> areas = region is not null ? [AreaFor(region)] : [.. byCell.Keys.Select(k => k.Area).Distinct().Order(StringComparer.Ordinal)];
 
         List<AvailabilityRow> rows =
         [
             .. areas.Select(area =>
             {
-                List<AvailabilityCell> cells = [.. dates.Select(d => DayCell(d, byCell.GetValueOrDefault((area, d), [])))];
+                List<AvailabilityCell> cells = [.. dates.Select(d => DayCell(d, byCell.GetValueOrDefault((area, d), []), used.GetValueOrDefault((area, d))))];
                 var total = cells.Any(c => c.Share is not null)
                     ? Cell(cells.Sum(c => c.Free), cells.Sum(c => c.Bookable))
                     : Cell(0, 0, cells.Any(c => c.Status == NoTechs) ? NoTechs : Closed);

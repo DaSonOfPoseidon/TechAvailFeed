@@ -389,6 +389,15 @@ public class AvailabilityTests
     }
 
     [Fact]
+    public void The_free_windows_are_listed_by_start()
+    {
+        Block[] blocks = [B("shift", Tuesday, "08:00", "17:00"), B("job", Tuesday, "13:00", "15:00"), B("time_off", Tuesday, "15:30", "17:00")];
+        var day = Assert.Single(Availability.TechDays(blocks, At(Tuesday, "09:00")));
+        Assert.Equal([At(Tuesday, "10:00")], day.FreeWindowStarts);
+        Assert.Equal(day.FreeWindows, day.FreeWindowStarts.Count);
+    }
+
+    [Fact]
     public void A_two_hour_job_takes_its_window() =>
         Assert.Equal((4, 0), WindowCounts(Tuesday, "INS,VOI", [B("job", Tuesday, "10:00", "12:00")]));
 
