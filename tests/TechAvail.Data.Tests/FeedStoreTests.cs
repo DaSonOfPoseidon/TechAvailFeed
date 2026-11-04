@@ -196,6 +196,24 @@ public class FeedStoreTests
     }
 
     [DbFact]
+    public void Incomplete_reason_is_stored_once_and_a_blank_one_leaves_old_rows_open()
+    {
+        using var db = new TestDatabase();
+        var store = new FeedStore(db.ConnectionString);
+        var first = Save(store, "<1>", Blocks(Job("a"), Job("b")));
+        using var connection = db.Open();
+        Save(store, "<2>", Blocks(Job("a") with { IncompleteReason = null }, Job("b")));
+        Assert.Equal([first, first], connection.Query<long>("SELECT first_snapshot_id FROM current_blocks"));
+
+        var third = Save(store, "<3>", Blocks(Job("a") with { IncompleteReason = "NOTHOME" }, Job("b")));
+        Assert.Equal([third], connection.Query<long>("SELECT first_snapshot_id FROM blocks WHERE incomplete_reason = 'NOTHOME'"));
+        Assert.Equal(2, connection.QuerySingle<int>("SELECT count(*) FROM current_blocks"));
+        Assert.Equal(["NOTHOME"], connection.Query<string>("SELECT incomplete_reason FROM current_blocks WHERE incomplete_reason IS NOT NULL"));
+        Assert.Equal(1, connection.QuerySingle<int>("SELECT count(*) FROM blocks WHERE closed_snapshot_id = @third", new { third }));
+        Assert.Equal("NOTHOME", store.Latest()!.Blocks!.Single(b => b.RefId == "a").IncompleteReason);
+    }
+
+    [DbFact]
     public void Rewind_then_replay_with_a_missing_run_rebuilds_every_other_run_unchanged()
     {
         using var db = new TestDatabase();

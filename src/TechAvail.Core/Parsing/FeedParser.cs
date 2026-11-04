@@ -54,6 +54,7 @@ public static partial class FeedParser
         "longitude",
         "gps_precision",
         "set_region",
+        "incomplete_reason",
     ];
 
     public static readonly string[] BlockKinds =
@@ -236,6 +237,9 @@ public static partial class FeedParser
             Longitude = ParseCoordinate(Get("longitude"), "longitude", lineNumber),
             GpsPrecision = Get("gps_precision").Trim().ToUpperInvariant(),
             SetRegion = values.TryGetValue("set_region", out var setRegion) ? setRegion.Trim() : null,
+            IncompleteReason = values.TryGetValue("incomplete_reason", out var reason) && reason.Trim() is { Length: > 0 } code
+                ? code
+                : null,
         };
     }
 }

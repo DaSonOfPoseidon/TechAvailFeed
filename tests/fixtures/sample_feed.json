@@ -26,7 +26,8 @@
       "latitude": null,
       "longitude": null,
       "gps_precision": "",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     },
     {
       "kind": "job",
@@ -50,7 +51,8 @@
       "latitude": 40.123456,
       "longitude": -100.654321,
       "gps_precision": "ROOFTOP",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     },
     {
       "kind": "ticket",
@@ -74,7 +76,8 @@
       "latitude": 40.111111,
       "longitude": -100.622222,
       "gps_precision": "PARCEL",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     },
     {
       "kind": "shift",
@@ -98,7 +101,8 @@
       "latitude": null,
       "longitude": null,
       "gps_precision": "",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     },
     {
       "kind": "time_off",
@@ -122,7 +126,8 @@
       "latitude": null,
       "longitude": null,
       "gps_precision": "",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     },
     {
       "kind": "job_unassigned",
@@ -146,7 +151,8 @@
       "latitude": null,
       "longitude": null,
       "gps_precision": "",
-      "set_region": null
+      "set_region": null,
+      "incomplete_reason": null
     }
   ]
 }

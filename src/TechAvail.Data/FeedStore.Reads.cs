@@ -58,7 +58,7 @@ public sealed partial class FeedStore : IFeedReads
         COALESCE(skills, '') AS skills, COALESCE(task_type, '') AS task_type, modified_at,
         COALESCE(modified_by, '') AS modified_by, enroute_at, inprogress_at,
         COALESCE(prereqs_status, '') AS prereqs_status, address_issue, latitude, longitude,
-        COALESCE(gps_precision, '') AS gps_precision, set_region
+        COALESCE(gps_precision, '') AS gps_precision, set_region, incomplete_reason
         """;
 
     const string RunsSql = """
@@ -164,6 +164,7 @@ public sealed partial class FeedStore : IFeedReads
             Longitude = Get<double?>(r, "longitude"),
             GpsPrecision = Get<string>(r, "gps_precision")!,
             SetRegion = Get<string>(r, "set_region"),
+            IncompleteReason = Get<string>(r, "incomplete_reason"),
         };
 
     public LatestSnapshot? Latest() =>

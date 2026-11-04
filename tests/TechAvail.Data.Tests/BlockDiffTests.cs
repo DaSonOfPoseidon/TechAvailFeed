@@ -25,6 +25,7 @@ public class BlockDiffTests
             null,
             null,
             "",
+            null,
             null
         );
 
@@ -45,6 +46,15 @@ public class BlockDiffTests
         var done = Block("a", status: "C");
         var (insert, close) = Diff([(1, Block("a")), (2, Block("b"))], done, Block("b"));
         Assert.Equal([done], insert);
+        Assert.Equal([1L], close);
+    }
+
+    [Fact]
+    public void Changed_incomplete_reason_closes_old_row_and_inserts_new()
+    {
+        var reasoned = Block("a") with { IncompleteReason = "NOTHOME" };
+        var (insert, close) = Diff([(1, Block("a"))], reasoned);
+        Assert.Equal([reasoned], insert);
         Assert.Equal([1L], close);
     }
 
