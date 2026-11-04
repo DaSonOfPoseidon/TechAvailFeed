@@ -219,6 +219,26 @@ public class CapacityExportTests
     public async Task Another_regions_unassigned_work_leaves_the_grid_alone() =>
         Assert.Equal(0.75, await NorthShare(B("job_unassigned", "13:00", "14:00", "", "South", reference: "u1")));
 
+    [DbTheory]
+    [InlineData("9999-12-31")]
+    [InlineData("9999-12-26")]
+    public async Task A_start_too_close_to_the_last_date_is_rejected(string start)
+    {
+        using var db = new TestDatabase();
+        Seed(db);
+        using var factory = new ApiFactory(db, Now);
+        Assert.Equal((HttpStatusCode)422, (await factory.CreateClient().GetAsync($"/api/v1/capacity.xlsx?start={start}")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task A_start_with_room_for_the_whole_span_still_works()
+    {
+        using var db = new TestDatabase();
+        Seed(db);
+        using var factory = new ApiFactory(db, Now);
+        Assert.True((await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx?start=9999-12-25")).IsSuccessStatusCode);
+    }
+
     [DbFact]
     public async Task Only_the_install_calendar_gets_the_availability_sheet()
     {

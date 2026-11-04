@@ -14,6 +14,7 @@ public sealed class CapacityExportController(IFeedReads store, ApiSettings setti
         var (blocks, snapshot) = Latest();
         var from = start ?? Today();
         // Five business days span at most six dates: one Sunday.
+        CheckSpan(from, 6);
         var (techDays, demand, _) = new CalendarController(Store, Settings, Clock).CapacityFor(blocks, from, from.AddDays(5), region, skill, calendar);
         var dates = Availability.ExportDates(from, techDays);
         var to = dates[^1];
