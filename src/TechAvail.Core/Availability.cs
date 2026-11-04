@@ -35,7 +35,11 @@ public sealed record TechDay(
     int FreeWindows,
     int HourOpenings,
     int BookableWindows
-);
+)
+{
+    // Starts of the free booking windows (FreeWindows of them); InstallAvailability places unassigned work on them.
+    public List<DateTime> FreeWindowStarts { get; init; } = [];
+}
 
 public sealed record UnassignedDemand(DateOnly WorkDate, string Region, int Jobs, int Tickets, double Hours);
 
@@ -260,7 +264,7 @@ public static class Availability
         skills.Split(',').Any(s => codes.Contains(s.Trim().ToUpperInvariant()));
 
     // available must be merged and sorted.
-    public static (int Free, int Openings, int Bookable) Windows(
+    public static (List<DateTime> FreeStarts, int Openings, int Bookable) Windows(
         DateOnly workDate,
         List<(DateTime Start, DateTime End)> available,
         IReadOnlyList<Block> work,
@@ -270,7 +274,8 @@ public static class Availability
     {
         var earliest = Earliest(now, LeadMinutes);
         var hourJobs = HasAnySkill(techSkills, OneHourSkills);
-        int free = 0, openings = 0, bookable = 0;
+        List<DateTime> free = [];
+        int openings = 0, bookable = 0;
         foreach (var start in BookingWindows(workDate).Where(s => s >= earliest))
         {
             List<(DateTime, DateTime)> window = [(start, start + WindowLength)];
@@ -283,7 +288,7 @@ public static class Availability
             if (wholly)
                 bookable++;
             if (inside.Count == 0 && wholly)
-                free++;
+                free.Add(start);
             else if (
                 hourJobs
                 && inside is [{ Kind: "job" } job]
@@ -364,7 +369,7 @@ public static class Availability
             var booked = Intersect(available, Merge(work.Select(b => (b.StartsAt, b.EndsAt))));
             var slots = free.GetValueOrDefault((techId, workDate), []);
             var info = segments.Count > 0 ? segments[0] : home.GetValueOrDefault(techId);
-            var (windows, openings, bookable) = Windows(workDate, available, work, info?.Skills ?? "", now);
+            var (freeStarts, openings, bookable) = Windows(workDate, available, work, info?.Skills ?? "", now);
             days.Add(
                 new TechDay(
                     workDate,
@@ -389,10 +394,13 @@ public static class Availability
                     work.Where(b => b.Kind == "job").Select(b => b.RefId).Distinct().Count(),
                     work.Where(b => b.Kind == "ticket").Select(b => b.RefId).Distinct().Count(),
                     off.Count > 0 || (working.Count == 0 && Intersect(span, leave).Count > 0),
-                    windows,
+                    freeStarts.Count,
                     openings,
                     bookable
                 )
+                {
+                    FreeWindowStarts = freeStarts,
+                }
             );
         }
         return

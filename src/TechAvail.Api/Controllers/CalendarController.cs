@@ -112,6 +112,7 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
     public DayResponse Day(DateOnly day, string? region, string? skill, string calendar = "install")
     {
         CheckCalendar(calendar);
+        CheckSpan(day, 1);
         var (blocks, snapshot) = Latest();
         var (days, demand, entries) = CapacityFor(blocks, day, day, region, skill, calendar);
         var entry = entries.Single();

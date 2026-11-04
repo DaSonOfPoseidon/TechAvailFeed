@@ -38,9 +38,14 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
     protected static void CheckCalendar(string calendar) =>
         Check(calendar is "install" or "tc", "calendar must be install or tc");
 
+    // The date loops step once past the last date they use, so that step must still be a valid date.
+    protected static void CheckSpan(DateOnly from, int days) =>
+        Check(from.DayNumber + days <= DateOnly.MaxValue.DayNumber, "start is too close to the last date");
+
     protected (DateOnly Start, DateOnly End) Window(DateOnly? start, int days)
     {
         var from = start ?? Today();
+        CheckSpan(from, days);
         return (from, from.AddDays(days - 1));
     }
 

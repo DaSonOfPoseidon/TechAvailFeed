@@ -32,3 +32,6 @@ Classes of bug that reviews have caught here. Check every change against them, a
 - **Reading missing stats as zero.** A day without a morning plan (`no_morning`) has no `Job`/`Ticket` stats,
   so `?? 0` makes it look empty. Check the status before calling a day empty, or a missing snapshot is
   filtered out instead of shown (#38).
+
+- **Date arithmetic past the last date.** `start=9999-12-31` makes `AddDays` throw, a 500 instead of a 422. Any date
+  range built from a caller's `start` goes through `CheckSpan`, which allows for the loops' extra step (#44).

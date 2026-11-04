@@ -14,6 +14,7 @@ public sealed class CapacityExportController(IFeedReads store, ApiSettings setti
         var (blocks, snapshot) = Latest();
         var from = start ?? Today();
         // Five business days span at most six dates: one Sunday.
+        CheckSpan(from, 6);
         var (techDays, demand, _) = new CalendarController(Store, Settings, Clock).CapacityFor(blocks, from, from.AddDays(5), region, skill, calendar);
         var dates = Availability.ExportDates(from, techDays);
         var to = dates[^1];
@@ -32,7 +33,7 @@ public sealed class CapacityExportController(IFeedReads store, ApiSettings setti
             },
             WindowSummary.Build(techDays, demand, dates, LocalNow(), calendar),
             [.. demand.Where(b => dates.Contains(b.WorkDate)).DistinctBy(b => (b.Kind, b.RefId, b.StartsAt, b.EndsAt))],
-            calendar == "install" ? InstallAvailability.Build(techDays, dates, Today(), region) : null
+            calendar == "install" ? InstallAvailability.Build(techDays, demand, dates, Today(), region) : null
         );
         return Workbook(data, $"capacity_{Today():yyyy-MM-dd}.xlsx");
     }

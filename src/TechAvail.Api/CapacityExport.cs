@@ -33,7 +33,7 @@ public static class CapacityExport
 
     public const string AvailabilityNote =
         "Availability: the share of an area's 2-hour booking windows (8-10, 10-12, 1-3, 3-5, and 5-7 on weekdays) "
-        + "that its working techs still have free to book.";
+        + "that its working techs still have free to book, once unassigned jobs and tickets have taken the windows they are scheduled in.";
 
     internal static readonly (string Name, object? Text)[] Definitions =
     [
@@ -41,7 +41,8 @@ public static class CapacityExport
             "Availability",
             "Install availability sheet: free booking windows / bookable windows (windows wholly inside a tech's "
                 + "shift, minus lunch and time off, booked or not), per VP area. Today's only count if they start at "
-                + "least 30 minutes after the export."
+                + "least 30 minutes after the export. Each unassigned job or ticket takes the free windows it is scheduled in "
+                + "from one tech in its area, so a window it fills isn't counted as free."
         ),
         (
             "Status",

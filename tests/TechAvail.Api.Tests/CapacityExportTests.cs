@@ -100,6 +100,7 @@ public class CapacityExportTests
 
         var grid = InstallAvailability.Build(
             [Day(16, "Carrollton", 1, 10), Day(16, "Columbia Core", 2, 10), Day(17, "Columbia Core", 5, 10)],
+            [],
             [new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 17), new DateOnly(2026, 10, 18)],
             new DateOnly(2026, 10, 16)
         );
@@ -145,7 +146,7 @@ public class CapacityExportTests
         [
             .. Enumerable.Range(0, 30).Select(i => new TechDay(new DateOnly(2026, 10, 16), $"t{i}", "T", $"Territory {i}", "INS", [], [], [], [], 0, 0, 0, 0, 0, 0, 0, 0, true, 0, 0, 0)),
         ];
-        var grid = InstallAvailability.Build(days, [new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 17)], new DateOnly(2026, 10, 16));
+        var grid = InstallAvailability.Build(days, [], [new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 17)], new DateOnly(2026, 10, 16));
         Assert.True(grid.Exceptions.Count * 15 > 409);
         using var wb = Open(CapacityExport.Workbook(Chicago, Now, 1, null, [], [], [], grid));
         var ws = wb.Worksheet(CapacityExport.InstallSheet);
@@ -175,6 +176,67 @@ public class CapacityExportTests
         using var wb = Open(await response.Content.ReadAsByteArrayAsync());
         var refs = wb.Worksheet("Unassigned work").Column(3).CellsUsed().Skip(1).Select(c => c.GetString()).ToList();
         Assert.Equal(["sat"], refs);
+    }
+
+    // North's share of free install windows on 10/6: tech a is free in 10-12, 1-3 and 3-5 (8-10 has a job), 3 of 4.
+    static async Task<double> NorthShare(params Block[] unassigned)
+    {
+        using var db = new TestDatabase();
+        var generated = new DateTimeOffset(2026, 10, 6, 11, 5, 0, TimeSpan.Zero);
+        var feed = new ParsedFeed { Sha256 = "x", Format = "blocks", GeneratedAt = generated };
+        feed.Blocks.AddRange([B("shift", "08:00", "17:00", "a", "North", "INS"), B("job", "08:00", "10:00", "a", reference: "j1"), .. unassigned]);
+        new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, generated, feed);
+        using var factory = new ApiFactory(db, Now);
+        var response = await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx");
+        using var wb = Open(await response.Content.ReadAsByteArrayAsync());
+        var sheet = wb.Worksheet(CapacityExport.InstallSheet);
+        return sheet.Column(1).CellsUsed().Single(c => c.GetString() == "North").WorksheetRow().Cell(2).GetDouble();
+    }
+
+    [DbFact]
+    public async Task An_unassigned_job_lowers_the_availability_grid()
+    {
+        Assert.Equal(0.75, await NorthShare());
+        // u1 is scheduled 9-11: the 8-10 window is a's job already, so it takes the 10-12 window.
+        Assert.Equal(0.5, await NorthShare(B("job_unassigned", "09:00", "11:00", "", "North", reference: "u1")));
+        Assert.Equal(0.5, await NorthShare(B("ticket_unassigned", "13:00", "14:00", "", "North", reference: "t1")));
+    }
+
+    [DbFact]
+    public async Task Unnecessary_jobs_and_closed_tickets_do_not_lower_the_availability_grid()
+    {
+        Assert.Equal(
+            0.75,
+            await NorthShare(
+                B("job_unassigned", "13:00", "14:00", "", "North", reference: "u1") with { Status = "U" },
+                B("job_unassigned", "13:00", "14:00", "", "North", reference: "u2") with { Status = "X" },
+                B("ticket_unassigned", "13:00", "14:00", "", "North", reference: "t1") with { Status = "C" }
+            )
+        );
+    }
+
+    [DbFact]
+    public async Task Another_regions_unassigned_work_leaves_the_grid_alone() =>
+        Assert.Equal(0.75, await NorthShare(B("job_unassigned", "13:00", "14:00", "", "South", reference: "u1")));
+
+    [DbTheory]
+    [InlineData("9999-12-31")]
+    [InlineData("9999-12-26")]
+    public async Task A_start_too_close_to_the_last_date_is_rejected(string start)
+    {
+        using var db = new TestDatabase();
+        Seed(db);
+        using var factory = new ApiFactory(db, Now);
+        Assert.Equal((HttpStatusCode)422, (await factory.CreateClient().GetAsync($"/api/v1/capacity.xlsx?start={start}")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task A_start_with_room_for_the_whole_span_still_works()
+    {
+        using var db = new TestDatabase();
+        Seed(db);
+        using var factory = new ApiFactory(db, Now);
+        Assert.True((await factory.CreateClient().GetAsync("/api/v1/capacity.xlsx?start=9999-12-25")).IsSuccessStatusCode);
     }
 
     [DbFact]

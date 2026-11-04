@@ -36,6 +36,12 @@ reasoning that spans more than one member. Keep the two in step.
   BookableWindows`). A tech with available time or a bookable window is working, and their share counts even
   when nothing is left, so an all-booked area reads 0%, Full. Share is null when no tech could take work
   (No Techs, Closed).
+- Unassigned jobs and tickets use free windows, since each will land in an open slot if one exists. One takes
+  the free booking windows overlapping the time it is scheduled for, all from one tech in its area: the tech
+  with the most of them free, then the one with the fewest free that day, then by tech id. Longest jobs are
+  placed first, then by start and reference. A job with no free window on any tech, or none overlapping (evening,
+  Sunday), uses nothing, and a cell can't go below 0 free. Bookable windows are unchanged. Skills aren't matched,
+  as in the window summary. Work is counted once per feed row and only on the grid's days.
 - The areas are the ones with install techs in the grid's days, so a renamed region leaves no stale row. A
   region-filtered export shows only that region's area, even when it has no techs.
 - Exceptions text covers the same day and next day. A grid shorter than that speaks only for the days it
