@@ -44,6 +44,20 @@ public class InstallAvailabilityTests
     static AvailabilityRow Row(InstallGrid grid, string area) => grid.Rows.Single(r => r.Area == area);
 
     [Theory]
+    [InlineData("Columbia Core", "Columbia Core", true)]
+    [InlineData("Columbia Core", "Central MO", true)]
+    [InlineData("Central MO", "Columbia Core", false)]
+    [InlineData("Jefferson City Area", "Columbia Core", false)]
+    [InlineData("Jefferson City Area", "STL Area", false)]
+    [InlineData("Carrollton", "Carrollton", true)]
+    [InlineData("Carrollton", "Central MO", false)]
+    [InlineData("", "", true)]
+    [InlineData("Columbia Core", "", false)]
+    [InlineData("Columbia Core", "Nowhere", false)]
+    public void A_region_filter_takes_a_territory_or_its_area(string territory, string filter, bool expected) =>
+        Assert.Equal(expected, InstallAvailability.InRegion(territory, filter));
+
+    [Theory]
     [InlineData(0, "Full")]
     [InlineData(1, "Limited")]
     [InlineData(14, "Limited")]

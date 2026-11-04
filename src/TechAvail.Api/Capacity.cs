@@ -134,7 +134,7 @@ public static class CapacityRollup
         skills.Split(',').Select(s => s.Trim().ToUpperInvariant()).Contains(skill.ToUpperInvariant());
 
     public static List<TechDay> FilterDays(IEnumerable<TechDay> days, string? region, string? skill) =>
-        [.. days.Where(d => (region is null || d.Region == region) && (skill is null || HasSkill(d.Skills, skill)))];
+        [.. days.Where(d => (region is null || InstallAvailability.InRegion(d.Region, region)) && (skill is null || HasSkill(d.Skills, skill)))];
 
     // Live jobs and tickets with no tech yet, by the region their address maps to. A skill filter
     // keeps only work needing that skill; work with no skill yet shows unfiltered, and in the
@@ -159,7 +159,7 @@ public static class CapacityRollup
                 continue;
             if (Availability.NotBusy.TryGetValue(kind, out var statuses) && statuses.Contains(block.Status))
                 continue;
-            if (region is not null && block.Region != region)
+            if (region is not null && !InstallAvailability.InRegion(block.Region, region))
                 continue;
             if (skill is not null && !HasSkill(block.Skills, skill))
                 continue;
@@ -175,9 +175,17 @@ public static class CapacityRollup
         ];
     }
 
-    // Pass days and demand already filtered.
-    public static List<CalendarEntry> Entries(IEnumerable<TechDay> days, IEnumerable<Block> demand, DateOnly start, DateOnly end)
+    // Pass days and demand already filtered. Grouped rolls the per-region rows up to InstallAvailability's areas,
+    // summing the underlying counts and hours.
+    public static List<CalendarEntry> Entries(
+        IEnumerable<TechDay> days,
+        IEnumerable<Block> demand,
+        DateOnly start,
+        DateOnly end,
+        bool grouped = false
+    )
     {
+        string Key(string region) => grouped ? InstallAvailability.AreaFor(region) : region;
         var totals = new Dictionary<DateOnly, Capacity>();
         var regions = new Dictionary<DateOnly, Dictionary<string, Capacity>>();
         Capacity Total(DateOnly date) => totals.TryGetValue(date, out var c) ? c : totals[date] = new Capacity();
@@ -191,12 +199,12 @@ public static class CapacityRollup
         foreach (var day in days)
         {
             Total(day.WorkDate).AddDay(day);
-            Region(day.WorkDate, day.Region).AddDay(day);
+            Region(day.WorkDate, Key(day.Region)).AddDay(day);
         }
         foreach (var block in demand)
         {
             Total(block.WorkDate).AddDemand(block);
-            Region(block.WorkDate, block.Region).AddDemand(block);
+            Region(block.WorkDate, Key(block.Region)).AddDemand(block);
         }
         var result = new List<CalendarEntry>();
         for (var current = start; current <= end; current = current.AddDays(1))

@@ -44,6 +44,12 @@ reasoning that spans more than one member. Keep the two in step.
   as in the window summary. Work is counted once per feed row and only on the grid's days.
 - The areas are the ones with install techs in the grid's days, so a renamed region leaves no stale row. A
   region-filtered export shows only that region's area, even when it has no techs.
+- The API serves the same grouping. `regions=grouped` on `/calendar`, `/calendar/{day}`, `/kpis/capacity` and
+  `/kpis/outcomes` keys `by_region` on the area (`AreaFor`), summing the underlying hours and counts and
+  recomputing rates from the sums; without it, rows are per territory. A `region` filter takes a territory or an
+  area name (`InRegion`): a territory in a group selects only itself, an area selects all of its territories, and an
+  unknown name selects nothing. `/filters` lists the `areas` beside `regions`. Arrivals and jeopardy keep their own
+  pickers.
 - Exceptions text covers the same day and next day. A grid shorter than that speaks only for the days it
   has, and one that doesn't start today names its dates instead of "same day/next day". A day every area is
   Closed (a Sunday, or no install techs anywhere) is one exception for all areas.

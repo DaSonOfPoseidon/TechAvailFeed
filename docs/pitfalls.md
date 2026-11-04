@@ -19,8 +19,9 @@ Classes of bug that reviews have caught here. Check every change against them, a
   and for tickets too, or depend on the data rather than the date (the Trends Sunday filter, #34).
 
 - **Dropping a renamed region from a mapping.** Reports serve past snapshots too, so an old region name still
-  arrives after MBS renames it. When a hardcoded grouping (`StatusUpdate.Regions`, `InstallAvailability.Areas`)
-  follows a rename, keep the old name as an alias beside the new one, or older reports fall into Unmapped (#39).
+  arrives after MBS renames it. When `StatusUpdate.Regions` follows a rename, keep the old name as an alias beside
+  the new one, or older reports fall into Unmapped (#39). `InstallAvailability.Areas` needs none: a territory it
+  doesn't list is its own row, so an old name just stays a row of its own (#41).
 
 - **Counting a repeated feed row twice.** The feed can send the same row more than once. Anything that counts
   work (jobs, tickets, unassigned demand) dedupes by `(Kind, RefId, StartsAt, EndsAt)` first, as

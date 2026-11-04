@@ -112,7 +112,7 @@ public static class OutcomesExport
         .. outcomes
             .OrderBy(o => o.Outcome.Day)
             .SelectMany(o =>
-                o.Outcome.Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech))
+                o.Outcome.Items.Where(i => (region is null || InstallAvailability.InRegion(i.Region, region)) && (tech is null || i.TechId == tech))
                     .Select(i =>
                         (object?[])
                             [

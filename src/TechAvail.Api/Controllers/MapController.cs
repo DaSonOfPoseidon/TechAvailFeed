@@ -71,7 +71,7 @@ public sealed class MapController(IFeedReads store, ApiSettings settings, TimePr
             )
                 continue;
             var place = b.Region.Length > 0 ? b.Region : regions.GetValueOrDefault((b.TechId, b.WorkDate), "");
-            if (region is not null && place != region)
+            if (region is not null && !InstallAvailability.InRegion(place, region))
                 continue;
             if (found.TryGetValue((baseKind, b.RefId), out var existing))
             {

@@ -42,6 +42,9 @@ public static class InstallAvailability
 
     public static string AreaFor(string territory) => AreaOf.GetValueOrDefault(territory, territory);
 
+    // A region filter takes a territory or an area name. A territory inside a group still selects only itself.
+    public static bool InRegion(string territory, string filter) => territory == filter || AreaFor(territory) == filter;
+
     // Rounded half up like Excel's "0%", in integers: in doubles 29/200 * 100 falls just under 14.5.
     public static int Percent(int free, int bookable) => bookable > 0 ? (200 * free + bookable) / (2 * bookable) : 0;
 
