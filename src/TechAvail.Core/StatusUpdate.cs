@@ -24,11 +24,14 @@ public static class StatusUpdate
             "West",
             ["Clinton-Butler", "Harrisonville-Pleasant Hill", "Oak Grove-Odessa", "Sedalia-La Monte", "Warrensburg-Knob Noster", "Carrollton"]
         ),
-        // Lamar-Webb City is Nevada-Lamar's name before 2026-10-21, kept for reports on older snapshots.
-        ("Southwest", ["Nevada-Lamar", "Joplin Area", "Hermitage-Humansville", "Springfield Area", "Lamar-Webb City"]),
+        ("Southwest", ["Nevada-Lamar", "Joplin Area", "Hermitage-Humansville", "Springfield Area"]),
         ("South", ["Lebanon-Rolla"]),
         ("North", ["Kirksville-Chillicothe"]),
     ];
+
+    // Reports on older snapshots still carry a territory's name from before MBS renamed it. Regions is printed in the
+    // jeopardy export, so these stay out of it.
+    static readonly Dictionary<string, string> Renamed = new() { ["Lamar-Webb City"] = "Nevada-Lamar" };
 
     static readonly Dictionary<string, string> RegionOf = Regions
         .SelectMany(r => r.Areas.Select(a => (Area: a, r.Region)))
@@ -44,7 +47,7 @@ public static class StatusUpdate
     static readonly string[] Working = ["E", "I"];
     static readonly string[] NotStarted = ["A", "O"];
 
-    public static string RegionFor(string area) => RegionOf.GetValueOrDefault(area, Unmapped);
+    public static string RegionFor(string area) => RegionOf.GetValueOrDefault(Renamed.GetValueOrDefault(area, area), Unmapped);
 
     public static string Status(int concerns) =>
         concerns == 0 ? "Green"
