@@ -137,6 +137,7 @@
     border-radius: 0 0 0 3px;
     background: currentColor;
     opacity: 0.55;
+    pointer-events: none;
   }
 }
 [data-step='5']::after {
