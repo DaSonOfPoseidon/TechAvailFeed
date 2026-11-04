@@ -109,6 +109,7 @@ reasoning that spans more than one member. Keep the two in step.
 - `StatusUpdate` builds the VP's status update (10 AM, 1 PM, 3 PM and 5 PM): Green/Yellow/Red per region and
   the areas and techs behind it. The feed's region is the VP's area; `Regions` groups the areas the way
   MBSReporter's multiregion rules do.
+- A region with no concerns is Green, one with up to `YellowMax` (2) is Yellow, and one with more is Red.
 - A tech is a concern for a job running past its end that holds up their next one, then for jobs in jeopardy
   that reason doesn't already cover. An area is a concern when a slot that isn't over holds more open jobs
   than techs assigned to them (an unassigned job brings no tech).

@@ -173,7 +173,6 @@ public static class Outcomes
             return "completed";
         if (CanceledStatuses[kind].Contains(block.Status))
             return "canceled";
-        // Rows from before the feed carried a department have "", which says nothing.
         var position = Position(day, block);
         // A reason can outlive a rebooking, so it only speaks for a job MBS still lists as new or one with no start that is not handed off.
         if (kind == "job" && (block.Status == "N" || position == "unscheduled") && IncompleteReasons.Parse(block.IncompleteReason) is { } reason)
@@ -183,6 +182,7 @@ public static class Outcomes
 
     static string Position(DateOnly day, Block block)
     {
+        // Rows from before the feed carried a department have "", which says nothing.
         if (block.Department.Length > 0 && !InHouse.Contains(block.Department))
             return "handed_off";
         if (block.StartsAt.Year == SentinelYear)
