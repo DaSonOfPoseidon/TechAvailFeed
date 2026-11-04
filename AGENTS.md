@@ -57,3 +57,7 @@ new one), and the code links it.
 
 Classes of bug past reviews caught here are in [`docs/pitfalls.md`](docs/pitfalls.md); check every change
 against them.
+
+## PR loop
+
+- merge: yes
