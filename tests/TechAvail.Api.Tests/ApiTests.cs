@@ -145,6 +145,11 @@ public class ApiTests
         Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/calendar?start=9999-12-02&days=30"));
         Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/kpis/capacity?start=9999-12-31"));
         Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/map?start=9999-12-31"));
+        Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/calendar/9999-12-31"));
+        Assert.NotEqual(HttpStatusCode.InternalServerError, await api.Status("/api/v1/kpis/outcomes?start=9999-12-01&end=9999-12-31"));
+        Assert.NotEqual(HttpStatusCode.InternalServerError, await api.Status("/api/v1/outcomes.xlsx?start=9999-12-01&end=9999-12-31"));
+        Assert.NotEqual(HttpStatusCode.InternalServerError, await api.Status("/api/v1/arrivals.xlsx?date=9999-12-31"));
+        Assert.NotEqual(HttpStatusCode.InternalServerError, await api.Status("/api/v1/jeopardy.xlsx?date=9999-12-31"));
         Assert.Equal(HttpStatusCode.OK, await api.Status("/api/v1/calendar?start=9999-12-30&days=1"));
     }
 
