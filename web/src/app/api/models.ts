@@ -152,8 +152,15 @@ export interface JobStats extends KindStats {
     not_started: number;
     unknown: number;
     prereqs_open: number;
+    customer: number;
+    socket: number;
+    no_reason: number;
+    by_reason: Record<string, number>;
   };
   pulled_d0_rate: number | null;
+  pulled_customer_rate: number | null;
+  pulled_socket_rate: number | null;
+  pulled_no_reason_rate: number | null;
 }
 
 export interface DayKpis {

@@ -80,6 +80,7 @@ public class KpisTests
         Assert.Equal((1, 1, 0), ((int)pulled["customer"]!, (int)pulled["socket"]!, (int)pulled["no_reason"]!));
         Assert.Equal((1, 1), ((int)pulled["by_reason"]!["SX_NOCONTACT"]!, (int)pulled["by_reason"]!["CR_REQUEST"]!));
         Assert.Equal(0.5, (double)job["pulled_d0_rate"]!);
+        Assert.Equal((0.25, 0.25, 0), ((double)job["pulled_customer_rate"]!, (double)job["pulled_socket_rate"]!, (double)job["pulled_no_reason_rate"]!));
         Assert.Equal(1, (double)result["totals"]!["ticket"]!["completion_rate"]!["d0"]!);
         Assert.True((bool)result["days"]![0]!["provisional"]!);
         Assert.Equal(["North", "South"], result["by_region"]!.AsArray().Select(r => (string)r!["region"]!));

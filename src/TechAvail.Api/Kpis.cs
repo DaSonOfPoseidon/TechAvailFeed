@@ -19,7 +19,10 @@ public sealed record JobStats(
     Dictionary<string, int> Outcome,
     Dictionary<string, double?> OutcomeRate,
     PulledCounts PulledD0,
-    double? PulledD0Rate
+    double? PulledD0Rate,
+    double? PulledCustomerRate,
+    double? PulledSocketRate,
+    double? PulledNoReasonRate
 ) : KindStats(Planned, Completed, CompletionRate, Outcome, OutcomeRate);
 
 public sealed record ByKind(JobStats Job, KindStats Ticket);
@@ -82,7 +85,10 @@ public static class Kpis
             stats.Outcome,
             stats.OutcomeRate,
             pulled,
-            Rate(pulled.Total, jobs.Count)
+            Rate(pulled.Total, jobs.Count),
+            Rate(pulled.Customer, jobs.Count),
+            Rate(pulled.Socket, jobs.Count),
+            Rate(pulled.NoReason, jobs.Count)
         );
         return new ByKind(job, Stats([.. list.Where(i => i.Kind == "ticket")]));
     }

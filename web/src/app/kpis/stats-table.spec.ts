@@ -18,8 +18,15 @@ describe('statsRow', () => {
       not_started: 1,
       unknown: 0,
       prereqs_open: 0,
+      customer: 1,
+      socket: 0,
+      no_reason: 1,
+      by_reason: { CR_REQUEST: 1 },
     },
     pulled_d0_rate: 0.5,
+    pulled_customer_rate: 0.25,
+    pulled_socket_rate: 0,
+    pulled_no_reason_rate: 0.25,
   };
 
   it('reads rates', () => {
@@ -32,16 +39,28 @@ describe('statsRow', () => {
       rescheduled: null,
       unscheduled: null,
       pulled: 0.5,
+      pulledCustomer: 0.25,
+      pulledSocket: 0,
+      pulledNoReason: 0.25,
     });
   });
 
   it('reads counts, with no pulled count for tickets', () => {
-    expect(statsRow('all', 'All', job, 'count')).toMatchObject({ completed: 3, pulled: 2 });
+    expect(statsRow('all', 'All', job, 'count')).toMatchObject({
+      completed: 3,
+      pulled: 2,
+      pulledCustomer: 1,
+      pulledSocket: 0,
+      pulledNoReason: 1,
+    });
     expect(statsRow('all', 'All', ticket, 'count')).toMatchObject({
       completed: 3,
       canceled: 1,
       rescheduled: null,
       pulled: null,
+      pulledCustomer: null,
+      pulledSocket: null,
+      pulledNoReason: null,
     });
   });
 });
@@ -51,6 +70,13 @@ describe('visibleSort', () => {
     expect(visibleSort({ key: 'pulled', desc: false }, ['name', 'planned', 'pulled'])).toEqual({
       key: 'pulled',
       desc: false,
+    });
+  });
+
+  it('falls back to planned when a responsibility column is hidden', () => {
+    expect(visibleSort({ key: 'pulledSocket', desc: false }, ['name', 'planned'])).toEqual({
+      key: 'planned',
+      desc: true,
     });
   });
 
