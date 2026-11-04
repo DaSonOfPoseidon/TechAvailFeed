@@ -28,7 +28,7 @@ public static class InstallAvailability
     // No tech is scheduled there, or it isn't a booking day (Sunday).
     public const string Closed = "Closed";
 
-    // Any other territory is an area of its own, so a region MBS renames or adds needs no change here.
+    // Any other territory is an area of its own, so a region MBS adds needs no change here. A rename goes in Renamed.
     public static readonly (string Area, string[] Territories)[] Areas =
     [
         ("Central MO", ["Columbia Core", "Jefferson City Area", "Boonville-Fayette", "Moberly-Mexico Corridor", "Lake Ozark Area"]),
@@ -40,7 +40,17 @@ public static class InstallAvailability
         .SelectMany(a => a.Territories.Select(t => (Territory: t, a.Area)))
         .ToDictionary(p => p.Territory, p => p.Area);
 
-    public static string AreaFor(string territory) => AreaOf.GetValueOrDefault(territory, territory);
+    // Past snapshots still carry a territory's name from before MBS renamed it. Areas and StatusUpdate.Regions are
+    // printed in the exports, so old names stay out of them.
+    static readonly Dictionary<string, string> Renamed = new() { ["Lamar-Webb City"] = "Nevada-Lamar" };
+
+    public static string CurrentName(string territory) => Renamed.GetValueOrDefault(territory, territory);
+
+    public static string AreaFor(string territory)
+    {
+        var current = CurrentName(territory);
+        return AreaOf.GetValueOrDefault(current, current);
+    }
 
     // A region filter takes a territory or an area name. A territory inside a group still selects only itself.
     public static bool InRegion(string territory, string filter) => territory == filter || AreaFor(territory) == filter;

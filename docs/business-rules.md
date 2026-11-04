@@ -46,7 +46,9 @@ reasoning that spans more than one member. Keep the two in step.
   region-filtered export shows only that region's area, even when it has no techs.
 - The API serves the same grouping. `regions=grouped` on `/calendar`, `/calendar/{day}`, `/kpis/capacity` and
   `/kpis/outcomes` keys `by_region` on the area (`AreaFor`), summing the underlying hours and counts and
-  recomputing rates from the sums; without it, rows are per territory. A `region` filter takes a territory or an
+  recomputing rates from the sums; without it, rows are per territory, under the name the feed sent. A territory's
+  old name (`InstallAvailability.Renamed`) rolls up under its current one, so a filter on the current name also
+  selects the old name's rows. A `region` filter takes a territory or an
   area name (`InRegion`): a territory in a group selects only itself, an area selects all of its territories, and an
   unknown name selects nothing. `/filters` lists the `areas` beside `regions`. Arrivals and jeopardy keep their own
   pickers. The dashboard's MBS/Grouped toggle (`regions=grouped` in the query string) sends it from Capacity, Day and Trends,
