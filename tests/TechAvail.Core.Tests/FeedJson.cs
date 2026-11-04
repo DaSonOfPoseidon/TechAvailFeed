@@ -60,6 +60,7 @@ public static class FeedJson
             ["longitude"] = b.Longitude,
             ["gps_precision"] = b.GpsPrecision,
             ["set_region"] = b.SetRegion,
+            ["incomplete_reason"] = b.IncompleteReason,
         };
 
     static JsonObject Slot(Slot s) =>

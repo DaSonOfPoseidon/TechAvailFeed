@@ -44,6 +44,11 @@ public sealed record Block
     // The region set on the job or ticket itself in MBS, which can differ from Region (its
     // address's). null when the export has no SET_REGION column.
     public string? SetRegion { get; init; }
+
+    // The code MBS gives for why a job wasn't completed. null when the export has no INCOMPLETE_REASON
+    // column or the value is blank: the column is part of a row's identity, and a "" would make every
+    // row differ from the null ones stored before the column existed.
+    public string? IncompleteReason { get; init; }
 }
 
 public sealed class ParsedFeed

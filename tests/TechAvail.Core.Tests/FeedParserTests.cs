@@ -229,6 +229,15 @@ public class FeedParserTests
     }
 
     [Fact]
+    public void Incomplete_reason_is_read_and_null_when_absent_or_blank()
+    {
+        var header = BlockHeader.Replace("SKILLS\n", "SKILLS,INCOMPLETE_REASON\n");
+        Assert.Equal("NOTHOME", Parse(header + Job("\"\",\"\",\" NOTHOME \"\n")).Blocks[0].IncompleteReason);
+        Assert.Null(Parse(header + Job("\"\",\"\",\"  \"\n")).Blocks[0].IncompleteReason);
+        Assert.Null(Parse(BlockHeader + JobRow).Blocks[0].IncompleteReason);
+    }
+
+    [Fact]
     public void Retired_gps_confidence_column_is_ignored()
     {
         var header = AddressHeader.Replace("GPS_PRECISION", "GPS_CONFIDENCE");

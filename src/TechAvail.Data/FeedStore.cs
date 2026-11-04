@@ -11,7 +11,7 @@ public sealed partial class FeedStore(string connectionString)
     public const string BlockColumns =
         "kind, work_date, tech_id, tech_name, starts_at, ends_at, ref_id, status, department, region, "
         + "skills, task_type, modified_at, modified_by, enroute_at, inprogress_at, prereqs_status, "
-        + "address_issue, latitude, longitude, gps_precision, set_region";
+        + "address_issue, latitude, longitude, gps_precision, set_region, incomplete_reason";
 
     public const string AtSnapshot =
         "first_snapshot_id <= @snapshot AND (closed_snapshot_id IS NULL OR closed_snapshot_id > @snapshot)";
@@ -246,6 +246,7 @@ public sealed partial class FeedStore(string connectionString)
             WriteDouble(copy, b.Longitude);
             WriteText(copy, b.GpsPrecision);
             WriteText(copy, b.SetRegion);
+            WriteText(copy, b.IncompleteReason);
         }
         copy.Complete();
     }
@@ -301,7 +302,8 @@ public sealed partial class FeedStore(string connectionString)
             Number(18),
             Number(19),
             Text(20),
-            Text(21)
+            Text(21),
+            Text(22)
         );
     }
 }
