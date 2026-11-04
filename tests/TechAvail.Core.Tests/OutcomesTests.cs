@@ -21,7 +21,8 @@ public class OutcomesTests
         bool traced = false,
         string? enroute = null,
         string? inprogress = null,
-        string prebury = ""
+        string prebury = "",
+        string? reason = null
     )
     {
         var startsAt = T(start);
@@ -42,6 +43,7 @@ public class OutcomesTests
             EnrouteAt = enroute is null ? null : T(enroute),
             InprogressAt = inprogress is null ? null : T(inprogress),
             PrereqsStatus = prebury,
+            IncompleteReason = reason,
         };
     }
 
@@ -205,7 +207,114 @@ public class OutcomesTests
             [Work("1"), Work("2"), Work("3"), Work("4"), Work("5")],
             Checkpoints(("d0", d0))
         );
-        Assert.Equal(new PulledCounts(4, 1, 1, 1, 1, 1), Outcomes.Summarise(outcome).Job.PulledD0);
+        var pulled = Outcomes.Summarise(outcome).Job.PulledD0;
+        Assert.Equal((4, 1, 1, 1, 1, 1), (pulled.Total, pulled.InProgress, pulled.EnRoute, pulled.NotStarted, pulled.Unknown, pulled.PrereqsOpen));
+        Assert.Equal((0, 0, 4), (pulled.Customer, pulled.Socket, pulled.NoReason));
+        Assert.Empty(pulled.ByReason);
+    }
+
+    [Theory]
+    [InlineData("CX_REQUEST", "canceled", "customer")]
+    [InlineData("SX_NOCONTACT", "canceled", "socket")]
+    [InlineData("CR_REQUEST", "rescheduled", "customer")]
+    [InlineData("SR_WEATHER", "rescheduled", "socket")]
+    [InlineData("CU_REQUEST", "unscheduled", "customer")]
+    [InlineData("SU_PERMIT", "unscheduled", "socket")]
+    public void The_reason_prefix_gives_the_bucket_and_who_owns_it(string code, string bucket, string owner)
+    {
+        Assert.Equal(new IncompleteReason(code, bucket, owner), IncompleteReasons.Parse(code));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("AdditionalW")]
+    [InlineData("XX_REQUEST")]
+    [InlineData("ZZ_CX_REQUEST")] // a deactivated code
+    [InlineData("CX")]
+    [InlineData("cx_request")]
+    public void Anything_but_the_six_prefixes_is_not_recognized(string? code)
+    {
+        Assert.Null(IncompleteReasons.Parse(code));
+    }
+
+    [Theory]
+    [InlineData("N", "2026-10-06 09:00", "SX_NOCONTACT", "canceled")] // today: open
+    [InlineData("N", "9999-12-31 00:00", "CR_REQUEST", "rescheduled")] // today: unscheduled
+    [InlineData("N", "2026-10-09 09:00", "CU_REQUEST", "unscheduled")] // today: rescheduled
+    [InlineData("A", "9999-12-31 00:00", "SR_WEATHER", "rescheduled")] // no start: the code decides
+    [InlineData("A", "2026-10-06 09:00", "CR_REQUEST", "open")] // stale code on a job still on the plan
+    [InlineData("A", "2026-10-09 09:00", "CX_REQUEST", "rescheduled")]
+    [InlineData("X", "9999-12-31 00:00", "CR_REQUEST", "canceled")]
+    [InlineData("C", "9999-12-31 00:00", "CR_REQUEST", "completed")]
+    [InlineData("N", "9999-12-31 00:00", "AdditionalW", "unscheduled")]
+    [InlineData("N", "2026-10-06 09:00", null, "open")]
+    public void A_recognized_code_sets_a_new_or_unscheduled_jobs_bucket(string status, string start, string? code, string expected)
+    {
+        Assert.Equal(expected, Outcomes.Classify("job", Day, Work("1", status, start, reason: code)));
+    }
+
+    [Fact]
+    public void A_handed_off_job_stays_handed_off_unless_it_is_new()
+    {
+        Assert.Equal("handed_off", Outcomes.Classify("job", Day, Work("1", "A", department: "OTHER", reason: "CR_REQUEST")));
+        Assert.Equal("rescheduled", Outcomes.Classify("job", Day, Work("1", "N", department: "OTHER", reason: "CR_REQUEST")));
+    }
+
+    [Fact]
+    public void A_missing_row_stays_missing_and_a_ticket_ignores_the_code()
+    {
+        Assert.Equal("missing", Outcomes.Classify("job", Day, null));
+        Assert.Equal("open", Outcomes.Classify("ticket", Day, Work("T1", "N", kind: "ticket", reason: "SX_NOCONTACT")));
+    }
+
+    [Fact]
+    public void The_plan_day_keeps_the_reason_from_d0()
+    {
+        var d0 = Work("1", "N", reason: "SX_NOCONTACT");
+        var d1 = Work("1", "N", reason: "CR_REQUEST");
+        var outcome = Outcomes.DayOutcome(Day, Snap(1, "2026-10-06 06:00"), [Work("1")], Checkpoints(("d0", [d0]), ("d1", [d1])));
+        Assert.Equal("SX_NOCONTACT", outcome.Items.Single().IncompleteReason);
+    }
+
+    [Fact]
+    public void Pulled_jobs_are_split_by_who_owns_the_reason_and_counted_per_code()
+    {
+        const string sentinel = "9999-12-31 00:00";
+        Block[] d0 =
+        [
+            Work("1", "N", reason: "SX_NOCONTACT"), // canceled, Socket
+            Work("2", "N", reason: "SX_NOCONTACT"),
+            Work("3", "N", start: sentinel, reason: "CR_REQUEST"), // rescheduled, customer
+            Work("4", "X", start: sentinel, reason: "CR_REQUEST"), // canceled by status: the code is stale
+            Work("5", "N", start: sentinel, reason: "AdditionalW"), // unscheduled, no reason
+            Work("6", "N", start: sentinel), // unscheduled, no reason
+            Work("7", "C", reason: "CX_REQUEST"), // not pulled
+            Work("8", "A", reason: "CX_REQUEST"), // still open
+        ];
+        var outcome = Outcomes.DayOutcome(
+            Day,
+            Snap(1, "2026-10-06 06:00"),
+            [.. Enumerable.Range(1, 8).Select(i => Work(i.ToString()))],
+            Checkpoints(("d0", d0))
+        );
+        var pulled = Outcomes.Summarise(outcome).Job.PulledD0;
+        Assert.Equal((6, 1, 2, 3), (pulled.Total, pulled.Customer, pulled.Socket, pulled.NoReason));
+        Assert.Equal(new Dictionary<string, int> { ["SX_NOCONTACT"] = 2, ["CR_REQUEST"] = 1 }, pulled.ByReason);
+    }
+
+    [Fact]
+    public void A_code_whose_bucket_differs_from_the_final_one_is_no_reason()
+    {
+        var item = new Planned("job", "1", "t1", "T1", T("2026-10-06 09:00"))
+        {
+            Outcomes = new() { ["d0"] = "canceled" },
+            IncompleteReason = "CR_REQUEST",
+        };
+        var stored = new Planned("job", "2", "t1", "T1", T("2026-10-06 09:00")) { Outcomes = new() { ["d0"] = "canceled" } };
+        var pulled = Outcomes.PulledCounts([item, stored]);
+        Assert.Equal((2, 0, 0, 2), (pulled.Total, pulled.Customer, pulled.Socket, pulled.NoReason));
+        Assert.Empty(pulled.ByReason);
     }
 
     [Fact]
