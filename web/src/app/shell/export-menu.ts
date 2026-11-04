@@ -136,7 +136,7 @@ export class ExportMenu {
 
   // The workbook always covers the next 5 business days, whatever the calendar's day count.
   protected capacityQuery(): Query {
-    return { ...this.state.capacity(), days: null };
+    return { ...this.state.capacity(), regions: null, days: null };
   }
 
   protected outcomeQuery(): Query {

@@ -18,6 +18,7 @@ export type CalendarKind = 'install' | 'tc';
 export interface Filters {
   snapshot: SnapshotInfo | null;
   regions: string[];
+  areas: string[];
   skills: string[];
   techs: { tech_id: string; tech_name: string; region: string; calendar: string }[];
   vp_regions: string[];
