@@ -255,7 +255,8 @@ public class ApiTests
         );
         Assert.Equal(["j1"], Strings((await api.Get("/api/v1/map?region=Central MO"))["points"], "ref_id"));
         Assert.Equal(["j1"], Strings((await api.Get("/api/v1/map?region=Columbia Core"))["points"], "ref_id"));
-        Assert.Empty((await api.Get("/api/v1/map?region=STL Area&kind=ticket"))["points"]!.AsArray());
+        Assert.Equal(["j2"], Strings((await api.Get("/api/v1/map?region=STL Area"))["points"], "ref_id"));
+        Assert.Empty((await api.Get("/api/v1/map?region=WKLS"))["points"]!.AsArray());
     }
 
     [DbFact]
