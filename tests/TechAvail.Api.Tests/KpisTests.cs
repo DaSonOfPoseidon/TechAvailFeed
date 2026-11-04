@@ -112,6 +112,32 @@ public class KpisTests
     }
 
     [Fact]
+    public void Grouped_outcomes_combine_a_renamed_territory_and_mbs_rows_keep_both_names()
+    {
+        var day = new DayOutcome(
+            Day,
+            "ok",
+            Morning,
+            [
+                Item("1", new() { ["d0"] = "completed" }, region: "Lamar-Webb City"),
+                Item("2", new() { ["d0"] = "open" }, tech: "b", region: "Nevada-Lamar"),
+            ]
+        );
+        static List<(string Region, int Planned)> ByRegion(JsonNode result) =>
+            [.. result["by_region"]!.AsArray().Select(r => ((string)r!["region"]!, (int)r["job"]!["planned"]!))];
+
+        var perTerritory = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)]), Json)!;
+        Assert.Equal([("Lamar-Webb City", 1), ("Nevada-Lamar", 1)], ByRegion(perTerritory));
+
+        var grouped = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], grouped: true), Json)!;
+        Assert.Equal([("Nevada-Lamar", 2)], ByRegion(grouped));
+        Assert.Equal(0.5, (double)grouped["by_region"]![0]!["job"]!["completion_rate"]!["d0"]!);
+
+        var filtered = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], "Nevada-Lamar", grouped: true), Json)!;
+        Assert.Equal(2, (int)filtered["totals"]!["job"]!["planned"]!);
+    }
+
+    [Fact]
     public void Grouped_outcomes_sum_the_territories_counts_and_an_area_filter_takes_them_all()
     {
         var day = new DayOutcome(

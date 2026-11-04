@@ -29,10 +29,6 @@ public static class StatusUpdate
         ("North", ["Kirksville-Chillicothe"]),
     ];
 
-    // Reports on older snapshots still carry a territory's name from before MBS renamed it. Regions is printed in the
-    // jeopardy export, so these stay out of it.
-    static readonly Dictionary<string, string> Renamed = new() { ["Lamar-Webb City"] = "Nevada-Lamar" };
-
     static readonly Dictionary<string, string> RegionOf = Regions
         .SelectMany(r => r.Areas.Select(a => (Area: a, r.Region)))
         .ToDictionary(p => p.Area, p => p.Region);
@@ -47,7 +43,7 @@ public static class StatusUpdate
     static readonly string[] Working = ["E", "I"];
     static readonly string[] NotStarted = ["A", "O"];
 
-    public static string RegionFor(string area) => RegionOf.GetValueOrDefault(Renamed.GetValueOrDefault(area, area), Unmapped);
+    public static string RegionFor(string area) => RegionOf.GetValueOrDefault(InstallAvailability.CurrentName(area), Unmapped);
 
     public static string Status(int concerns) =>
         concerns == 0 ? "Green"

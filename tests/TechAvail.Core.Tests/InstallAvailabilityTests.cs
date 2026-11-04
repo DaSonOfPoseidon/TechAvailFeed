@@ -43,6 +43,14 @@ public class InstallAvailabilityTests
 
     static AvailabilityRow Row(InstallGrid grid, string area) => grid.Rows.Single(r => r.Area == area);
 
+    [Fact]
+    public void A_renamed_territory_rolls_up_under_its_current_name()
+    {
+        Assert.Equal("Nevada-Lamar", InstallAvailability.AreaFor("Lamar-Webb City"));
+        Assert.Equal("Nevada-Lamar", InstallAvailability.AreaFor("Nevada-Lamar"));
+        Assert.DoesNotContain(InstallAvailability.Areas.SelectMany(a => a.Territories), t => t == "Lamar-Webb City");
+    }
+
     [Theory]
     [InlineData("Columbia Core", "Columbia Core", true)]
     [InlineData("Columbia Core", "Central MO", true)]
@@ -50,6 +58,9 @@ public class InstallAvailabilityTests
     [InlineData("Jefferson City Area", "Columbia Core", false)]
     [InlineData("Jefferson City Area", "STL Area", false)]
     [InlineData("Carrollton", "Carrollton", true)]
+    [InlineData("Lamar-Webb City", "Nevada-Lamar", true)]
+    [InlineData("Lamar-Webb City", "Lamar-Webb City", true)]
+    [InlineData("Nevada-Lamar", "Lamar-Webb City", false)]
     [InlineData("Carrollton", "Central MO", false)]
     [InlineData("", "", true)]
     [InlineData("Columbia Core", "", false)]
