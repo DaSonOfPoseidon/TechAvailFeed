@@ -11,6 +11,9 @@ export interface StatsRow {
   rescheduled: number | null;
   unscheduled: number | null;
   pulled: number | null;
+  pulledCustomer: number | null;
+  pulledSocket: number | null;
+  pulledNoReason: number | null;
 }
 
 type Column = Exclude<keyof StatsRow, 'id'>;
@@ -22,16 +25,23 @@ export interface Sort {
   desc: boolean;
 }
 
-// The sort to apply: one on a column that's no longer shown (pulled, after switching to tickets)
+// The sort to apply: one on a column that's no longer shown (the pulled ones, after switching to tickets)
 // falls back to planned, so rows never sort on a hidden column.
 export function visibleSort(sort: Sort, columns: readonly Column[]): Sort {
   return columns.includes(sort.key) ? sort : { key: 'planned', desc: true };
 }
 
 export function outcome(stats: KindStats, name: string, measure: Measure): number | null {
-  if (name === 'pulled') {
-    const job = stats as JobStats;
-    return (measure === 'rate' ? job.pulled_d0_rate : job.pulled_d0?.total) ?? null;
+  const job = stats as JobStats;
+  switch (name) {
+    case 'pulled':
+      return (measure === 'rate' ? job.pulled_d0_rate : job.pulled_d0?.total) ?? null;
+    case 'pulledCustomer':
+      return (measure === 'rate' ? job.pulled_customer_rate : job.pulled_d0?.customer) ?? null;
+    case 'pulledSocket':
+      return (measure === 'rate' ? job.pulled_socket_rate : job.pulled_d0?.socket) ?? null;
+    case 'pulledNoReason':
+      return (measure === 'rate' ? job.pulled_no_reason_rate : job.pulled_d0?.no_reason) ?? null;
   }
   return (measure === 'rate' ? stats.outcome_rate[name] : stats.outcome[name]) ?? null;
 }
@@ -46,6 +56,9 @@ export function statsRow(id: string, name: string, stats: KindStats, measure: Me
     rescheduled: outcome(stats, 'rescheduled', measure),
     unscheduled: outcome(stats, 'unscheduled', measure),
     pulled: outcome(stats, 'pulled', measure),
+    pulledCustomer: outcome(stats, 'pulledCustomer', measure),
+    pulledSocket: outcome(stats, 'pulledSocket', measure),
+    pulledNoReason: outcome(stats, 'pulledNoReason', measure),
   };
 }
 
@@ -132,9 +145,13 @@ export class StatsTable {
       { key: 'rescheduled', label: 'Rescheduled' },
       { key: 'unscheduled', label: 'Unscheduled' },
     ];
-    return this.jobs()
-      ? [...columns, { key: 'pulled' as Column, label: 'Pulled on the day' }]
-      : columns;
+    const pulled: { key: Column; label: string }[] = [
+      { key: 'pulled', label: 'Pulled on the day' },
+      { key: 'pulledCustomer', label: 'Pulled: customer' },
+      { key: 'pulledSocket', label: 'Pulled: Socket' },
+      { key: 'pulledNoReason', label: 'Pulled: no reason' },
+    ];
+    return this.jobs() ? [...columns, ...pulled] : columns;
   });
 
   protected readonly active = computed(() =>
