@@ -1,5 +1,10 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { Capacity, CalendarRange } from '../api/models';
-import { rows } from './calendar-page';
+import { CalendarPage, rows } from './calendar-page';
 import { utilizationStep } from './utilization';
 
 function cap(free: number, utilization: number | null): Capacity {
@@ -49,9 +54,37 @@ describe('calendar rows', () => {
     expect(grid[2].filter).toBeNull();
   });
 
-  it('opens the day for the area when the rows are grouped', () => {
-    const grouped: CalendarRange = {
-      ...range,
+  it('steps utilisation into the five shades', () => {
+    expect([null, 0, 0.29, 0.3, 0.69, 0.84, 0.85, 1.2].map(utilizationStep)).toEqual([
+      0, 1, 1, 2, 3, 4, 5, 5,
+    ]);
+  });
+});
+
+@Component({ template: '' })
+class Blank {}
+
+describe('calendar page', () => {
+  it('asks for grouped rows and opens the day for the area', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', component: Blank }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    await TestBed.inject(Router).navigateByUrl('/calendar?regions=grouped');
+    const page = TestBed.createComponent(CalendarPage);
+    TestBed.tick();
+
+    const request = TestBed.inject(HttpTestingController).expectOne(
+      (r) => r.url === '/api/v1/calendar',
+    );
+    expect(request.request.params.get('regions')).toBe('grouped');
+    request.flush({
+      snapshot: null,
+      start: '2026-10-10',
+      end: '2026-10-10',
       days: [
         {
           date: '2026-10-10',
@@ -59,15 +92,13 @@ describe('calendar rows', () => {
           by_region: [{ ...cap(10, 0.4), region: 'Central MO' }],
         },
       ],
-    };
-    const grid = rows(grouped);
-    expect(grid[0].region).toBe('Central MO');
-    expect(grid[0].filter).toBe('Central MO');
-  });
+    } satisfies CalendarRange);
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    TestBed.tick();
 
-  it('steps utilisation into the five shades', () => {
-    expect([null, 0, 0.29, 0.3, 0.69, 0.84, 0.85, 1.2].map(utilizationStep)).toEqual([
-      0, 1, 1, 2, 3, 4, 5, 5,
-    ]);
+    const cell = (page.nativeElement as HTMLElement).querySelector('a[href*="region="]');
+    expect(cell?.getAttribute('href')).toBe(
+      '/calendar/2026-10-10?regions=grouped&region=Central%20MO',
+    );
   });
 });
