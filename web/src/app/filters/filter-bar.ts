@@ -7,14 +7,19 @@ import { lastValue } from '../api/feed-api';
 import { Filters } from '../api/models';
 import { DateField } from '../shared/date-field';
 import { Freshness } from '../shared/freshness';
-import { FilterState, noRegion } from './filter-state';
+import { FilterState, RegionMode, noRegion } from './filter-state';
 
-export type Field = 'region' | 'skill' | 'calendar' | 'start' | 'days';
+export type Field = 'region' | 'regions' | 'skill' | 'calendar' | 'start' | 'days';
 
 // The options plus the active value when a newer snapshot dropped it, so the select still shows
 // what the view is filtered by (a bookmark can name a region that has no techs now).
 export function withActive(options: readonly string[], active: string | null): string[] {
   return active === null || options.includes(active) ? [...options] : [...options, active];
+}
+
+// The region dropdown's list: MBS's regions, or the areas they roll up into.
+export function regionOptions(filters: Filters | undefined, mode: RegionMode): string[] {
+  return (mode === 'grouped' ? filters?.areas : filters?.regions) ?? [];
 }
 
 @Component({
@@ -64,6 +69,17 @@ export function withActive(options: readonly string[], active: string | null): s
           </mat-select>
         </mat-form-field>
       }
+      @if (has('regions')) {
+        <mat-button-toggle-group
+          hideSingleSelectionIndicator
+          aria-label="Region grouping"
+          [value]="state.regions()"
+          (change)="switchRegions($event.value)"
+        >
+          <mat-button-toggle value="mbs">MBS regions</mat-button-toggle>
+          <mat-button-toggle value="grouped">Grouped</mat-button-toggle>
+        </mat-button-toggle-group>
+      }
       @if (has('calendar')) {
         <mat-button-toggle-group
           hideSingleSelectionIndicator
@@ -107,11 +123,19 @@ export class FilterBar {
   protected readonly optionList = lastValue(this.options);
   protected readonly regions = computed(() => {
     const region = this.state.region();
-    return withActive(this.optionList()?.regions ?? [], region === noRegion ? null : region);
+    return withActive(
+      regionOptions(this.optionList(), this.state.regions()),
+      region === noRegion ? null : region,
+    );
   });
   protected readonly skills = computed(() =>
     withActive(this.optionList()?.skills ?? [], this.state.skill()),
   );
+
+  protected switchRegions(mode: RegionMode): void {
+    const filters = this.optionList();
+    void this.state.setRegions(mode, filters && regionOptions(filters, mode));
+  }
 
   protected has(field: Field): boolean {
     return this.fields().includes(field);

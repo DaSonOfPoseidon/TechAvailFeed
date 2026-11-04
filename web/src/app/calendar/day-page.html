@@ -23,7 +23,7 @@
     }
     <a mat-button routerLink="/calendar" queryParamsHandling="merge">Back to the calendar</a>
   </div>
-  <app-filter-bar [fields]="['region', 'skill', 'calendar']" />
+  <app-filter-bar [fields]="['region', 'regions', 'skill', 'calendar']" />
 
   @if (day.isLoading()) {
     <mat-progress-bar mode="indeterminate" />

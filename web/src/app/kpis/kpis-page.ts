@@ -61,6 +61,7 @@ export class KpisPage {
         start: this.state.get('from'),
         end: this.state.get('to'),
         region: this.state.region(),
+        regions: this.state.regionsParam(),
         tech: this.state.get('tech'),
       }),
     };

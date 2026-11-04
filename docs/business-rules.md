@@ -49,7 +49,8 @@ reasoning that spans more than one member. Keep the two in step.
   recomputing rates from the sums; without it, rows are per territory. A `region` filter takes a territory or an
   area name (`InRegion`): a territory in a group selects only itself, an area selects all of its territories, and an
   unknown name selects nothing. `/filters` lists the `areas` beside `regions`. Arrivals and jeopardy keep their own
-  pickers.
+  pickers. The dashboard's MBS/Grouped toggle (`regions=grouped` in the query string) sends it from Capacity, Day and Trends,
+  and switches the region dropdown to `areas`; the Excel exports ignore it.
 - Exceptions text covers the same day and next day. A grid shorter than that speaks only for the days it
   has, and one that doesn't start today names its dates instead of "same day/next day". A day every area is
   Closed (a Sunday, or no install techs anywhere) is one exception for all areas.

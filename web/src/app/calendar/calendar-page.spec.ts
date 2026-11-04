@@ -49,6 +49,22 @@ describe('calendar rows', () => {
     expect(grid[2].filter).toBeNull();
   });
 
+  it('opens the day for the area when the rows are grouped', () => {
+    const grouped: CalendarRange = {
+      ...range,
+      days: [
+        {
+          date: '2026-10-10',
+          totals: cap(10, 0.4),
+          by_region: [{ ...cap(10, 0.4), region: 'Central MO' }],
+        },
+      ],
+    };
+    const grid = rows(grouped);
+    expect(grid[0].region).toBe('Central MO');
+    expect(grid[0].filter).toBe('Central MO');
+  });
+
   it('steps utilisation into the five shades', () => {
     expect([null, 0, 0.29, 0.3, 0.69, 0.84, 0.85, 1.2].map(utilizationStep)).toEqual([
       0, 1, 1, 2, 3, 4, 5, 5,
