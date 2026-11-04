@@ -14,8 +14,20 @@ public static class OutcomesExport
         (
             "Pulled d0",
             "Planned jobs canceled, unscheduled or rescheduled by the end of the plan day, "
-                + "split by how far the tech got (in progress, en route)."
+                + "split by how far the tech got (in progress, en route) and by who owns the incomplete reason."
         ),
+        (
+            "Pulled customer / Pulled Socket",
+            "Pulled jobs whose incomplete code names the bucket the job ended in (CX_/SX_ canceled, CR_/SR_ rescheduled, "
+                + "CU_/SU_ unscheduled): C is the customer, S is Socket."
+        ),
+        (
+            "Pulled no reason",
+            "Pulled jobs with no usable code: blank, free text, a deactivated code, a code for another bucket, "
+                + "or a day finalized before reasons were stored."
+        ),
+        ("Reason", "The job's incomplete code at d0."),
+        ("Pulled reasons", "The sheet counting pulled jobs per incomplete code, for the days and filters of the export."),
         ("Provisional", "D+2 hasn't ended yet, so the day's outcomes can still change."),
     ];
 
@@ -32,6 +44,9 @@ public static class OutcomesExport
         new("Pulled d0"),
         .. Outcomes.ReachedNames.Select(r => new Column($"Pulled {r.Replace('_', ' ')}")),
         new("Pulled, prereqs open"),
+        new("Pulled customer"),
+        new("Pulled Socket"),
+        new("Pulled no reason"),
     ];
 
     static readonly Column[] ItemColumns =
@@ -50,7 +65,10 @@ public static class OutcomesExport
         new("d2"),
         new("Reached"),
         new("Prereqs open"),
+        new("Reason"),
     ];
+
+    static readonly Column[] ReasonColumns = [new("Code"), new("Bucket"), new("Responsibility"), new("Count")];
 
     static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..].ToLowerInvariant();
 
@@ -80,6 +98,9 @@ public static class OutcomesExport
                         pulled?.Total,
                         .. Outcomes.ReachedNames.Select(r => (object?)pulled?.Reached(r)),
                         pulled?.PrereqsOpen,
+                        pulled?.Customer,
+                        pulled?.Socket,
+                        pulled?.NoReason,
                     ]
                 );
         }
@@ -109,9 +130,22 @@ public static class OutcomesExport
                                 i.Outcomes.GetValueOrDefault("d2"),
                                 i.Reached,
                                 i.PrereqsOpen,
+                                i.IncompleteReason,
                             ]
                     )
             ),
+    ];
+
+    static List<object?[]> ReasonRows(OutcomeKpis kpis) =>
+    [
+        .. kpis
+            .Totals.Job.PulledD0.ByReason.OrderByDescending(r => r.Value)
+            .ThenBy(r => r.Key, StringComparer.Ordinal)
+            .Select(r =>
+            {
+                var reason = IncompleteReasons.Parse(r.Key)!;
+                return (object?[])[r.Key, reason.Bucket, Capitalize(reason.Owner), r.Value];
+            }),
     ];
 
     // kpis is already filtered; the items are filtered here.
@@ -125,6 +159,7 @@ public static class OutcomesExport
     {
         Xlsx.WriteSheet(wb, "Outcomes by day", DayColumns, DayRows(kpis));
         Xlsx.WriteSheet(wb, "Outcome items", ItemColumns, ItemRows(outcomes, region, tech));
+        Xlsx.WriteSheet(wb, "Pulled reasons", ReasonColumns, ReasonRows(kpis));
     }
 
     public static byte[] Workbook(
