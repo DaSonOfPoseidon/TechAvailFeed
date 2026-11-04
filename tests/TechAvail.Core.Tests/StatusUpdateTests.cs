@@ -50,6 +50,7 @@ public class StatusUpdateTests
         Assert.Equal(StatusUpdate.Unmapped, StatusUpdate.RegionFor(""));
         var areas = StatusUpdate.Regions.SelectMany(r => r.Areas).ToList();
         Assert.Equal(areas.Count, areas.Distinct().Count());
+        Assert.DoesNotContain("Lamar-Webb City", areas);
     }
 
     [Theory]
