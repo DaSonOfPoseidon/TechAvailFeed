@@ -318,10 +318,10 @@ public sealed partial class FeedStore : IFeedReads
                 """
                 INSERT INTO job_outcomes (
                     plan_date, kind, ref_id, tech_id, tech_name, planned_start, morning_snapshot_id,
-                    d0, d1, d2, reached, prereqs_open, region, task_type
+                    d0, d1, d2, reached, prereqs_open, region, task_type, incomplete_reason
                 )
                 VALUES (@day, @kind, @ref_id, @tech_id, @tech_name, @planned_start, @morning_id,
-                        @d0, @d1, @d2, @reached, @prereqs_open, @region, @task_type)
+                        @d0, @d1, @d2, @reached, @prereqs_open, @region, @task_type, @incomplete_reason)
                 ON CONFLICT DO NOTHING
                 """,
                 ("day", outcome.Day),
@@ -337,7 +337,8 @@ public sealed partial class FeedStore : IFeedReads
                 ("reached", item.Reached),
                 ("prereqs_open", item.PrereqsOpen),
                 ("region", item.Region),
-                ("task_type", item.TaskType)
+                ("task_type", item.TaskType),
+                ("incomplete_reason", item.IncompleteReason)
             );
             command.Transaction = transaction;
             command.ExecuteNonQuery();
@@ -366,7 +367,8 @@ public sealed partial class FeedStore : IFeedReads
             """
             SELECT kind, ref_id, tech_id, tech_name, planned_start, d0, d1, d2,
                    COALESCE(reached, 'unknown') AS reached, prereqs_open,
-                   COALESCE(region, '') AS region, COALESCE(task_type, '') AS task_type
+                   COALESCE(region, '') AS region, COALESCE(task_type, '') AS task_type,
+                   incomplete_reason
             FROM job_outcomes WHERE plan_date = @day
             ORDER BY kind, planned_start, ref_id
             """,
@@ -389,6 +391,7 @@ public sealed partial class FeedStore : IFeedReads
                     PrereqsOpen = Get<bool?>(r, "prereqs_open"),
                     Region = Get<string>(r, "region")!,
                     TaskType = Get<string>(r, "task_type")!,
+                    IncompleteReason = Get<string>(r, "incomplete_reason"),
                 },
             ("day", day)
         );

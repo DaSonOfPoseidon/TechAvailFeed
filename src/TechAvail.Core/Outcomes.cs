@@ -14,6 +14,7 @@ public sealed class Planned(string kind, string refId, string techId, string tec
 
     public OrderedDictionary<string, string> Outcomes { get; init; } = [];
     public string Reached { get; set; } = "unknown";
+    public string? IncompleteReason { get; set; }
     public bool? PrereqsOpen { get; set; }
     public string Region { get; init; } = "";
     public string TaskType { get; init; } = "";
@@ -31,7 +32,19 @@ public sealed record DayOutcome(
     public OrderedDictionary<string, int> AddedAfterMorning { get; init; } = AddedAfterMorning ?? [];
 }
 
-public sealed record PulledCounts(int Total, int InProgress, int EnRoute, int NotStarted, int Unknown, int PrereqsOpen)
+// Customer + Socket + NoReason = Total; ByReason counts the codes behind Customer and Socket.
+public sealed record PulledCounts(
+    int Total,
+    int InProgress,
+    int EnRoute,
+    int NotStarted,
+    int Unknown,
+    int PrereqsOpen,
+    int Customer,
+    int Socket,
+    int NoReason,
+    Dictionary<string, int> ByReason
+)
 {
     public int Reached(string name) =>
         name switch
@@ -161,6 +174,15 @@ public static class Outcomes
         if (CanceledStatuses[kind].Contains(block.Status))
             return "canceled";
         // Rows from before the feed carried a department have "", which says nothing.
+        var position = Position(day, block);
+        // A reason can outlive a rebooking, so it only speaks for a job MBS still lists as new or one with no start that is not handed off.
+        if (kind == "job" && (block.Status == "N" || position == "unscheduled") && IncompleteReasons.Parse(block.IncompleteReason) is { } reason)
+            return reason.Bucket;
+        return position;
+    }
+
+    static string Position(DateOnly day, Block block)
+    {
         if (block.Department.Length > 0 && !InHouse.Contains(block.Department))
             return "handed_off";
         if (block.StartsAt.Year == SentinelYear)
@@ -221,6 +243,7 @@ public static class Outcomes
             foreach (var (key, item) in planned)
             {
                 item.Reached = Reached(day, found.GetValueOrDefault(key));
+                item.IncompleteReason = found.GetValueOrDefault(key)?.IncompleteReason;
                 item.PrereqsOpen = PrereqsOpen(found.GetValueOrDefault(key));
             }
             foreach (var key in PlannedItems(d0, day).Keys)
@@ -245,13 +268,22 @@ public static class Outcomes
     {
         var pulled = jobs.Where(i => Pulled.Contains(i.Outcomes.GetValueOrDefault("d0"))).ToList();
         int Reached(string name) => pulled.Count(i => i.Reached == name);
+        // A code only explains the job if it names the bucket the job ended up in.
+        var reasons = pulled
+            .Select(i => IncompleteReasons.Parse(i.IncompleteReason) is { } r && r.Bucket == i.Outcomes["d0"] ? r : null)
+            .ToList();
+        int Owned(string owner) => reasons.Count(r => r?.Owner == owner);
         return new PulledCounts(
             pulled.Count,
             Reached("in_progress"),
             Reached("en_route"),
             Reached("not_started"),
             Reached("unknown"),
-            pulled.Count(i => i.PrereqsOpen == true)
+            pulled.Count(i => i.PrereqsOpen == true),
+            Owned(IncompleteReasons.Customer),
+            Owned(IncompleteReasons.Socket),
+            reasons.Count(r => r is null),
+            reasons.OfType<IncompleteReason>().GroupBy(r => r.Code).ToDictionary(g => g.Key, g => g.Count())
         );
     }
 

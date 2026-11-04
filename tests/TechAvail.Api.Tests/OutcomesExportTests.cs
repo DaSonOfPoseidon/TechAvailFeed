@@ -18,13 +18,69 @@ public class OutcomesExportTests
     {
         var outcomes = new List<(DayOutcome, bool)> { (new DayOutcome(new DateOnly(2026, 9, 29), "no_morning"), false) };
         using var wb = Open(OutcomesExport.Workbook(Chicago, Now, Day.AddDays(-7), Day, null, null, outcomes));
-        Assert.Equal(["Outcomes by day", "Outcome items", "About"], wb.Worksheets.Select(ws => ws.Name));
+        Assert.Equal(["Outcomes by day", "Outcome items", "Pulled reasons", "About"], wb.Worksheets.Select(ws => ws.Name));
         var sheet = wb.Worksheet("Outcomes by day");
         var width = sheet.Row(1).CellsUsed().Count();
         Assert.Equal(new DateTime(2026, 9, 29), sheet.Cell(2, 1).GetDateTime());
         Assert.Equal(("no_morning", false), (sheet.Cell(2, 2).GetText(), sheet.Cell(2, 3).GetBoolean()));
         Assert.True(sheet.Cell(2, 4).IsEmpty());
         Assert.True(width > 4);
+    }
+
+    static Planned Job(string reference, string d0, string? reason) =>
+        new("job", reference, "t1", "T1", Day.ToDateTime(new TimeOnly(9, 0)))
+        {
+            Outcomes = new() { ["d0"] = d0, ["d1"] = d0, ["d2"] = d0 },
+            Reached = "not_started",
+            IncompleteReason = reason,
+        };
+
+    static Dictionary<string, int> Header(IXLWorksheet sheet) =>
+        sheet.Row(1).CellsUsed().ToDictionary(c => c.GetString(), c => c.Address.ColumnNumber);
+
+    [Fact]
+    public void Pulled_jobs_are_split_by_responsibility_with_a_sheet_of_the_reasons()
+    {
+        var items = new List<Planned>
+        {
+            Job("1", "canceled", "SX_NOCONTACT"),
+            Job("2", "canceled", "SX_NOCONTACT"),
+            Job("3", "rescheduled", "CR_REQUEST"),
+            Job("4", "unscheduled", "AdditionalW"),
+            Job("5", "open", null),
+        };
+        var morning = new Snapshot(1, Day.ToDateTime(new TimeOnly(6, 0)));
+        var outcomes = new List<(DayOutcome, bool)> { (new DayOutcome(Day, "ok", morning, items), false) };
+        using var wb = Open(OutcomesExport.Workbook(Chicago, Now, Day, Day, null, null, outcomes));
+
+        var days = wb.Worksheet("Outcomes by day");
+        var columns = Header(days);
+        var job = days.Row(2);
+        Assert.Equal(
+            (4.0, 1.0, 2.0, 1.0),
+            (
+                job.Cell(columns["Pulled d0"]).GetDouble(),
+                job.Cell(columns["Pulled customer"]).GetDouble(),
+                job.Cell(columns["Pulled Socket"]).GetDouble(),
+                job.Cell(columns["Pulled no reason"]).GetDouble()
+            )
+        );
+        Assert.True(days.Row(3).Cell(columns["Pulled customer"]).IsEmpty()); // tickets have no pulled count
+
+        var itemSheet = wb.Worksheet("Outcome items");
+        var reason = Header(itemSheet)["Reason"];
+        Assert.Equal(["SX_NOCONTACT", "SX_NOCONTACT", "CR_REQUEST", "AdditionalW", ""], itemSheet.RowsUsed().Skip(1).Select(r => r.Cell(reason).GetString()));
+
+        var reasons = wb.Worksheet("Pulled reasons");
+        Assert.Equal(["Code", "Bucket", "Responsibility", "Count"], reasons.Row(1).CellsUsed().Select(c => c.GetString()));
+        Assert.Equal(
+            [("SX_NOCONTACT", "canceled", "Socket", 2.0), ("CR_REQUEST", "rescheduled", "Customer", 1.0)],
+            reasons.RowsUsed().Skip(1).Select(r => (r.Cell(1).GetString(), r.Cell(2).GetString(), r.Cell(3).GetString(), r.Cell(4).GetDouble()))
+        );
+
+        var about = wb.Worksheet("About").RowsUsed().Select(r => r.Cell(1).GetString()).ToList();
+        Assert.Contains("Pulled customer / Pulled Socket", about);
+        Assert.Contains("Pulled reasons", about);
     }
 
     [DbFact]

@@ -18,7 +18,8 @@ public class KpisTests
         string tech = "a",
         string region = "North",
         string reached = "not_started",
-        bool? prereqs = null
+        bool? prereqs = null,
+        string? reason = null
     ) =>
         new(kind, reference, tech, tech.ToUpperInvariant(), new DateTime(2026, 10, 6, 9, 0, 0))
         {
@@ -26,6 +27,7 @@ public class KpisTests
             Reached = reached,
             PrereqsOpen = prereqs,
             Region = region,
+            IncompleteReason = reason,
         };
 
     static JsonNode Kpis(List<(DayOutcome, bool)> days, string? region = null, string? tech = null) =>
@@ -61,8 +63,8 @@ public class KpisTests
                 Item("1", new() { ["d0"] = "completed", ["d1"] = "completed", ["d2"] = "completed" }),
                 // Provisional: no d2 yet.
                 Item("2", new() { ["d0"] = "open", ["d1"] = "completed" }),
-                Item("3", new() { ["d0"] = "canceled", ["d1"] = "canceled" }, reached: "in_progress", prereqs: true),
-                Item("4", new() { ["d0"] = "rescheduled" }, tech: "b", region: "South"),
+                Item("3", new() { ["d0"] = "canceled", ["d1"] = "canceled" }, reached: "in_progress", prereqs: true, reason: "SX_NOCONTACT"),
+                Item("4", new() { ["d0"] = "rescheduled" }, tech: "b", region: "South", reason: "CR_REQUEST"),
                 Item("T1", new() { ["d0"] = "completed" }, kind: "ticket"),
             ]
         );
@@ -75,6 +77,8 @@ public class KpisTests
         Assert.Equal(0.25, (double)job["outcome_rate"]!["rescheduled"]!);
         var pulled = job["pulled_d0"]!;
         Assert.Equal((2, 1, 1), ((int)pulled["total"]!, (int)pulled["in_progress"]!, (int)pulled["prereqs_open"]!));
+        Assert.Equal((1, 1, 0), ((int)pulled["customer"]!, (int)pulled["socket"]!, (int)pulled["no_reason"]!));
+        Assert.Equal((1, 1), ((int)pulled["by_reason"]!["SX_NOCONTACT"]!, (int)pulled["by_reason"]!["CR_REQUEST"]!));
         Assert.Equal(0.5, (double)job["pulled_d0_rate"]!);
         Assert.Equal(1, (double)result["totals"]!["ticket"]!["completion_rate"]!["d0"]!);
         Assert.True((bool)result["days"]![0]!["provisional"]!);

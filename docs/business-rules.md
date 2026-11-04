@@ -72,6 +72,16 @@ reasoning that spans more than one member. Keep the two in step.
   recomputed.
 - A job pulled from the plan day (canceled, unscheduled or rescheduled by d0) is split by how far the tech
   got that day, read from the status trace.
+- The incomplete code (`IncompleteReasons`) says where a job was lost and who owns it: `CX_`/`SX_` canceled,
+  `CR_`/`SR_` rescheduled, `CU_`/`SU_` unscheduled; `C` is the customer, `S` Socket. Any other value, including
+  free text and deactivated codes, is not recognized. Precedence at each checkpoint: completed, then a canceled
+  status (`U` or `X`), then the code, which decides the bucket only for a job with status `N` or one the
+  position rules call unscheduled (no start and not handed off). Otherwise the existing position rules apply
+  (handed off, unscheduled, rescheduled, unassigned, open), so a handed-off job that is not new stays handed
+  off. MBS can leave a code on a job that was rebooked, so an active (`A`) job on its plan day stays open.
+  Tickets ignore the code.
+- A pulled job counts toward customer or Socket only when its d0 code names the bucket it ended in; otherwise
+  it is "no reason", as is a day finalized before the reason was stored.
 
 ## Arrivals (Q851)
 
