@@ -219,6 +219,37 @@ public class CapacityExportTests
     public async Task Another_regions_unassigned_work_leaves_the_grid_alone() =>
         Assert.Equal(0.75, await NorthShare(B("job_unassigned", "13:00", "14:00", "", "South", reference: "u1")));
 
+    // An area filter takes the techs of every territory in it, so the grid and Summary fill instead of reading Closed.
+    [DbFact]
+    public async Task An_area_filter_fills_the_workbook()
+    {
+        using var db = new TestDatabase();
+        var generated = new DateTimeOffset(2026, 10, 6, 11, 5, 0, TimeSpan.Zero);
+        var feed = new ParsedFeed { Sha256 = "x", Format = "blocks", GeneratedAt = generated };
+        feed.Blocks.AddRange(
+            [
+                B("shift", "08:00", "17:00", "a", "Columbia Core", "INS"),
+                B("shift", "08:00", "17:00", "b", "Jefferson City Area", "INS"),
+                B("shift", "08:00", "17:00", "c", "St Louis West", "INS"),
+                B("job", "08:00", "10:00", "a", reference: "j1"),
+            ]
+        );
+        new FeedStore(db.ConnectionString).Save("<1>", "email", null, null, null, generated, feed);
+        using var factory = new ApiFactory(db, Now);
+        var client = factory.CreateClient();
+
+        using var central = Open(await (await client.GetAsync("/api/v1/capacity.xlsx?region=Central MO")).Content.ReadAsByteArrayAsync());
+        var grid = central.Worksheet(CapacityExport.InstallSheet);
+        var row = grid.Column(1).CellsUsed().Single(c => c.GetString() == "Central MO").WorksheetRow();
+        // a has 3 of 4 windows free (8-10 is a job), b all 4.
+        Assert.Equal(7.0 / 8, row.Cell(2).GetDouble());
+        Assert.DoesNotContain(grid.Column(1).CellsUsed(), c => c.GetString() == "STL Area");
+
+        using var one = Open(await (await client.GetAsync("/api/v1/capacity.xlsx?region=Columbia Core")).Content.ReadAsByteArrayAsync());
+        var oneRow = one.Worksheet(CapacityExport.InstallSheet).Column(1).CellsUsed().Single(c => c.GetString() == "Central MO").WorksheetRow();
+        Assert.Equal(3.0 / 4, oneRow.Cell(2).GetDouble());
+    }
+
     [DbTheory]
     [InlineData("9999-12-31")]
     [InlineData("9999-12-26")]

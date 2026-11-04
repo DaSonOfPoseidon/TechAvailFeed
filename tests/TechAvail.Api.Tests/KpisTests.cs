@@ -112,6 +112,44 @@ public class KpisTests
     }
 
     [Fact]
+    public void Grouped_outcomes_sum_the_territories_counts_and_an_area_filter_takes_them_all()
+    {
+        var day = new DayOutcome(
+            Day,
+            "ok",
+            Morning,
+            [
+                Item("1", new() { ["d0"] = "completed" }, region: "Columbia Core"),
+                Item("2", new() { ["d0"] = "open" }, tech: "b", region: "Lake Ozark Area"),
+                Item("3", new() { ["d0"] = "completed" }, tech: "c", region: "Carrollton"),
+            ]
+        );
+        static List<(string Region, int Planned)> ByRegion(JsonNode result) =>
+            [.. result["by_region"]!.AsArray().Select(r => ((string)r!["region"]!, (int)r["job"]!["planned"]!))];
+
+        var perTerritory = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)]), Json)!;
+        Assert.Equal([("Carrollton", 1), ("Columbia Core", 1), ("Lake Ozark Area", 1)], ByRegion(perTerritory));
+
+        var grouped = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], grouped: true), Json)!;
+        Assert.Equal([("Carrollton", 1), ("Central MO", 2)], ByRegion(grouped));
+        Assert.Equal(1, (int)grouped["by_region"]![1]!["job"]!["completed"]!["d0"]!);
+        Assert.Equal(0.5, (double)grouped["by_region"]![1]!["job"]!["completion_rate"]!["d0"]!);
+
+        var central = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], "Central MO", grouped: true), Json)!;
+        Assert.Equal(2, (int)central["totals"]!["job"]!["planned"]!);
+        Assert.Equal([("Central MO", 2)], ByRegion(central));
+        Assert.Equal(["a", "b"], central["techs"]!.AsArray().Select(t => (string)t!["tech_id"]!));
+
+        var one = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], "Columbia Core"), Json)!;
+        Assert.Equal(1, (int)one["totals"]!["job"]!["planned"]!);
+
+        var withTech = JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], "Central MO", "b"), Json)!;
+        Assert.Equal(1, (int)withTech["totals"]!["job"]!["planned"]!);
+        Assert.Equal(0, (int)withTech["totals"]!["job"]!["completed"]!["d0"]!);
+        Assert.Equal(0, (int)JsonSerializer.SerializeToNode(Api.Kpis.OutcomeKpis([(day, false)], "Nowhere"), Json)!["totals"]!["job"]!["planned"]!);
+    }
+
+    [Fact]
     public void Techs_list_the_range_ignoring_the_tech_filter()
     {
         var day = new DayOutcome(

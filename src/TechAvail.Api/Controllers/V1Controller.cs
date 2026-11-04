@@ -38,6 +38,13 @@ public abstract class V1Controller(IFeedReads store, ApiSettings settings, TimeP
     protected static void CheckCalendar(string calendar) =>
         Check(calendar is "install" or "tc", "calendar must be install or tc");
 
+    // `regions=grouped` rolls by_region up to InstallAvailability's areas; omitted, rows are per territory.
+    protected static bool Grouped(string? regions)
+    {
+        Check(regions is null or "grouped", "regions must be grouped");
+        return regions is not null;
+    }
+
     // The date loops step once past the last date they use, so that step must still be a valid date.
     protected static void CheckSpan(DateOnly from, int days) =>
         Check(from.DayNumber + days <= DateOnly.MaxValue.DayNumber, "start is too close to the last date");

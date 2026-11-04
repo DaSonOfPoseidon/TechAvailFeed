@@ -100,16 +100,21 @@ public static class Kpis
     public static bool Charted(DayKpis day) =>
         Charted(day.Date, day.Status == "ok" && (day.Job?.Planned ?? 0) + (day.Ticket?.Planned ?? 0) == 0);
 
-    public static OutcomeKpis OutcomeKpis(IEnumerable<(DayOutcome Outcome, bool Provisional)> days, string? region = null, string? tech = null)
+    public static OutcomeKpis OutcomeKpis(
+        IEnumerable<(DayOutcome Outcome, bool Provisional)> days,
+        string? region = null,
+        string? tech = null,
+        bool grouped = false
+    )
     {
         var series = new List<DayKpis>();
         var pooled = new List<Planned>();
         var techs = new Dictionary<string, string>();
         foreach (var (outcome, provisional) in days.OrderBy(d => d.Outcome.Day))
         {
-            foreach (var item in outcome.Items.Where(i => region is null || i.Region == region))
+            foreach (var item in outcome.Items.Where(i => region is null || InstallAvailability.InRegion(i.Region, region)))
                 techs.TryAdd(item.TechId, item.TechName);
-            var items = outcome.Items.Where(i => (region is null || i.Region == region) && (tech is null || i.TechId == tech)).ToList();
+            var items = outcome.Items.Where(i => (region is null || InstallAvailability.InRegion(i.Region, region)) && (tech is null || i.TechId == tech)).ToList();
             var kinds = outcome.Status == "ok" ? Kinds(items) : null;
             series.Add(new DayKpis(outcome.Day, outcome.Status, provisional, kinds?.Job, kinds?.Ticket));
             pooled.AddRange(items);
@@ -120,7 +125,7 @@ public static class Kpis
             Kinds(pooled),
             [
                 .. pooled
-                    .GroupBy(i => i.Region)
+                    .GroupBy(i => grouped ? InstallAvailability.AreaFor(i.Region) : i.Region)
                     .OrderBy(g => g.Key, StringComparer.Ordinal)
                     .Select(g =>
                     {

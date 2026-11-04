@@ -13,14 +13,15 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
     );
 
     [HttpGet("kpis/capacity")]
-    public CapacityResponse Capacity(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install")
+    public CapacityResponse Capacity(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install", string? regions = null)
     {
         CheckDays(days);
         CheckCalendar(calendar);
+        var grouped = Grouped(regions);
         var (blocks, snapshot) = Latest();
         var (from, to) = Window(start, days);
         var calendarController = new CalendarController(Store, Settings, Clock);
-        var (_, _, entries) = calendarController.CapacityFor(blocks, from, to, region, skill, calendar);
+        var (_, _, entries) = calendarController.CapacityFor(blocks, from, to, region, skill, calendar, grouped);
         return new CapacityResponse(
             Info(snapshot),
             new CalendarController.Filters(region, skill, calendar),
@@ -48,10 +49,11 @@ public sealed class KpisController(IFeedReads store, ApiSettings settings, TimeP
     );
 
     [HttpGet("kpis/outcomes")]
-    public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech)
+    public OutcomesResponse Outcomes(DateOnly? start, DateOnly? end, string? region, string? tech, string? regions = null)
     {
+        var grouped = Grouped(regions);
         var (from, to) = HistoryWindow(start, end);
-        var kpis = Kpis.OutcomeKpis(new OutcomeHistory(Store, Settings.Tz, Clock).Range(from, to), region, tech);
+        var kpis = Kpis.OutcomeKpis(new OutcomeHistory(Store, Settings.Tz, Clock).Range(from, to), region, tech, grouped);
         return new OutcomesResponse(
             Info(Store.SnapshotMeta()),
             new OutcomeFilters(region, tech),

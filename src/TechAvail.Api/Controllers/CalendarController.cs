@@ -88,33 +88,36 @@ public sealed class CalendarController(IFeedReads store, ApiSettings settings, T
         DateOnly end,
         string? region,
         string? skill,
-        string calendar
+        string calendar,
+        bool grouped = false
     )
     {
         var found = Availability.TechDays(blocks, LocalNow(), start, end, calendar);
         var days = CapacityRollup.FilterDays(found, region, skill);
         var demand = CapacityRollup.UnassignedWork(blocks, start, end, region, skill, calendar);
-        return (days, demand, CapacityRollup.Entries(days, demand, start, end));
+        return (days, demand, CapacityRollup.Entries(days, demand, start, end, grouped));
     }
 
     [HttpGet("calendar")]
-    public RangeResponse Range(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install")
+    public RangeResponse Range(DateOnly? start, string? region, string? skill, int days = 30, string calendar = "install", string? regions = null)
     {
         CheckDays(days);
         CheckCalendar(calendar);
+        var grouped = Grouped(regions);
         var (blocks, snapshot) = Latest();
         var (from, to) = Window(start, days);
-        var (_, _, entries) = CapacityFor(blocks, from, to, region, skill, calendar);
+        var (_, _, entries) = CapacityFor(blocks, from, to, region, skill, calendar, grouped);
         return new RangeResponse(Info(snapshot), new Filters(region, skill, calendar), from, to, entries);
     }
 
     [HttpGet("calendar/{day}")]
-    public DayResponse Day(DateOnly day, string? region, string? skill, string calendar = "install")
+    public DayResponse Day(DateOnly day, string? region, string? skill, string calendar = "install", string? regions = null)
     {
         CheckCalendar(calendar);
+        var grouped = Grouped(regions);
         CheckSpan(day, 1);
         var (blocks, snapshot) = Latest();
-        var (days, demand, entries) = CapacityFor(blocks, day, day, region, skill, calendar);
+        var (days, demand, entries) = CapacityFor(blocks, day, day, region, skill, calendar, grouped);
         var entry = entries.Single();
         return new DayResponse(
             Info(snapshot),

@@ -8,8 +8,9 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
 {
     public sealed record Tech(string TechId, string TechName, string Region, string Calendar);
 
+    // Areas are Regions rolled up by InstallAvailability.Areas (what `regions=grouped` returns); either name filters `region`.
     // VpRegions are the jeopardy update's regions (StatusUpdate), not the feed's.
-    public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Skills, List<Tech> Techs, string[] VpRegions);
+    public sealed record FiltersResponse(SnapshotInfo? Snapshot, List<string> Regions, List<string> Areas, List<string> Skills, List<Tech> Techs, string[] VpRegions);
 
     // Skills include those unassigned work needs, so demand no rostered tech covers can still be filtered to.
     [HttpGet("filters")]
@@ -39,6 +40,7 @@ public sealed class FiltersController(IFeedReads store, ApiSettings settings, Ti
         return new FiltersResponse(
             Info(snapshot),
             [.. regions.Order(StringComparer.Ordinal)],
+            [.. regions.Select(InstallAvailability.AreaFor).Distinct().Order(StringComparer.Ordinal)],
             [.. skills.Order(StringComparer.Ordinal)],
             [
                 .. techs

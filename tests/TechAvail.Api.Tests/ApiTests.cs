@@ -104,6 +104,7 @@ public class ApiTests
         using var api = new Api(Blocks);
         var body = await api.Get("/api/v1/filters");
         Assert.Equal(["North", "South"], body["regions"]!.AsArray().Select(n => n!.GetValue<string>()));
+        Assert.Equal(["North", "South"], body["areas"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["INS", "RECO"], body["skills"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal(["a", "b"], Strings(body["techs"], "tech_id"));
         Assert.Equal(TechAvail.Core.StatusUpdate.RegionNames, body["vp_regions"]!.AsArray().Select(n => n!.GetValue<string>()));
@@ -127,6 +128,134 @@ public class ApiTests
         Assert.Equal(2, today["totals"]!["techs_on"]!.GetValue<int>());
         Assert.Equal(1, today["totals"]!["unassigned_jobs"]!.GetValue<int>());
         Assert.Equal(["North", "South"], Strings(today["by_region"], "region"));
+    }
+
+    // Two Central MO territories, one STL Area territory and one the groups don't list.
+    static readonly Block[] Territories =
+    [
+        B("shift", "08:00", "17:00", "a", "Columbia Core", "INS"),
+        B("shift", "08:00", "12:00", "b", "Jefferson City Area", "INS"),
+        B("shift", "08:00", "17:00", "c", "St Louis West", "INS"),
+        B("shift", "08:00", "17:00", "d", "Carrollton", "INS"),
+        B("job", "08:00", "10:00", "a", reference: "j1"),
+        B("job", "08:00", "10:00", "b", reference: "j2"),
+        B("job_unassigned", "09:00", "11:00", "", "Columbia Core", reference: "u1"),
+        B("job_unassigned", "09:00", "11:00", "", "Jefferson City Area", reference: "u2"),
+    ];
+
+    static readonly string[] PerTerritory = ["Carrollton", "Columbia Core", "Jefferson City Area", "St Louis West"];
+    static readonly string[] PerArea = ["Carrollton", "Central MO", "STL Area"];
+
+    [DbFact]
+    public async Task Calendar_groups_regions_into_areas_only_on_request()
+    {
+        using var api = new Api(Territories);
+        var plain = await api.Get("/api/v1/calendar/2026-10-06");
+        Assert.Equal(PerTerritory, Strings(plain["by_region"], "region"));
+
+        var grouped = await api.Get("/api/v1/calendar/2026-10-06?regions=grouped");
+        Assert.Equal(PerArea, Strings(grouped["by_region"], "region"));
+        var central = grouped["by_region"]![1]!;
+        Assert.Equal(2, central["techs_on"]!.GetValue<int>());
+        Assert.Equal(2, central["jobs"]!.GetValue<int>());
+        Assert.Equal(2, central["unassigned_jobs"]!.GetValue<int>());
+        var rows = plain["by_region"]!.AsArray().Where(r => r!["region"]!.GetValue<string>() is "Columbia Core" or "Jefferson City Area").ToList();
+        Assert.Equal(rows.Sum(r => r!["shift_h"]!.GetValue<double>()), central["shift_h"]!.GetValue<double>());
+        // Utilization is booked / available over the group's summed hours, not an average of the territories' rates.
+        var (booked, available) = (central["booked_h"]!.GetValue<double>(), central["available_h"]!.GetValue<double>());
+        Assert.Equal(rows.Sum(r => r!["booked_h"]!.GetValue<double>()), booked);
+        Assert.Equal(Math.Round(booked / available, 3), central["utilization"]!.GetValue<double>());
+        Assert.NotEqual(Math.Round(rows.Average(r => r!["utilization"]!.GetValue<double>()), 3), central["utilization"]!.GetValue<double>());
+        Assert.Equal(plain["totals"]!.ToJsonString(), grouped["totals"]!.ToJsonString());
+
+        Assert.Equal(PerArea, Strings((await api.Get("/api/v1/calendar?days=1&regions=grouped"))["days"]![0]!["by_region"], "region"));
+        Assert.Equal(PerTerritory, Strings((await api.Get("/api/v1/calendar?days=1"))["days"]![0]!["by_region"], "region"));
+    }
+
+    [DbFact]
+    public async Task An_area_filter_takes_every_territory_in_it_and_a_territory_only_itself()
+    {
+        using var api = new Api(Territories);
+        var central = await api.Get("/api/v1/calendar/2026-10-06?region=Central MO");
+        Assert.Equal(["a", "b"], Strings(central["techs"], "tech_id"));
+        Assert.Equal(["u1", "u2"], Strings(central["unassigned"], "ref_id"));
+        Assert.Equal(["Columbia Core", "Jefferson City Area"], Strings(central["by_region"], "region"));
+
+        var one = await api.Get("/api/v1/calendar/2026-10-06?region=Columbia Core");
+        Assert.Equal(["a"], Strings(one["techs"], "tech_id"));
+        Assert.Equal(["u1"], Strings(one["unassigned"], "ref_id"));
+
+        var both = await api.Get("/api/v1/calendar/2026-10-06?region=Central MO&regions=grouped");
+        Assert.Equal(["Central MO"], Strings(both["by_region"], "region"));
+        Assert.Equal(["a", "b"], Strings(both["techs"], "tech_id"));
+
+        Assert.Equal(["d"], Strings((await api.Get("/api/v1/calendar/2026-10-06?region=Carrollton"))["techs"], "tech_id"));
+        Assert.Empty((await api.Get("/api/v1/calendar/2026-10-06?region=Nowhere"))["techs"]!.AsArray());
+    }
+
+    [DbFact]
+    public async Task Capacity_kpis_roll_up_to_areas_and_filter_by_area()
+    {
+        using var api = new Api(Territories);
+        var plain = await api.Get("/api/v1/kpis/capacity?days=1");
+        Assert.Equal(PerTerritory, Strings(plain["by_region"], "region"));
+
+        var grouped = await api.Get("/api/v1/kpis/capacity?days=1&regions=grouped");
+        Assert.Equal(PerArea, Strings(grouped["by_region"], "region"));
+        Assert.Equal(
+            plain["by_region"]!.AsArray().Where(r => r!["region"]!.GetValue<string>() is "Columbia Core" or "Jefferson City Area").Sum(r => r!["shift_h"]!.GetValue<double>()),
+            grouped["by_region"]![1]!["shift_h"]!.GetValue<double>()
+        );
+        Assert.Equal(2, grouped["by_region"]![1]!["jobs"]!.GetValue<int>());
+        Assert.Equal(plain["series"]!.ToJsonString(), grouped["series"]!.ToJsonString());
+
+        var central = await api.Get("/api/v1/kpis/capacity?days=1&region=Central MO");
+        Assert.Equal(2, central["series"]![0]!["techs_on"]!.GetValue<int>());
+        Assert.Equal(["Columbia Core", "Jefferson City Area"], Strings(central["by_region"], "region"));
+    }
+
+    [DbFact]
+    public async Task Outcome_kpis_accept_the_grouped_view_and_an_area_filter()
+    {
+        using var api = new Api(Territories);
+        Assert.Equal(HttpStatusCode.OK, await api.Status("/api/v1/kpis/outcomes?regions=grouped"));
+        Assert.Equal(HttpStatusCode.OK, await api.Status("/api/v1/kpis/outcomes?region=Central MO&tech=a"));
+        Assert.Equal(HttpStatusCode.OK, await api.Status("/api/v1/outcomes.xlsx?region=Central MO"));
+    }
+
+    [DbFact]
+    public async Task Regions_other_than_grouped_are_rejected()
+    {
+        using var api = new Api(Territories);
+        Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/calendar?regions=bogus"));
+        Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/calendar/2026-10-06?regions=bogus"));
+        Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/kpis/capacity?regions=bogus"));
+        Assert.Equal((HttpStatusCode)422, await api.Status("/api/v1/kpis/outcomes?regions=bogus"));
+    }
+
+    [DbFact]
+    public async Task Filters_list_the_areas_the_regions_roll_up_to()
+    {
+        using var api = new Api(Territories);
+        var body = await api.Get("/api/v1/filters");
+        Assert.Equal(PerTerritory, body["regions"]!.AsArray().Select(n => n!.GetValue<string>()));
+        Assert.Equal(PerArea, body["areas"]!.AsArray().Select(n => n!.GetValue<string>()));
+    }
+
+    [DbFact]
+    public async Task The_map_takes_an_area_filter()
+    {
+        using var api = new Api(
+            [
+                B("shift", "08:00", "17:00", "a", "Columbia Core"),
+                B("shift", "08:00", "17:00", "b", "St Louis West"),
+                Located(B("job", "08:00", "10:00", "a", reference: "j1"), 40.1, -100.1),
+                Located(B("job", "08:00", "10:00", "b", reference: "j2"), 40.2, -100.2),
+            ]
+        );
+        Assert.Equal(["j1"], Strings((await api.Get("/api/v1/map?region=Central MO"))["points"], "ref_id"));
+        Assert.Equal(["j1"], Strings((await api.Get("/api/v1/map?region=Columbia Core"))["points"], "ref_id"));
+        Assert.Empty((await api.Get("/api/v1/map?region=STL Area&kind=ticket"))["points"]!.AsArray());
     }
 
     [DbFact]
